@@ -61,6 +61,7 @@
     .notif-mobile { display: none; } /* legacy */
     .desktop-only { display: flex !important; }
     .float-hide-desktop { display: none !important; }
+    .desktop-save-dropdown { position: fixed !important; top: 72px !important; right: 20px !important; bottom: auto !important; left: auto !important; }
     .nav-inner { max-width: 1100px; margin: 0 auto; padding: 0 28px 0 0; height: 64px; display: flex; align-items: center; gap: 16px; }
     .notif-desktop { display: block; }
     @media (max-width: 600px) {
@@ -74,8 +75,64 @@
       .notif-desktop { display: none !important; }
       .desktop-only { display: none !important; }
       .float-hide-desktop { display: flex !important; }
+      .desktop-save-dropdown { position: absolute !important; top: auto !important; right: auto !important; bottom: calc(100% + 10px) !important; left: 0 !important; }
     }
   </style>
+  <!-- Firebase SDK for FCM -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-compat.js"></script>
+  <script>
+    // ── FCM init (runs before React) ─────────────────────────────
+    const CCJ_SERVER = "https://ccj-notifications.onrender.com"; // update after Render deploy
+    const VAPID_KEY = "BCF6uCbbcRuYiLBvVx8JC7I5ZrtONIDI7ZMR7Gw4LfKpgL9Nin6jakj9AtPP8bjVfkxbG37AjuO9SHAWADe4WjU";
+
+    firebase.initializeApp({
+      apiKey: "AIzaSyCyNUyas2hfRAt4nr2tFbDdq-a71ZELcBo",
+      authDomain: "cookie-care-joy.firebaseapp.com",
+      projectId: "cookie-care-joy",
+      storageBucket: "cookie-care-joy.firebasestorage.app",
+      messagingSenderId: "129750731438",
+      appId: "1:129750731438:web:b7e32262250d42e9c8fb3f",
+    });
+
+    let _fcmToken = localStorage.getItem("ccj_fcm_token") || null;
+
+    async function ccjGetToken() {
+      try {
+        const messaging = firebase.messaging();
+        const sw = await navigator.serviceWorker.register("/Cookie-Care-Joy/firebase-messaging-sw.js");
+        const token = await messaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: sw });
+        if (token) {
+          _fcmToken = token;
+          localStorage.setItem("ccj_fcm_token", token);
+        }
+        return token;
+      } catch(e) {
+        console.warn("FCM token error:", e.message);
+        return null;
+      }
+    }
+
+    async function ccjSchedulePush(taskId, title, fireAt) {
+      const token = _fcmToken || await ccjGetToken();
+      if (!token || !fireAt) return;
+      try {
+        await fetch(CCJ_SERVER + "/schedule", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, taskId: String(taskId), title, body: "Time for your task! 🍪", fireAt }),
+        });
+      } catch(e) { console.warn("Schedule push failed:", e.message); }
+    }
+
+    async function ccjCancelPush(taskId) {
+      try {
+        await fetch(CCJ_SERVER + "/cancel/" + taskId, { method: "DELETE" });
+      } catch(e) {}
+    }
+
+    window.CCJ_FCM = { getToken: ccjGetToken, schedule: ccjSchedulePush, cancel: ccjCancelPush };
+  </script>
 </head>
 <body>
   <div id="root"></div>
@@ -269,7 +326,23 @@ const TRANSLATIONS = {
     intention_label:"Today's Intention", intention_sub:"One word or phrase to carry with you today",
     intention_placeholder:"e.g. Calm · Focus · Be present · I am enough",
     intention_clear:"Clear", intention_save:"Set Intention ✨",
-    notif_prompt:"Stay on track with sweet reminders! ✨",
+    btn_save:"Save", btn_wind_down:"Wind Down",
+        breathe_in:"Breathe In", hold:"Hold", breathe_out:"Breathe Out",
+    wd_tap_begin:"tap to begin", wd_night_mode:"{t.wd_night_mode}",
+    wd_take_moment:"Take a moment just for you 🌸",
+    wd_start:"Start Breathing ✨", wd_pause:"Pause",
+    wd_cycle:"cycle", wd_breathing:"breathing",
+    wd_affirmations:["You are doing amazing 💕","Every breath is a fresh start 🌸","You deserve this moment ✨","Let it all go 🍃","You are safe and calm 💜"],
+    wd_patterns:[
+      {name:"4-7-8 Calm", desc:"Classic sleep & stress relief", emoji:"🌙"},
+      {name:"Box Breathing", desc:"Used by Navy SEALs for focus", emoji:"🧊"},
+      {name:"Quick Reset", desc:"Fast 2-minute refresh", emoji:"🌸"},
+      {name:"Deep Calm", desc:"Slow and deeply relaxing", emoji:"🌊"},
+    ],
+    save_backup:"Save backup", save_backup_sub:"Download your data",
+    load_backup:"Load backup", load_backup_sub:"Restore from file",
+    golden_features:["✨ Shiny Golden Cookies in your jar","🎵 Relaxing Zen alarm sounds","🎨 Custom jar themes & colors","❤️ Support the developer! 💖"],
+    notif_prompt:"Sweet reminders keep you on track! ✨",
     notif_enable:"Enable Notifications", notif_enable_short:"Enable 🔔",
     splash_sub:"Your sweet little self-care companion 🌸", splash_skip:"tap to skip",
     back:"← Back", already_purchased_short:"🔑 Already purchased? Enter your code",
@@ -347,6 +420,22 @@ const TRANSLATIONS = {
     intention_label:"Intención de Hoy", intention_sub:"Una palabra o frase para llevar hoy",
     intention_placeholder:"ej: Calma · Enfoque · Estar presente · Soy suficiente",
     intention_clear:"Borrar", intention_save:"Establecer Intención ✨",
+    btn_save:"Guardar", btn_wind_down:"Descansar",
+        breathe_in:"Inhala", hold:"Mantén", breathe_out:"Exhala",
+    wd_tap_begin:"toca para comenzar", wd_night_mode:"🌙 Modo Nocturno",
+    wd_take_moment:"Tómate un momento solo para ti 🌸",
+    wd_start:"Comenzar a respirar ✨", wd_pause:"Pausar",
+    wd_cycle:"ciclo", wd_breathing:"respiración",
+    wd_affirmations:["Lo estás haciendo increíble 💕","Cada respiración es un nuevo comienzo 🌸","Te mereces este momento ✨","Suéltalo todo 🍃","Estás segura y en calma 💜"],
+    wd_patterns:[
+      {name:"Calma 4-7-8", desc:"Alivio clásico del estrés y sueño", emoji:"🌙"},
+      {name:"Respiración Cuadrada", desc:"Usada por Navy SEALs para concentrarse", emoji:"🧊"},
+      {name:"Reseteo Rápido", desc:"Recarga rápida de 2 minutos", emoji:"🌸"},
+      {name:"Calma Profunda", desc:"Lenta y profundamente relajante", emoji:"🌊"},
+    ],
+    save_backup:"Guardar copia", save_backup_sub:"Descarga tus datos",
+    load_backup:"Cargar copia", load_backup_sub:"Restaurar desde archivo",
+    golden_features:["✨ Galletas doradas brillantes en tu tarro","🎵 Sonidos zen relajantes","🎨 Temas y colores personalizados","❤️ ¡Apoya al desarrollador! 💖"],
     notif_prompt:"¡Recibe recordatorios dulces! ✨",
     notif_enable:"Activar Notificaciones", notif_enable_short:"Activar 🔔",
     splash_sub:"Tu dulce compañero de autocuidado 🌸", splash_skip:"toca para saltar",
@@ -425,6 +514,22 @@ const TRANSLATIONS = {
     intention_label:"每日意图", intention_sub:"一个词或一句话，陪伴你度过今天",
     intention_placeholder:"例如：平静 · 专注 · 活在当下 · 我已足够",
     intention_clear:"清除", intention_save:"设置意图 ✨",
+    btn_save:"保存", btn_wind_down:"放松一下",
+        breathe_in:"吸气", hold:"屏息", breathe_out:"呼气",
+    wd_tap_begin:"点击开始", wd_night_mode:"🌙 夜间模式",
+    wd_take_moment:"给自己一点时间 🌸",
+    wd_start:"开始呼吸 ✨", wd_pause:"暂停",
+    wd_cycle:"循环", wd_breathing:"呼吸",
+    wd_affirmations:["你做得很棒 💕","每次呼吸都是新的开始 🌸","你值得拥有这一刻 ✨","放下一切 🍃","你是安全而平静的 💜"],
+    wd_patterns:[
+      {name:"4-7-8 平静", desc:"经典睡眠与压力缓解", emoji:"🌙"},
+      {name:"方块呼吸", desc:"海豹突击队专注训练法", emoji:"🧊"},
+      {name:"快速重置", desc:"2分钟快速恢复", emoji:"🌸"},
+      {name:"深度平静", desc:"缓慢深度放松", emoji:"🌊"},
+    ],
+    save_backup:"保存备份", save_backup_sub:"下载你的数据",
+    load_backup:"加载备份", load_backup_sub:"从文件恢复",
+    golden_features:["✨ 闪亮黄金饼干装满你的饼干罐","🎵 轻松禅意闹钟铃声","🎨 自定义主题和颜色","❤️ 支持开发者！ 💖"],
     notif_prompt:"开启提醒，不错过每一刻 ✨",
     notif_enable:"开启通知", notif_enable_short:"开启 🔔",
     splash_sub:"你甜蜜的自我关爱小伙伴 🌸", splash_skip:"点击跳过",
@@ -666,6 +771,7 @@ const BREATH_PATTERNS = [
 
 function CoolDownMode({ onClose, purchased, selectedSound }) {
   const { useRef } = React;
+  const t = React.useContext(LangContext);
   const [active, setActive] = React.useState(false);
   const [phase, setPhase] = React.useState("in");       // in | hold | out
   const [count, setCount] = React.useState(0);
@@ -677,7 +783,7 @@ function CoolDownMode({ onClose, purchased, selectedSound }) {
   const [isNight] = React.useState(() => { const h = new Date().getHours(); return h >= 20 || h < 6; });
   const phaseRef = useRef("in");
   const countRef = useRef(0);
-  const pat = BREATH_PATTERNS[pattern];
+  const pat = { ...BREATH_PATTERNS[pattern], name: t.wd_patterns[pattern].name, desc: t.wd_patterns[pattern].desc, emoji: t.wd_patterns[pattern].emoji };
 
   const fmtTime = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
 
@@ -731,7 +837,7 @@ function CoolDownMode({ onClose, purchased, selectedSound }) {
     setTimeout(onClose, 400);
   };
 
-  const phaseLabel = { in:"Breathe In", hold:"Hold", out:"Breathe Out" };
+  const phaseLabel = { in:t.breathe_in||"Breathe In", hold:t.hold||"Hold", out:t.breathe_out||"Breathe Out" };
   const phaseDur = { in: pat.in, hold: pat.hold, out: pat.out };
   const progress = active ? (count / phaseDur[phase]) : 0;
   const circleColor = phase==="in" ? "#f43f6e" : phase==="hold" ? "#a78bfa" : "#34d399";
@@ -767,7 +873,7 @@ function CoolDownMode({ onClose, purchased, selectedSound }) {
         {/* Night badge — center */}
         {isNight && !active && (
           <div style={{ flex:1, textAlign:"center", background:"rgba(255,220,160,0.15)", border:"1px solid rgba(255,220,160,0.25)", borderRadius:20, padding:"6px 10px", fontSize:11, fontWeight:700, color:"rgba(255,220,160,0.8)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-            🌙 Night Mode
+            {t.wd_night_mode}
           </div>
         )}
         {/* Close */}
@@ -778,8 +884,8 @@ function CoolDownMode({ onClose, purchased, selectedSound }) {
         <div style={{ position:"absolute",top:"max(80px,calc(env(safe-area-inset-top) + 70px))",left:16,background:WHITE,borderRadius:18,boxShadow:"0 8px 32px rgba(0,0,0,0.15)",border:"1px solid #f0e6f0",zIndex:10,minWidth:240,overflow:"hidden" }}>
           {BREATH_PATTERNS.map((p,i) => (
             <div key={i} onClick={()=>{ setPattern(i); setShowPatterns(false); stop(); }} style={{ padding:"14px 18px",cursor:"pointer",borderBottom:i<BREATH_PATTERNS.length-1?"1px solid #f9f0f5":"none",background:pattern===i?ROSE_LIGHT:"transparent" }}>
-              <div style={{ fontWeight:700,fontSize:14,color:pattern===i?ROSE:DARK }}>{p.emoji} {p.name}</div>
-              <div style={{ fontSize:12,color:GRAY,marginTop:2 }}>{p.desc} · {p.in}-{p.hold}-{p.out}s</div>
+              <div style={{ fontWeight:700,fontSize:14,color:pattern===i?ROSE:DARK }}>{t.wd_patterns[i].emoji} {t.wd_patterns[i].name}</div>
+              <div style={{ fontSize:12,color:GRAY,marginTop:2 }}>{t.wd_patterns[i].desc} · {p.in}-{p.hold}-{p.out}s</div>
             </div>
           ))}
         </div>
@@ -788,7 +894,7 @@ function CoolDownMode({ onClose, purchased, selectedSound }) {
       {/* Timer */}
       {active && (
         <div style={{ position:"absolute",top:"max(68px, calc(env(safe-area-inset-top) + 48px))",fontSize:13,color:GRAY,fontWeight:600,letterSpacing:1 }}>
-          {fmtTime(totalSec)} · cycle {cycle+1}
+          {fmtTime(totalSec)} · {t.wd_cycle} {cycle+1}
         </div>
       )}
 
@@ -824,7 +930,7 @@ function CoolDownMode({ onClose, purchased, selectedSound }) {
           ) : (
             <>
               <span style={{ fontSize:36 }}>🌸</span>
-              <span style={{ fontSize:12,color:WHITE,fontWeight:700,marginTop:6 }}>tap to begin</span>
+              <span style={{ fontSize:12,color:WHITE,fontWeight:700,marginTop:6 }}>{t.wd_tap_begin}</span>
             </>
           )}
         </div>
@@ -832,10 +938,10 @@ function CoolDownMode({ onClose, purchased, selectedSound }) {
 
       {/* Title */}
       <h2 style={{ margin:"0 0 6px",fontSize:26,fontWeight:900,color:active?circleColor:(isNight?"rgba(220,200,255,0.95)":ROSE),fontFamily:"Georgia,serif",transition:"color 1.5s",textAlign:"center" }}>
-        {active ? phaseLabel[phase] : "Wind Down"}
+        {active ? phaseLabel[phase] : t.btn_wind_down}
       </h2>
       <p style={{ margin:"0 0 32px",fontSize:14,color:isNight&&!active?"rgba(200,180,255,0.7)":GRAY,textAlign:"center",maxWidth:260 }}>
-        {active ? `${pat.name} · ${pat.in}-${pat.hold}-${pat.out} breathing` : "Take a moment just for you 🌸"}
+        {active ? `${pat.name} · ${pat.in}-${pat.hold}-${pat.out} ${t.wd_breathing}` : t.wd_take_moment}
       </p>
 
       {/* Buttons */}
@@ -852,7 +958,7 @@ function CoolDownMode({ onClose, purchased, selectedSound }) {
       {/* Affirmation */}
       {active && totalSec > 8 && (
         <p style={{ position:"absolute",bottom:"max(40px,env(safe-area-inset-bottom))",margin:0,fontSize:13,color:GRAY,fontStyle:"italic",textAlign:"center",padding:"0 32px",animation:"splashSubIn 1s ease forwards" }}>
-          {["You are doing amazing 💕","Every breath is a fresh start 🌸","You deserve this moment ✨","Let it all go 🍃","You are safe and calm 💜"][cycle%5]}
+          {t.wd_affirmations[cycle%5]}
         </p>
       )}
     </div>
@@ -860,7 +966,7 @@ function CoolDownMode({ onClose, purchased, selectedSound }) {
 }
 
 // ── NavBar ────────────────────────────────────────────────────────
-function NavBar({ page, setPage, nightMode, lang, setLang, onSave, onWindDown }) {
+function NavBar({ page, setPage, nightMode, lang, setLang, onSave, onWindDown, notifShowing }) {
   const t = React.useContext(LangContext);
   const [showLangDrop, setShowLangDrop] = React.useState(false);
   const LANGS = [{ code:"en", flag:"🇬🇧", label:"English" }, { code:"es", flag:"🇪🇸", label:"Español" }, { code:"zh", flag:"🇨🇳", label:"中文" }];
@@ -886,80 +992,88 @@ function NavBar({ page, setPage, nightMode, lang, setLang, onSave, onWindDown })
       <nav className="top-nav" style={{
         background: nightMode ? "#faf0e2" : WHITE,
         borderBottom: nightMode ? "2px solid #e8d5b0" : "2px solid #f0e6f0",
-        position:"sticky", top:0, zIndex:200,
+        position:"sticky", top: notifShowing ? 52 : 0, zIndex:200,
         boxShadow:"0 2px 12px rgba(0,0,0,0.06)",
         paddingTop:"env(safe-area-inset-top)",
       }}>
-        <div style={{ maxWidth:1100, margin:"0 auto", marginLeft:"max(0px, calc((100vw - 1100px)/2))", padding:"0 28px", height:64, display:"flex", alignItems:"center", gap:16 }}>
-          {/* Brand — left-aligned, same edge as page content */}
-          <span style={{ fontSize:26, flexShrink:0 }}>🍪</span>
-          <span style={{ fontWeight:800, fontSize:18, color:ROSE, fontFamily:"Georgia,serif", whiteSpace:"nowrap", flexShrink:0, marginRight:20 }}>Cookie-Care-Joy</span>
-          {/* Tabs — follow right after brand */}
+        <div style={{ maxWidth:1200, margin:"0 auto", padding:"0 20px", height:64, display:"grid", gridTemplateColumns:"auto 1fr auto", alignItems:"center", gap:16 }}>
+          {/* Brand — left */}
+          <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
+            <span style={{ fontSize:24 }}>🍪</span>
+            <span style={{ fontWeight:800, fontSize:17, color:ROSE, fontFamily:"Georgia,serif", whiteSpace:"nowrap" }}>Cookie-Care-Joy</span>
+          </div>
+          {/* Tabs — centered */}
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:4 }}>
           {tabs.map(tab => {
             const active = page === tab.id;
             return (
               <button key={tab.id} onClick={() => setPage(tab.id)} style={{
                 background:active?ROSE_LIGHT:"transparent",
                 border:active?`2px solid ${ROSE}`:"2px solid transparent",
-                borderRadius:24, padding:"8px 16px", cursor:"pointer",
-                fontFamily:"inherit", fontSize:14,
+                borderRadius:24, padding:"7px 13px", cursor:"pointer",
+                fontFamily:"inherit", fontSize:13,
                 fontWeight:active?700:500, color:active?ROSE:GRAY,
-                display:"flex", alignItems:"center", gap:6,
+                display:"flex", alignItems:"center", gap:5,
                 whiteSpace:"nowrap", flexShrink:0, transition:"all 0.15s",
               }}>
-                <span style={{ fontSize:16 }}>{tab.icon ? tab.icon : <CookieJarIcon size={18} />}</span>
+                <span style={{ fontSize:15 }}>{tab.icon ? tab.icon : <CookieJarIcon size={16} />}</span>
                 {tab.label}
               </button>
             );
           })}
-          <div style={{ flex:1 }} />
+          </div>
+          {/* Actions — right */}
+          <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
           {/* Save Progress — Desktop */}
           <button onClick={onSave} className="desktop-only" style={{
             alignItems:"center", gap:7,
-            background:"transparent",
-            border:"2px solid #e5e7eb",
+            background:ROSE_LIGHT,
+            border:`2px solid #fecdd3`,
             borderRadius:20, padding:"6px 14px",
-            cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600,
-            color:GRAY, flexShrink:0, whiteSpace:"nowrap",
+            cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700,
+            color:ROSE, flexShrink:0, whiteSpace:"nowrap",
             transition:"all 0.15s",
           }}
-            onMouseEnter={e=>{e.currentTarget.style.background=ROSE_LIGHT;e.currentTarget.style.borderColor=ROSE;e.currentTarget.style.color=ROSE;}}
-            onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.borderColor="#e5e7eb";e.currentTarget.style.color=GRAY;}}
+            onMouseEnter={e=>{e.currentTarget.style.background=ROSE;e.currentTarget.style.borderColor=ROSE;e.currentTarget.style.color="#fff";}}
+            onMouseLeave={e=>{e.currentTarget.style.background=ROSE_LIGHT;e.currentTarget.style.borderColor="#fecdd3";e.currentTarget.style.color=ROSE;}}
           >
             <svg width="15" height="15" viewBox="0 0 28 28" fill="none">
               <path d="M3 8C3 6.9 3.9 6 5 6H11L13 8H23C24.1 8 25 8.9 25 10V20C25 21.1 24.1 22 23 22H5C3.9 22 3 21.1 3 20V8Z" fill="currentColor" opacity="0.9"/>
               <path d="M3 11H25V20C25 21.1 24.1 22 23 22H5C3.9 22 3 21.1 3 20V11Z" fill="currentColor" opacity="0.5"/>
             </svg>
-            Save
+            {t.btn_save}
           </button>
           {/* Wind Down — Desktop */}
           <button onClick={onWindDown} className="desktop-only" style={{
-            alignItems:"center", gap:7,
-            background:"transparent",
-            border:"2px solid #e5e7eb",
+            display:"inline-flex", alignItems:"center", gap:7,
+            background:"#fef9c3",
+            border:"2px solid #fcd34d",
             borderRadius:20, padding:"6px 14px",
-            cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600,
-            color:GRAY, flexShrink:0, whiteSpace:"nowrap",
+            cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700,
+            color:"#92400e", flexShrink:0, whiteSpace:"nowrap",
             transition:"all 0.15s",
           }}
-            onMouseEnter={e=>{e.currentTarget.style.background=GOLD_LIGHT;e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.color="#92400e";}}
-            onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.borderColor="#e5e7eb";e.currentTarget.style.color=GRAY;}}
+            onMouseEnter={e=>{e.currentTarget.style.background=GOLD;e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.color="#fff";}}
+            onMouseLeave={e=>{e.currentTarget.style.background="#fef9c3";e.currentTarget.style.borderColor="#f59e0b";e.currentTarget.style.color="#92400e";}}
           >
-            <svg width="16" height="16" viewBox="0 0 32 32" fill="none">
+            <svg width="20" height="20" viewBox="0 0 32 32" fill="none">
               <path d="M28 16C28 22.6 22.6 28 16 28C11.2 28 7 25.1 5 21C7 22.2 9.4 23 12 23C19.7 23 26 16.7 26 9C26 7.2 25.6 5.5 24.9 4C26.8 7 28 11.4 28 16Z" fill="currentColor"/>
             </svg>
-            Wind Down
+            {t.btn_wind_down}
           </button>
           {/* Language Dropdown — Desktop */}
           <div style={{ position:"relative", flexShrink:0 }} onMouseDown={e=>e.stopPropagation()}>
             <button onClick={()=>setShowLangDrop(d=>!d)} style={{
-              display:"flex", alignItems:"center", gap:7,
-              background: showLangDrop ? ROSE_LIGHT : "transparent",
-              border: `2px solid ${showLangDrop ? ROSE : "#e5e7eb"}`,
-              borderRadius:20, padding:"6px 14px", cursor:"pointer",
-              fontFamily:"inherit", fontSize:13, fontWeight:600,
-              color: showLangDrop ? ROSE : GRAY, transition:"all 0.15s",
-            }}>
+              display:"flex", alignItems:"center", gap:6,
+              background: showLangDrop ? "#10b981" : "#d1fae5",
+              border: `2px solid ${showLangDrop ? "#10b981" : "#6ee7b7"}`,
+              borderRadius:20, padding:"6px 12px", cursor:"pointer",
+              fontFamily:"inherit", fontSize:13, fontWeight:700,
+              color: showLangDrop ? "#fff" : "#065f46", transition:"all 0.15s",
+              flexShrink:0, minWidth:0, maxWidth:110, overflow:"hidden",
+            }}
+              onMouseEnter={e=>{if(!showLangDrop){e.currentTarget.style.background="#10b981";e.currentTarget.style.color="#fff";}}}
+              onMouseLeave={e=>{if(!showLangDrop){e.currentTarget.style.background="#d1fae5";e.currentTarget.style.color="#065f46";}}}>
               <span style={{ fontSize:16 }}>{currentLang.flag}</span>
               <span>{currentLang.code.toUpperCase()}</span>
               <span style={{ fontSize:10, marginLeft:2, opacity:0.6 }}>{showLangDrop ? "▲" : "▼"}</span>
@@ -986,7 +1100,8 @@ function NavBar({ page, setPage, nightMode, lang, setLang, onSave, onWindDown })
               </div>
             )}
           </div>
-          {nightMode && <span style={{ fontSize:15, opacity:0.45, flexShrink:0, marginLeft:8 }}>🌙</span>}
+          {nightMode && <span style={{ fontSize:15, opacity:0.45 }}>🌙</span>}
+          </div>
         </div>
       </nav>
 
@@ -1414,14 +1529,39 @@ function TodayPage({ tasks, setTasks, cookies, setCookies, setPage, purchased, s
   const todayStr = today.toISOString().split("T")[0];
   const todayTasks = tasks.filter(t => t.date === todayStr);
 
-  const addTask = form => { setTasks(prev=>[...prev,{id:Date.now(),...form,done:false}]); setShowForm(false); };
+  const addTask = form => {
+    const newId = Date.now();
+    setTasks(prev=>[...prev,{id:newId,...form,done:false}]);
+    setShowForm(false);
+    if (window.CCJ_FCM && localStorage.getItem("ccj_notif_on")==="true" && form.alertTime) {
+      const fireAt = new Date(`${form.date||todayStr}T${form.alertTime}`);
+      if (fireAt > new Date()) window.CCJ_FCM.schedule(newId, form.text, fireAt.toISOString());
+    }
+  };
   const toggleTask = id => {
     const t = tasks.find(t=>t.id===id);
     if(t&&!t.done) setCookies(1); else if(t&&t.done) setCookies(-1);
     setTasks(prev=>prev.map(t=>t.id===id?{...t,done:!t.done}:t));
   };
-  const removeTask = id => setTasks(prev=>prev.filter(t=>t.id!==id));
-  const editTask = (id, changes) => setTasks(prev=>prev.map(t=>t.id===id?{...t,...changes}:t));
+  const removeTask = id => {
+    setTasks(prev=>prev.filter(t=>t.id!==id));
+    if (window.CCJ_FCM) window.CCJ_FCM.cancel(id);
+  };
+  const editTask = (id, changes) => {
+    setTasks(prev=>prev.map(t=>t.id===id?{...t,...changes}:t));
+    if (changes.alertTime !== undefined && window.CCJ_FCM) {
+      if (changes.alertTime) {
+        const task = tasks.find(t=>t.id===id);
+        if (task) {
+          const fireAt = new Date(`${task.date}T${changes.alertTime}`);
+          if (fireAt > new Date() && localStorage.getItem("ccj_notif_on")==="true")
+            window.CCJ_FCM.schedule(id, changes.text||task.text, fireAt.toISOString());
+        }
+      } else {
+        window.CCJ_FCM.cancel(id);
+      }
+    }
+  };
 
   return (
     <div className="page-content" style={{ padding:"32px 28px",maxWidth:1100,margin:"0 auto" }}>
@@ -1515,7 +1655,15 @@ function CalendarPage({ tasks, setTasks, setCookies, setPage }) {
   const selLabel = new Date(selected+"T12:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
   const grouped = {};
   selectedTasks.forEach(t=>{ const k=t.folder||"General"; if(!grouped[k]) grouped[k]=[]; grouped[k].push(t); });
-  const addTask = form => { setTasks(prev=>[...prev,{id:Date.now(),...form,date:selected,done:false}]); setShowForm(false); };
+  const addTask = form => {
+    const newId = Date.now();
+    setTasks(prev=>[...prev,{id:newId,...form,date:selected,done:false}]);
+    setShowForm(false);
+    if (window.CCJ_FCM && localStorage.getItem("ccj_notif_on")==="true" && form.alertTime) {
+      const fireAt = new Date(`${selected}T${form.alertTime}`);
+      if (fireAt > new Date()) window.CCJ_FCM.schedule(newId, form.text, fireAt.toISOString());
+    }
+  };
   const toggleTask = id => {
     const t=tasks.find(t=>t.id===id);
     if(t&&!t.done) setCookies(1); else if(t&&t.done) setCookies(-1);
@@ -1797,7 +1945,7 @@ function CookieJarPage({ cookies, tasks, purchased, selectedTheme, trophies }) {
         {completed.slice().reverse().map(task=>{
           const label = new Date(task.date+"T12:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
           return (
-            <div key={task.id} style={{ background:purchased?jarBg:WHITE,borderRadius:16,padding:"16px 20px",display:"flex",alignItems:"center",gap:14,boxShadow:"0 1px 8px rgba(0,0,0,0.06)",border:`1px solid ${purchased?jarBorder:"#fef3c7"}` }}>
+            <div key={task.id} style={{ background:purchased?jarBg:WHITE,borderRadius:16,padding:"16px 20px",display:"flex",alignItems:"center",gap:14,boxShadow:"0 1px 8px rgba(0,0,0,0.06)",border:`1px solid ${purchased?jarBorder:"#fef9c3"}` }}>
               <div style={{ width:44,height:44,borderRadius:"50%",background:GOLD_LIGHT,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0 }}>{cookieEmoji}</div>
               <div>
                 <p style={{ margin:"0 0 4px",fontWeight:700,fontSize:15,color:DARK }}>{task.text}</p>
@@ -1910,7 +2058,7 @@ function BakeryPage({ purchased, setPurchased, selectedTheme, setSelectedTheme, 
             <span className="bakery-price" style={{ fontSize:32,fontWeight:900,color:WHITE }}>$4.99</span>
             <span style={{ fontSize:14,color:"rgba(255,255,255,0.8)" }}>{t.one_time}</span>
           </div>
-          {["✨ Shiny Golden Cookies in your jar","🎵 Relaxing Zen alarm sounds","🎨 Custom jar themes & colors","❤️ Support the developer! 💖"].map(f=>(
+          {t.golden_features.map(f=>(
             <div key={f} style={{ marginBottom:12,display:"flex",alignItems:"center",gap:8 }}>
               {purchased && <span style={{ color:WHITE,fontWeight:700,fontSize:13 }}>✓</span>}
               <span style={{ color:"rgba(255,255,255,0.95)",fontSize:14 }}>{f}</span>
@@ -2150,52 +2298,65 @@ function DataBackupButton({ notifShowing, mobileOnly }) {
       <input ref={fileRef} type="file" accept=".json" onChange={handleImport} style={{ display:"none" }} />
 
       {/* Floating folder button */}
-      <div className="float-hide-desktop" style={{ position:"fixed", left:20, bottom:`calc(max(24px,env(safe-area-inset-bottom)) + ${notifShowing?"122px":"72px"})`, zIndex:400, transition:"bottom 0.3s" }}
+      <div style={{ position:"fixed", left:20, bottom:`calc(max(24px,env(safe-area-inset-bottom)) + ${notifShowing?"122px":"72px"})`, zIndex:400, transition:"bottom 0.3s" }}
         onMouseDown={e=>e.stopPropagation()}
       >
         {/* Dropdown menu — opens upward */}
         {open && (
-          <div style={{
-            position:"absolute", bottom:"calc(100% + 10px)", left:0,
-            background:WHITE, borderRadius:16, overflow:"hidden",
-            boxShadow:"0 8px 32px rgba(0,0,0,0.18)",
-            border:"1px solid #f0e6f0", minWidth:170,
-            animation:"fadeUp 0.2s ease-out",
+          <div onMouseDown={()=>setOpen(false)} style={{
+            position:"fixed", inset:0, zIndex:800,
+            background:"rgba(0,0,0,0.35)", backdropFilter:"blur(4px)",
+            display:"flex", alignItems:"center", justifyContent:"center",
           }}>
-            <button onMouseDown={handleExport} style={{
-              width:"100%", padding:"14px 18px", border:"none", background:"transparent",
-              cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700,
-              color:DARK, display:"flex", alignItems:"center", gap:12, textAlign:"left",
-            }}
-              onMouseEnter={e=>e.currentTarget.style.background="#fdf4ff"}
-              onMouseLeave={e=>e.currentTarget.style.background="transparent"}
-            >
-              <span style={{ fontSize:20, width:24, textAlign:"center" }}>⬇️</span>
-              <div>
-                <p style={{ margin:0, fontSize:14, fontWeight:700, color:DARK }}>Save backup</p>
-                <p style={{ margin:0, fontSize:11, color:GRAY }}>Download your data</p>
+            <div onMouseDown={e=>e.stopPropagation()} style={{
+              background:WHITE, borderRadius:24, padding:"28px 24px",
+              boxShadow:"0 20px 60px rgba(0,0,0,0.2)",
+              border:"1px solid #f0e6f0", minWidth:300, maxWidth:360,
+              animation:"fadeUp 0.25s cubic-bezier(0.34,1.56,0.64,1)",
+            }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:20 }}>
+                <span style={{ fontSize:22 }}>💾</span>
+                <h3 style={{ margin:0, fontSize:17, fontWeight:800, color:DARK }}>{t.backup_title}</h3>
+                <button onClick={()=>setOpen(false)} style={{ marginLeft:"auto", background:"none", border:"none", fontSize:18, cursor:"pointer", color:GRAY, lineHeight:1 }}>✕</button>
               </div>
-            </button>
-            <div style={{ height:1, background:"#f3f4f6", margin:"0 12px" }} />
-            <button onMouseDown={()=>{ setOpen(false); setTimeout(()=>fileRef.current?.click(),100); }} style={{
-              width:"100%", padding:"14px 18px", border:"none", background:"transparent",
-              cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700,
-              color:DARK, display:"flex", alignItems:"center", gap:12, textAlign:"left",
-            }}
-              onMouseEnter={e=>e.currentTarget.style.background="#fdf4ff"}
-              onMouseLeave={e=>e.currentTarget.style.background="transparent"}
-            >
-              <span style={{ fontSize:20, width:24, textAlign:"center" }}>📂</span>
-              <div>
-                <p style={{ margin:0, fontSize:14, fontWeight:700, color:DARK }}>Load backup</p>
-                <p style={{ margin:0, fontSize:11, color:GRAY }}>Restore from file</p>
-              </div>
-            </button>
+              <p style={{ margin:"0 0 20px", fontSize:13, color:GRAY, lineHeight:1.5 }}>{t.backup_sub}</p>
+              <button onClick={handleExport} style={{
+                width:"100%", padding:"14px", border:"none", borderRadius:14,
+                background:ROSE_LIGHT, cursor:"pointer", fontFamily:"inherit",
+                display:"flex", alignItems:"center", gap:12, marginBottom:10,
+                transition:"background 0.15s",
+              }}
+                onMouseEnter={e=>e.currentTarget.style.background=ROSE_LIGHT.replace("fce","fbd")}
+                onMouseLeave={e=>e.currentTarget.style.background=ROSE_LIGHT}
+              >
+                <span style={{ fontSize:22, width:28, textAlign:"center" }}>⬇️</span>
+                <div style={{ textAlign:"left" }}>
+                  <p style={{ margin:0, fontSize:14, fontWeight:700, color:ROSE }}>{t.save_backup}</p>
+                  <p style={{ margin:0, fontSize:12, color:GRAY }}>{t.save_backup_sub}</p>
+                </div>
+              </button>
+              <button onClick={()=>{ setOpen(false); setTimeout(()=>fileRef.current?.click(),100); }} style={{
+                width:"100%", padding:"14px", border:"none", borderRadius:14,
+                background:"#fef9c3", cursor:"pointer", fontFamily:"inherit",
+                display:"flex", alignItems:"center", gap:12,
+                transition:"background 0.15s",
+              }}
+                onMouseEnter={e=>e.currentTarget.style.background="#fef3c7"}
+                onMouseLeave={e=>e.currentTarget.style.background="#fef9c3"}
+              >
+                <span style={{ fontSize:22, width:28, textAlign:"center" }}>📂</span>
+                <div style={{ textAlign:"left" }}>
+                  <p style={{ margin:0, fontSize:14, fontWeight:700, color:"#92400e" }}>{t.load_backup}</p>
+                  <p style={{ margin:0, fontSize:12, color:GRAY }}>{t.load_backup_sub}</p>
+                </div>
+              </button>
+            </div>
           </div>
         )}
 
-        {/* The folder button itself */}
+        {/* The folder button itself — hidden on desktop, triggered via navbar event */}
         <button
+          className="float-hide-desktop"
           onClick={()=>setOpen(o=>!o)}
           style={{
             background: open ? ROSE : ROSE_LIGHT,
@@ -2216,7 +2377,7 @@ function DataBackupButton({ notifShowing, mobileOnly }) {
             <path d="M3 8C3 6.9 3.9 6 5 6H11L13 8H23C24.1 8 25 8.9 25 10V20C25 21.1 24.1 22 23 22H5C3.9 22 3 21.1 3 20V8Z" fill={open?"rgba(255,255,255,0.95)":ROSE}/>
             <path d="M3 11H25V20C25 21.1 24.1 22 23 22H5C3.9 22 3 21.1 3 20V11Z" fill={open?"rgba(255,255,255,0.6)":"rgba(244,63,110,0.4)"}/>
           </svg>
-          <span style={{ fontSize:11, fontWeight:800, color:open?"#fff":ROSE, whiteSpace:"nowrap", letterSpacing:"0.3px" }}>Save</span>
+          <span style={{ fontSize:11, fontWeight:800, color:open?"#fff":ROSE, whiteSpace:"nowrap", letterSpacing:"0.3px" }}>{t.btn_save}</span>
         </button>
       </div>
     </>
@@ -2301,6 +2462,19 @@ document.removeEventListener('mousedown', unlock);
     if ("Notification" in window) {
       const result = await Notification.requestPermission();
       if (result === "granted") {
+        // Get FCM token for push notifications
+        if (window.CCJ_FCM) {
+          await window.CCJ_FCM.getToken();
+          // Re-schedule any existing tasks with alarm times
+          const savedTasks = JSON.parse(localStorage.getItem("ccj_tasks") || "[]");
+          const now = new Date();
+          savedTasks.forEach(task => {
+            if (task.alertTime && !task.done) {
+              const fireAt = new Date(`${task.date}T${task.alertTime}`);
+              if (fireAt > now) window.CCJ_FCM.schedule(task.id, task.text, fireAt.toISOString());
+            }
+          });
+        }
         new Notification("🍪 Cookie-Care-Joy", {
           body: "You're all set! 🍪 We'll send you sweet little reminders when tasks are due ✨",
           icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍪</text></svg>",
@@ -2319,6 +2493,15 @@ document.removeEventListener('mousedown', unlock);
     localStorage.setItem("ccj_notif_off", "true");
     setNotifPerm("off");
     setWelcomeBack(false);
+    // Cancel all scheduled pushes on server
+    const token = localStorage.getItem("ccj_fcm_token");
+    if (token && window.CCJ_FCM) {
+      fetch(window.CCJ_SERVER || "https://ccj-notifications.onrender.com" + "/cancel-all", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      }).catch(() => {});
+    }
   };
 
   const setCookies = (delta) => {
@@ -2523,10 +2706,10 @@ document.removeEventListener('mousedown', unlock);
           </div>
         );
         if (notifPerm === "default") return (
-          <div style={{ position:"fixed",top:0,left:0,right:0,zIndex:500,background:"linear-gradient(90deg,#f43f6e,#fb7185)",boxShadow:"0 2px 12px rgba(244,63,110,0.35)",paddingTop:"env(safe-area-inset-top)",animation:"slideDown 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards" }}>
-            <div style={{ padding:"10px 16px",display:"flex",alignItems:"center",gap:10 }}>
-              <span style={{ fontSize:18,flexShrink:0 }}>🔔</span>
-              <span style={{ fontSize:13,color:"#fff",fontWeight:600,lineHeight:1.3,flex:1,minWidth:0 }}>{t.notif_prompt}</span>
+          <div style={{ position:"fixed",top:0,left:0,right:0,zIndex:500,background:"linear-gradient(90deg,#f43f6e,#fb7185)",boxShadow:"0 2px 12px rgba(244,63,110,0.35)",paddingTop:"env(safe-area-inset-top)",animation:"slideDown 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards",minHeight:52 }}>
+            <div style={{ padding:"10px 16px",display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
+              <span style={{ fontSize:18 }}>🔔</span>
+              <span style={{ fontSize:13,color:"#fff",fontWeight:600,lineHeight:1.3,whiteSpace:"nowrap" }}>{t.notif_prompt}</span>
               <button onClick={requestNotifications} style={{ background:"#fff",border:"none",borderRadius:20,padding:"7px 14px",fontSize:12,fontWeight:800,color:ROSE,cursor:"pointer",fontFamily:"inherit",flexShrink:0,whiteSpace:"nowrap",boxShadow:"0 2px 8px rgba(0,0,0,0.15)" }}>{t.notif_enable_short}</button>
               <button onClick={()=>{ localStorage.setItem("ccj_notif_off","true"); setNotifPerm("off"); }} style={{ background:"transparent",border:"none",color:"rgba(255,255,255,0.8)",fontSize:18,cursor:"pointer",padding:"0 4px",lineHeight:1,flexShrink:0 }}>✕</button>
             </div>
@@ -2548,8 +2731,8 @@ document.removeEventListener('mousedown', unlock);
         );
         return null;
       })()}
-      <div style={{ height: notifPerm==="default" ? 52 : 0, transition:"height 0.3s", flexShrink:0 }} />
-      <NavBar page={page} setPage={setPage} nightMode={nightMode} lang={lang} setLang={setLang} onSave={()=>{ /* trigger DataBackupButton export */ document.dispatchEvent(new CustomEvent("ccj-save")); }} onWindDown={()=>setShowCoolDown(true)} />
+      <div style={{ height: notifPerm==="default" ? 56 : 0, transition:"height 0.3s", flexShrink:0 }} />
+      <NavBar page={page} setPage={setPage} nightMode={nightMode} lang={lang} setLang={setLang} onSave={()=>{ document.dispatchEvent(new CustomEvent("ccj-save")); }} onWindDown={()=>setShowCoolDown(true)} notifShowing={notifPerm==="default"} />
 
       {renderPage()}
 
@@ -2562,11 +2745,11 @@ document.removeEventListener('mousedown', unlock);
           position:"fixed", right:20,
           bottom:"calc(max(24px,env(safe-area-inset-bottom)) + 72px)",
           zIndex:400,
-          background:GOLD_LIGHT,
-          border:`2px solid ${GOLD}`,
+          background:"#fef9c3",
+          border:"2px solid #fcd34d",
           cursor:"pointer",
           borderRadius:18,
-          boxShadow:"0 2px 12px rgba(245,158,11,0.2)",
+          boxShadow:"0 2px 12px rgba(245,158,11,0.25)",
           padding:"11px 15px 12px",
           display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:3,
           transition:"all 0.15s",
@@ -2574,13 +2757,13 @@ document.removeEventListener('mousedown', unlock);
           minWidth:56,
         }}
           onMouseEnter={e=>{e.currentTarget.style.background=GOLD;e.currentTarget.style.transform="scale(1.06)";}}
-          onMouseLeave={e=>{e.currentTarget.style.background=GOLD_LIGHT;e.currentTarget.style.transform="scale(1)";}}
+          onMouseLeave={e=>{e.currentTarget.style.background="#fef9c3";e.currentTarget.style.transform="scale(1)";}}
         >
           {/* Moon SVG */}
           <svg width="26" height="26" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M28 16C28 22.6 22.6 28 16 28C11.2 28 7 25.1 5 21C7 22.2 9.4 23 12 23C19.7 23 26 16.7 26 9C26 7.2 25.6 5.5 24.9 4C26.8 7 28 11.4 28 16Z" fill={GOLD}/>
           </svg>
-          <span style={{ fontSize:11, fontWeight:800, color:"#92400e", whiteSpace:"nowrap", letterSpacing:"0.3px", marginTop:1 }}>Wind Down</span>
+          <span style={{ fontSize:11, fontWeight:800, color:"#92400e", whiteSpace:"nowrap", letterSpacing:"0.3px", marginTop:1 }}>{t.btn_wind_down}</span>
         </button>
       )}
 
@@ -2600,10 +2783,5 @@ document.removeEventListener('mousedown', unlock);
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
   </script>
-<footer>
-  <body style="margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column;">
-  <div style="flex: 1;"></div> <footer style="color: grey; font-size: 10px; text-align: center; padding: 20px 0; width: 100%;">
-    &copy; 2026 Alexandra Diaz | Licensed under Apache 2.0
-  </footer>
 </body>
 </html>
