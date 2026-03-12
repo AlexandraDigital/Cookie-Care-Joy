@@ -39,7 +39,20 @@
       body { background: #fdf6fb; font-family: system-ui, -apple-system, sans-serif; }
       
       /* Adding the pink banner style back in */
-      #notification-banner {
+     <button id="notification-banner">Enable Notifications</button>
+
+    <div id="root"></div>
+
+    <script>
+      // The logic to make the banner actually work
+      document.getElementById('notification-banner').onclick = function() {
+        OneSignalDeferred.push(function(OneSignal) {
+          OneSignal.showNativePrompt();
+        });
+      };
+    </script>
+        
+        #notification-banner {
         width: 100%;
         padding: 12px;
         background-color: #ff7eb9;
