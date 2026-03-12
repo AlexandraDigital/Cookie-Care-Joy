@@ -8,13 +8,17 @@
    <!DOCTYPE html>
 <html lang="en">
 <head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Cookie-Care-Joy 🍪</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cookie-Care-Joy</title>
     
     <base href="https://alexandradigital.github.io/Cookie-Care-Joy/">
 
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+
     <script>
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       OneSignalDeferred.push(async function(OneSignal) {
@@ -23,64 +27,28 @@
           path: "/Cookie-Care-Joy/",
           serviceWorkerParam: { scope: "/Cookie-Care-Joy/" },
           serviceWorkerPath: "OneSignalSDKWorker.js",
-         notifyButton: {enable: false}
-        });
+          notifyButton: {
+            enable: false, // THIS REMOVES THE EXTRA BELL ICON
+          },
       });
     </script>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
-
-    <style>
-      /* Keeping all your existing styles exactly as they were */
-      *, *::before, *::after { box-sizing: border-box; }
-      html, body { margin: 0; padding: 0; width: 100%; height: 100%; }
-      body { background: #fdf6fb; font-family: system-ui, -apple-system, sans-serif; }
-      
-      /* Adding the pink banner style back in */
-     <button id="notification-banner">Enable Notifications</button>
-
-    <div id="root"></div>
-
-    <script>
-      // The logic to make the banner actually work
-      document.getElementById('notification-banner').onclick = function() {
-        OneSignalDeferred.push(function(OneSignal) {
-          OneSignal.showNativePrompt();
-        });
-      };
-    </script>
-        
-        #notification-banner {
-        width: 100%;
-        padding: 12px;
-        background-color: #ff7eb9;
-        color: white;
-        border: none;
-        cursor: pointer;
-        font-weight: bold;
-        text-align: center;
-        display: block;
-      }
-    </style>
 </head>
 <body>
+    
 
-    <h1>Cookie-Care-Joy</h1>
-    <p>Loading your productivity & self-care tools...</p>
+<body>
 
-    <button id="test-notify" style="padding: 12px; background: #ff7eb9; color: white; border: none; border-radius: 5px;">
-        Enable Notifications
-    </button>
+    <button id="test-notify" style="padding: 12px; background: #ff7eb9; color: white; border: none; border-radius: 5px; width: 100%;">
+    Enable Notifications
+</button>
 
-    <script>
-      document.getElementById('test-notify').onclick = function() {
-        OneSignalDeferred.push(function(OneSignal) {
-          OneSignal.showNativePrompt();
-        });
-      };
-    </script>
+<script>
+  document.getElementById('test-notify').onclick = function() {
+    OneSignalDeferred.push(function(OneSignal) {
+      OneSignal.showNativePrompt();
+    });
+
+</script>
 
 </body>
 </html>
