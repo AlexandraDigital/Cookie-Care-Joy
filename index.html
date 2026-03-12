@@ -1,23 +1,51 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cookie-Care-Joy</title>
+    <base href="https://alexandradigital.github.io/Cookie-Care-Joy/">
 
-<script>
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  OneSignalDeferred.push(async function(OneSignal) {
-    await OneSignal.init({
-      appId: "fcf058d4-2e4b-4508-9caf-e4c255ce2252",
-      // This tells OneSignal exactly where your files are
-      path: "/Cookie-Care-Joy/", 
-      serviceWorkerParam: { scope: "/Cookie-Care-Joy/" },
-      serviceWorkerPath: "OneSignalSDKWorker.js",
-      notifyButton: {
-        enable: true,
-      },
-    });
-  });
-</script>
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+
+    <script>
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      OneSignalDeferred.push(async function(OneSignal) {
+        await OneSignal.init({
+        
+          appId: "fcf058d4-2e4b-4508-9caf-e4c255ce2252",
+          path: "/Cookie-Care-Joy/",
+          serviceWorkerParam: { scope: "/Cookie-Care-Joy/" },
+          serviceWorkerPath: "OneSignalSDKWorker.js",
+          notifyButton: {
+            enable: true, // This shows the small "Bell" icon for easy testing
+          },
+        });
+      });
+    </script>
+</head>
+<body>
+
+    <h1>Cookie-Care-Joy</h1>
+    <p>Loading your productivity & self-care tools...</p>
+
+    <button id="test-notify" style="padding: 12px; background: #ff7eb9; color: white; border: none; border-radius: 5px;">
+        Enable Notifications
+    </button>
+
+    <script>
+      document.getElementById('test-notify').onclick = function() {
+        OneSignalDeferred.push(function(OneSignal) {
+          OneSignal.showNativePrompt();
+        });
+      };
+    </script>
+
+</body>
+</html>
 
 
   <meta charset="UTF-8" />
