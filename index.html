@@ -24,11 +24,12 @@
     OneSignalDeferred.push(async function(OneSignal) {
       await OneSignal.showNativePrompt();
     });
-    <button onclick="setupNotifications()" style="position: relative; z-index: 9999; margin: 20px;">
-  Enable Self-Care Reminders
-</button>
+
   }
 </script>
+      <button onclick="setupNotifications()" style="position: relative; z-index: 9999; margin: 20px;">
+  Enable Self-Care Reminders
+</button>
   
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -37,6 +38,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
   <style>
+    
     *, *::before, *::after { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; width: 100%; height: 100%; }
     body { background: #fdf6fb; font-family: system-ui, -apple-system, sans-serif; }
@@ -2526,45 +2528,7 @@ document.removeEventListener('mousedown', unlock);
       const nowStr = fmtTime(now);
       const nowMs = now.getTime();
 
-      // Early notification — 1 min before, or immediately if alarm is < 1 min away
-      if ("Notification" in window && Notification.permission === "granted") {
-        const in1Str = fmtTime(new Date(nowMs + 60 * 1000));
-        tasksRef.current.forEach(t => {
-          if (t.done || t.date !== todayStr || !t.alertTime || t.alertTime === "NOW") return;
-          if (firedAlarmsRef.current.includes(t.id + "_" + t.alertTime)) return;
-          const key = "pre_" + t.id + "_" + t.alertTime;
-          if (firedAlarmsRef.current.includes(key)) return;
-          // Fire if alarm is in exactly 1 min OR if alarm is between now and 1 min (short interval)
-          const alarmMs = new Date(todayStr + "T" + (() => {
-            const [time, ampm] = t.alertTime.split(" ");
-            const [hh, mm] = time.split(":").map(Number);
-            const h24 = ampm === "PM" ? (hh === 12 ? 12 : hh + 12) : (hh === 12 ? 0 : hh);
-            return String(h24).padStart(2,"0") + ":" + String(mm).padStart(2,"0") + ":00";
-          })()).getTime();
-          const diff = alarmMs - nowMs;
-          if (diff > 0 && diff <= 60000 && t.alertTime !== nowStr) {
-            firedAlarmsRef.current = [...firedAlarmsRef.current, key];
-            try {
-              swNotify("🍪 Cookie-Care-Joy", {
-                body: "⏰ " + t.text + (t.folder ? " · 📁 " + t.folder : "") + (diff < 30000 ? " — almost time!" : " — in 1 min") + "\nbaking something great? don't forget 🍪",
-                icon: cookieIcon,
-                tag: "ccj-pre-" + t.id,
-              });
-            } catch(e) {}
-          }
-        });
-      }
-
-      const firing = tasksRef.current.find(t => {
-        if (t.done || t.date !== todayStr || !t.alertTime || t.alertTime === "NOW") return false;
-        if (firedAlarmsRef.current.includes(t.id + "_" + t.alertTime)) return false;
-        const snoozeUntil = snoozedRef.current[t.id];
-        if (snoozeUntil && nowMs < snoozeUntil) return false;
-        return t.alertTime === nowStr;
-      });
-
-      if (!firing) return;
-
+      
       // Mark fired & show modal
       firedAlarmsRef.current = [...firedAlarmsRef.current, firing.id + "_" + firing.alertTime];
       setFiredAlarms(prev => [...prev, firing.id + "_" + firing.alertTime]);
