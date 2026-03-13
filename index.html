@@ -2,20 +2,29 @@
 <html lang="en">
 <head>
 
-  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-<script>
-
-  window.OneSignalDeferred= window.OneSignalDeferred || [];
-  OneSignalDeferred.push(asynch function(OneSignal) {
+  <script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
     await OneSignal.init({
       appId: "c35f4771-9044-481a-ad5e-86a945abf666",
-     serviceWorkerParam: { scope: "/Cookie-Care-Joy/" },
-     serviceWorkerPath: "OneSignalSDKWorker.js",
-});
+      // These lines disable the old "bars" and the red bell icon
+      notifyButton: { enable: false },
+      promptOptions: {
+        slidedown: { enabled: false }
+      },
+      // Essential for your GitHub Pages hosting
+      serviceWorkerParam: { scope: "/Cookie-Care-Joy/" },
+      serviceWorkerPath: "OneSignalSDKWorker.js",
     });
   });
-  </script>
-<button onclick="setupNotifications()">Enable Self-Care Reminders</button>
+
+  // This is the function your button is looking for
+  async function setupNotifications() {
+    OneSignalDeferred.push(async function(OneSignal) {
+      await OneSignal.showNativePrompt();
+    });
+  }
+</script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Cookie-Care-Joy 🍪</title>
