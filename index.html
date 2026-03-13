@@ -9,6 +9,9 @@
   OneSignalDeferred.push(asynch function(OneSignal) {
     await OneSignal.init({
       appId: "c35f4771-9044-481a-ad5e-86a945abf666",
+     serviceWorkerParam: { scope: "/Cookie-Care-Joy/" },
+     serviceWorkerPath: "OneSignalSDKWorker.js",
+});
     });
   });
   </script>
