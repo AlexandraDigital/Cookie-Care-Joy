@@ -1,25 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <script>
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  OneSignalDeferred.push(async function(OneSignal) {
-    await OneSignal.init({
-      appId: "c35f4771-9044-481a-ad5e-86a945abf666",
+  window.OneSignal = window.OneSignal || [];
+  OneSignal.push(function() {
+    OneSignal.init({
+      appId: "fcf058d4-2e4b-4508-9caf-e4c255ce2252",
+      safari_web_id: "web.onesignal.auto.615456f5-5645-4221-9385-613654654", // Optional: OneSignal usually generates this
+      notifyButton: {
+        enable: false, // We are using your custom button instead
+      },
+      // IMPORTANT: Since you are on GitHub Pages
       serviceWorkerParam: { scope: "/Cookie-Care-Joy/" },
-      serviceWorkerPath: "/Cookie-Care-Joy/OneSignalSDKWorker.js",
-      implementation("com.onesignal:OneSignal:");
-      notifyButton: { enable: false },
-      allowLocalhostAsSecureOrigin: true,
+      serviceWorkerPath: "OneSignalSDKWorker.js",
     });
-    // Auto-prompt if not yet decided
-    const perm = await OneSignal.Notifications.permission;
-    if (!perm) {
-      await OneSignal.Slidedown.promptPush();
-    }
   });
+
+  // Your custom button logic
+  async function setupNotifications() {
+    // OneSignal's built-in prompt handler
+    await OneSignal.showNativePrompt();
+  }
 </script>
+
+<button onclick="setupNotifications()">Enable Self-Care Reminders</button>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Cookie-Care-Joy 🍪</title>
