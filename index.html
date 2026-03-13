@@ -9,10 +9,15 @@
   OneSignalDeferred.push(async function(OneSignal) {
     await OneSignal.init({
       appId: "249f07c6-54a2-4e50-a5ec-f9021b61e47c",
+      path: "/Cookie-Care-Joy/",
+      serviceWorkerParam: { scope: "/Cookie-Care-Joy/" },
+      serviceWorkerPath: "OneSignalSDKWorker.js",
+      allowLocalhostAsSecureOrigin: true /
       autoRegister: false, // Prevents the annoying popup on reload
       notifyButton: { enable: false },
     });
-  });
+   });
+  
 </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
