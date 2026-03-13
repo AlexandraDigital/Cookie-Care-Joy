@@ -9,6 +9,8 @@
   OneSignalDeferred.push(async function(OneSignal) {
     await OneSignal.init({
       appId: "249f07c6-54a2-4e50-a5ec-f9021b61e47c",
+      autoRegister: false, // Prevents the annoying popup on reload
+      notifyButton: { enable: false }
     });
   });
 </script>
