@@ -13,8 +13,7 @@
       serviceWorkerParam: { scope: "/Cookie-Care-Joy/" },
       serviceWorkerPath: "OneSignalSDKWorker.js",
       allowLocalhostAsSecureOrigin: true
-      autoRegister: false, // Prevents the annoying popup on reload
-      notifyButton: { enable: false },
+      
     });
    });
   
@@ -1469,10 +1468,13 @@ function TodayPage({ tasks, setTasks, cookies, setCookies, setPage, purchased, s
       </div>
 
       {!showForm && (
-        <button onClick={()=>setShowForm(true)} style={{ background:ROSE,border:"none",borderRadius:16,padding:"16px 28px",fontSize:17,fontWeight:700,color:WHITE,cursor:"pointer",display:"flex",alignItems:"center",gap:10,fontFamily:"inherit",marginBottom:28,boxShadow:"0 4px 20px rgba(244,63,110,0.35)" }}>
-          <span style={{ fontSize:20 }}>+</span> {t.add_task}
-        </button>
-      )}
+        <button onClick={()=>setShowForm(true)} style={{ background:ROSE,border:"none",borderRadius:16,padding:"16px 28px",fontSize:17,fontWeight:700,color:WHITE,cursor:"pointer",display:"flex",alignItems:"center",gap:10,fontFamily:"inherit",marginBottom:28,boxShadow:"0 4px 20px rgba(244,63,110,0.35)" }}
+          
+      >
+        {t.notif_enable_short};
+      
+      </button>
+    )}
       {showForm && <AddTaskForm defaultDate={todayStr} onAdd={addTask} onCancel={()=>setShowForm(false)} onSelfCare={()=>setShowPanda(true)} />}
 
       {todayTasks.length===0 && !showForm && (
