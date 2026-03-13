@@ -1819,6 +1819,7 @@
 
     // ── TODAY PAGE ────────────────────────────────────────────────────
     function TodayPage({ tasks, setTasks, cookies, setCookies, setPage, purchased, selectedSound }) {
+      const [isFiring, setIsFiring] = useState(false);
       const t = React.useContext(LangContext);
       const [showForm, setShowForm] = useState(false);
       const [showPanda, setShowPanda] = useState(false);
