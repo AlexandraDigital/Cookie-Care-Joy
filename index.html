@@ -12,23 +12,6 @@
     });
   });
   </script>
-     <script> safari_web_id: "web.onesignal.auto.615456f5-5645-4221-9385-613654654", // Optional: OneSignal usually generates this
-      notifyButton: {
-        enable: false, // We are using your custom button instead
-      },
-      // IMPORTANT: Since you are on GitHub Pages
-      serviceWorkerParam: { scope: "/Cookie-Care-Joy/" },
-      serviceWorkerPath: "OneSignalSDKWorker.js",
-    });
-  });
-
-  // Your custom button logic
-  async function setupNotifications() {
-    // OneSignal's built-in prompt handler
-    await OneSignal.showNativePrompt();
-  }
-</script>
-
 <button onclick="setupNotifications()">Enable Self-Care Reminders</button>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
