@@ -625,9 +625,7 @@
           
         return () => clearInterval(checkTime);
       }, []);
-const addLog = (msg) => {
-        setDebugLines(prev => [...prev.slice(-10), `${new Date().toLocaleTimeString()}: ${msg}`]);
-      };
+
 
 const sendMotivationalMessage = () => {
   window.OneSignalDeferred.push(async function(OneSignal) {
