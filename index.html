@@ -592,23 +592,27 @@
       const [debugLines, setDebugLines] = React.useState([]);
 
       // Motivational Message Logic
+      // Motivational Message Logic
       React.useEffect(() => {
         const checkTime = setInterval(() => {
           const now = new Date();
           // Check for 5:00 PM (17:00)
           if (now.getHours() === 17 && now.getMinutes() === 0) {
+            
+            // 1. We put the quotes in a clean list (Array) first
             const quotes = [
               "Time to wrap up and reset. What is one kind thing you can do for yourself tonight?",
               "Your body is not a burden, it's your home.",
               "You can not pour from an empty cup. Take care of yourself first.",
               "Rest is not a reward — it's a requirement.",
-              "Small acts of self-love can create huge shifts in energy.", 
+              "Small acts of self-love can create huge shifts in energy.",
               "Be as kind to yourself as you are to others."
             ];
             
-            // Pick one randomly
+            // 2. We pick one random quote from that list
             const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
 
+            // 3. We send ONLY that one quote to OneSignal
             window.OneSignalDeferred = window.OneSignalDeferred || [];
             window.OneSignalDeferred.push(function(OneSignal) {
               OneSignal.Notifications.displaySelfNotification(
@@ -617,7 +621,7 @@
               );
             });
           }
-        }, 60000);
+        }, 60000); // Checks every minute
           
         return () => clearInterval(checkTime);
       }, []);
