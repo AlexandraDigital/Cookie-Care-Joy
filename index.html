@@ -2789,10 +2789,7 @@
         }
 
         if (Notification.permission === "denied") {
-          setNotifError("Notifications are blocked. Go to your browser settings to allow them, then try again.");
-          dbg("Permission already denied");
-          return;
-        }
+         
 
         try {
           let result = await Notification.requestPermission();
@@ -3227,8 +3224,8 @@
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/Cookie-Care-Joy/OneSignalSDKWorker.js")
       .then(() => console.log("Service worker registered"));
-  }
+  }}
   </script>
 </body>
 
-</html>
+</html>   
