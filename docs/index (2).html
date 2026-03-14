@@ -2,8 +2,11 @@
 <html lang="en">
 
 <head>
-
-
+<meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Cookie-Care-Joy 🍪</title>
+ 
+ <script src="https://median.co/app.js"></script>
  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 
 <script>
@@ -16,12 +19,7 @@ OneSignalDeferred.push(async function(OneSignal) {
   });
 });
 </script>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Cookie-Care-Joy 🍪</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  
   <style>
     *,
     *::before,
@@ -492,14 +490,7 @@ OneSignalDeferred.push(async function(OneSignal) {
   </style>
 
 </head>
-
-<body>
-  <div id="root"></div>
-  <script>
-
-  </script>
-  <script type="text/babel">
-    const { useState, useEffect } = React;
+  
 
 
 
@@ -3238,14 +3229,39 @@ OneSignalDeferred.push(async function(OneSignal) {
             </div>
           </div>
         );
-      return this.props.children;
-    }
-  }
-  const root = ReactDOM.createRoot(document.getElementById('root'));
-  root.render(<AppErrorBoundary><App /></AppErrorBoundary>);
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/Cookie-Care-Joy/OneSignalSDKWorker.js")
-      .then(() => console.log("Service worker registered"));
+      <body>
+  <div id="root"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const App = () => {
+      const handleNotify = () => {
+        OneSignalDeferred.push(function(OneSignal) {
+          OneSignal.showNativePrompt();
+        });
+      };
+
+      return (
+        <div className="app-container">
+          <h1 style={{ fontSize: '3rem', margin: '0' }}>Cookie-Care-Joy 🍪</h1>
+          <p style={{ fontSize: '1.2rem', opacity: '0.8' }}>Stay sweet, stay strong.</p>
+          <button onClick={handleNotify} className="btn-notify">
+            Enable Care Reminders
+          </button>
+        </div>
+      );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
   }
   </script>
 </body>
