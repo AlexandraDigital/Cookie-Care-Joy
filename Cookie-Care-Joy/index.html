@@ -1,21 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
+  <meta charset="UTF-8">
+  <title>Cookie Care Joy</title>
 
+  <!-- OneSignal SDK must be first -->
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 
- <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <!-- Your other scripts -->
+  <script defer src="script.js"></script>
+</head>
+<body>
+  <h1>Cookie Care Joy</h1>
 
-<script>
-window.OneSignalDeferred = window.OneSignalDeferred || [];
-OneSignalDeferred.push(async function(OneSignal) {
-  await OneSignal.init({
-    appId: "249f07c6-54a2-4e50-a5ec-f9021b61e47c",
-    serviceWorkerPath: "OneSignalSDKWorker.js",
-    serviceWorkerUpdaterPath: "OneSignalSDKUpdaterWorker.js"
+  <!-- OneSignal initialization after SDK -->
+  <script>
+  window.OneSignal = window.OneSignal || [];
+  OneSignal.push(function() {
+    OneSignal.init({
+      appId: "249f07c6-54a2-4e50-a5ec-f9021b61e47c",
+      serviceWorkerPath: "OneSignalSDKWorker.js",
+      serviceWorkerUpdaterPath: "OneSignalSDKUpdaterWorker.js"
+    });
   });
-});
-</script>
+  </script>
+</body>
+</html>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Cookie-Care-Joy 🍪</title>
