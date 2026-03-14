@@ -585,12 +585,12 @@
   <script>
 
   </script>
-  <script type="text/babel">
-   function App() {
+  
+   <script type="text/babel">
+    function App() {
       const [lang, setLang] = React.useState('en');
       const [debugLines, setDebugLines] = React.useState([]);
 
-      // Motivational Message Logic
       // Motivational Message Logic
       React.useEffect(() => {
         const checkTime = setInterval(() => {
@@ -598,7 +598,6 @@
           // Check for 5:00 PM (17:00)
           if (now.getHours() === 17 && now.getMinutes() === 0) {
             
-            // 1. We put the quotes in a clean list (Array) first
             const quotes = [
               "Time to wrap up and reset. What is one kind thing you can do for yourself tonight?",
               "Your body is not a burden, it's your home.",
@@ -610,19 +609,20 @@
             
             const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
 
-// 3. Send ONLY that one quote to OneSignal
-window.OneSignalDeferred = window.OneSignalDeferred || [];
-window.OneSignalDeferred.push(function(OneSignal) {
-  OneSignal.Notifications.displaySelfNotification(
-    "Sweet Reminder 🍪", 
-    randomQuote
-  );
-  });
-}; // <--- This closes the function
-    
-  }, 60000);
-  return () => clearInterval(checkTime);
-}, []); // <--- This closes the useEffect    
+            window.OneSignalDeferred = window.OneSignalDeferred || [];
+            window.OneSignalDeferred.push(function(OneSignal) {
+              OneSignal.Notifications.displaySelfNotification(
+                "Sweet Reminder 🍪", 
+                randomQuote
+              );
+            });
+          }
+        }, 60000); // Checks every minute
+          
+        return () => clearInterval(checkTime);
+      }, []); 
+
+  
 
 
     // ── Cookie Jar SVG Icon ───────────────────────────────────────────
