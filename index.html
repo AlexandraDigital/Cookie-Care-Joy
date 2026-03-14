@@ -407,20 +407,20 @@
       }
     }
 
-    .notif-mobile,.notif-desktop,.notif-tablet,.notif-iPad {
+    .notif-mobile,.notif-desktop,.notif-tablet,.notif-touchscreen {
       display: none;
     }
 
     /* legacy */
-    .desktop,.mobile,.tablet,.iPad {
+    .desktop,.mobile,.tablet,.touchscreen {
       display: flex !important;
     }
 
-    .float-hide-desktop,.tablet,.mobile,.iPad {
+    .float-hide-desktop,.tablet,.mobile,.touchscreen {
       display: none !important;
     }
 
-    .desktop,.tablet,.mobile,.iPad,save-dropdown {
+    .desktop,.tablet,.mobile,.touchscreen,save-dropdown {
       position: fixed !important;
       top: 72px !important;
       right: 20px !important;
@@ -438,7 +438,7 @@
       gap: 16px;
     }
 
-    .notif-desktop,.notif-tablet,.notif-mobile,.notif-iPad {
+    .notif-desktop,.notif-tablet,.notif-mobile,.notif-touchscreen {
       display: block;
     }
 
@@ -468,23 +468,23 @@
         font-size: 12px !important;
       }
 
-      .notif-mobile,.notif-desktop,.notif-tablet,.notif-iPad {
+      .notif-mobile,.notif-desktop,.notif-tablet,.notif-touchscreen {
         display: flex !important;
       }
 
-      .notif-desktop,.notif-mobile,.notif-tablet,.notif-iPad{
+      .notif-desktop,.notif-mobile,.notif-tablet,.notif-touchscreen{
         display: none !important;
       }
 
-      .desktop,.mobile,.tablet,.iPad {
+      .desktop,.mobile,.tablet,.touchscreen {
         display: none !important;
       }
 
-      .float-hide-desktop,.mobile,.tablet,.iPad {
+      .float-hide-desktop,.mobile,.tablet,.touchscreen {
         display: flex !important;
       }
 
-      .desktop,.mobile,.tablet,.iPad,save-dropdown {
+      .desktop,.mobile,.tablet,.touchscreen,save-dropdown {
         position: absolute !important;
         top: auto !important;
         right: auto !important;
@@ -1317,7 +1317,7 @@
               {/* Actions — right */}
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                 {/* Save Progress — Desktop */}
-                <button onClick={onSave} className="desktop,tablet, mobile, iPad" style={{
+                <button onClick={onSave} className="desktop,tablet, mobile, touchscreen" style={{
                   alignItems: "center", gap: 7,
                   background: ROSE_LIGHT,
                   border: `2px solid #fecdd3`,
@@ -1336,7 +1336,7 @@
                   {t.btn_save}
                 </button>
                 {/* Wind Down — Desktop */}
-                <button onClick={onWindDown} className="desktop, tablet, mobile,iPad" style={{
+                <button onClick={onWindDown} className="desktop, tablet, mobile,touchscreen" style={{
                   display: "inline-flex", alignItems: "center", gap: 7,
                   background: "#fef9c3",
                   border: "2px solid #fcd34d",
@@ -2637,7 +2637,7 @@
 
             {/* The folder button itself — hidden on desktop, triggered via navbar event */}
             <button
-              className="float-hide-desktop,tablet,mobile,iPad"
+              className="float-hide-desktop,tablet,mobile,touchscreen"
               onClick={() => setOpen(o => !o)}
               style={{
                 background: open ? ROSE : ROSE_LIGHT,
@@ -3164,7 +3164,7 @@
 
             {/* ── Floating Wind Down button ── */}
             {!showCoolDown && (
-              <button onClick={() => setShowCoolDown(true)} className="float-hide-desktop,mobile,tablet,iPad" style={{
+              <button onClick={() => setShowCoolDown(true)} className="float-hide-desktop,mobile,tablet,touchscreen" style={{
                 position: "fixed", right: 20,
                 bottom: "calc(max(24px,env(safe-area-inset-bottom)) + 72px)",
                 zIndex: 400,
