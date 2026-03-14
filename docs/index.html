@@ -2900,32 +2900,30 @@ OneSignalDeferred.push(async function(OneSignal) {
 
 
       // ── Notification helper: use page Notification when possible so it works without service worker ──
-     async function swNotify(title, opts) {
-  if (Notification.permission !== "granted") return;
-
-  try {
-    // 1. Try the Service Worker method first (Best for Mobile & PWA)
-    if ("serviceWorker" in navigator) {
-      const reg = await navigator.serviceWorker.ready;
-      await reg.showNotification(title, opts);
-    } 
-    // 2. Fallback for older desktop browsers
-    else {
-      new Notification(title, opts);
+    async function swNotify(title, opts) {
+      if (Notification.permission !== "granted") return;
+      
+      try {
+        if ("serviceWorker" in navigator) {
+          const reg = await navigator.serviceWorker.ready;
+          await reg.showNotification(title, opts);
+        } else {
+          new Notification(title, opts);
+        }
+      } catch (e) {
+        dbg("swNotify err: " + (e && e.message));
+        try {
+          new Notification(title, opts);
+        } catch (_) {}
+      }
     }
-  } catch (e) {
-    dbg("swNotify err: " + (e && e.message));
-    
-    // Final desperate fallback
-    try {
-      new Notification(title, opts);
-    } catch (_) {}
-  }
-}
 
-      const cookieIcon = "data:image/svg+xml," + encodeURIComponent(
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#f43f6e"/><text y="72" x="50" text-anchor="middle" font-size="62">🍪</text></svg>'
-      );
+       const cookieIcon = "data:image/svg+xml," + encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#f43f6e"/><text y="72" x="50" text-anchor="middle" font-size="62">🍪</text></svg>')
+
+
+
+
       const caringMsgs = [
         "time to take care of yourself 🍪",
         "your future self is rooting for you 🌸",
