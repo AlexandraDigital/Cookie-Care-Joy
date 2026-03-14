@@ -587,16 +587,23 @@
 
   </script>
   <script type="text/babel">
-    const { useState, useEffect } = React;
-    useEffect(() => {
-  const checkTime = setInterval(() => {
-    const now = new Date();
-    // Set your desired time (e.g., 17:00 for 5:00 PM)
-    if (now.getHours() === 17 && now.getMinutes() === 0) {
-      sendMotivationalMessage();
-    }
-  }, 60000); // Checks every minute
+   function App() {
+    const [lang, setLang] = React.useState('en');
 
+    // --- PASTE THE JAVASCRIPT HERE ---
+    React.useEffect(() => {
+      const checkTime = setInterval(() => {
+        const now = new Date();
+        // Checks for 5:00 PM (17:00)
+        if (now.getHours() === 17 && now.getMinutes() === 0) {
+          window.OneSignalDeferred.push(function(OneSignal) {
+            OneSignal.Notifications.displaySelfNotification(
+              "Sweet Reminder 🍪", 
+              "Time to wrap up and reset. What’s one kind thing you can do for yourself tonight?"
+            );
+          });
+        }
+      }, 60000); // Checks every minute
   return () => clearInterval(checkTime);
 }, []);
 
@@ -3325,23 +3332,22 @@ const sendMotivationalMessage = () => {
  const root = ReactDOM.createRoot(document.getElementById('root'));
   root.render(<App />);
 
-  // Updated registration to satisfy Android Chrome:
- if ("serviceWorker" in navigator) {
+  // Clean Service Worker Registration
+  if ("serviceWorker" in navigator) {
     window.addEventListener('load', function() {
       navigator.serviceWorker.register("/Cookie-Care-Joy/OneSignalSDKWorker.js", {
         scope: "/Cookie-Care-Joy/" 
       }).then(function(registration) {
-        console.log("Service Worker registered with scope:", registration.scope);
-        
-        // This links the OneSignal notification permission to the registration
+        console.log("Service Worker active");
         window.OneSignalDeferred = window.OneSignalDeferred || [];
         OneSignalDeferred.push(function(OneSignal) {
           OneSignal.Notifications.requestPermission();
         });
       }).catch(function(err) {
-        console.log("Service Worker registration failed:", err);
+        console.log("Registration failed:", err);
       });
     });
+  
   }
   </script>
   <div id="night-overlay" class="night-overlay" style="display: none;"></div>
@@ -3365,7 +3371,8 @@ const sendMotivationalMessage = () => {
 
   // Run the check as soon as the page loads
   window.addEventListener('DOMContentLoaded', applyNightMode);
+}
 </script>
 </body>
-
+   
 </html>
