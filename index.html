@@ -609,41 +609,21 @@
               "Be as kind to yourself as you are to others."
             ];
             
-            // 2. We pick one random quote from that list
             const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
 
-            // 3. We send ONLY that one quote to OneSignal
-            window.OneSignalDeferred = window.OneSignalDeferred || [];
-            window.OneSignalDeferred.push(function(OneSignal) {
-              OneSignal.Notifications.displaySelfNotification(
-                "Sweet Reminder 🍪", 
-                randomQuote
-              );
-            });
-          }
-        }, 60000); // Checks every minute
-          
-        return () => clearInterval(checkTime);
-      }, []);
-
-
-const sendMotivationalMessage = () => {
-  window.OneSignalDeferred.push(async function(OneSignal) {
-    // This triggers the permission prompt and shows the notification
-    // if the user has opted in.
-    OneSignal.Notifications.displaySelfNotification(
-      "Sweet Reminder 🍪", 
-      "Time to wrap up and reset. What is one kind thing you can do for yourself tonight?",
-        "Your body is not a burden, it's your home.",
-        "You can not pour from an empty cup. Take care of yourself first.",
-        "Rest is not a reward — it's a requirement.",
-        "Small acts of self-love can create huge shifts in energy.", 
-        "Be as kind to yourself as you are to others."
-        
-    );
+// 3. Send ONLY that one quote to OneSignal
+window.OneSignalDeferred = window.OneSignalDeferred || [];
+window.OneSignalDeferred.push(function(OneSignal) {
+  OneSignal.Notifications.displaySelfNotification(
+    "Sweet Reminder 🍪", 
+    randomQuote
+  );
   });
-};
-
+}; // <--- This closes the function
+    
+  }, 60000);
+  return () => clearInterval(checkTime);
+}, []); // <--- This closes the useEffect    
 
 
     // ── Cookie Jar SVG Icon ───────────────────────────────────────────
@@ -3388,11 +3368,13 @@ const sendMotivationalMessage = () => {
       overlay.style.display = 'none';
     }
   }
-
+        
   // Run the check as soon as the page loads
   window.addEventListener('DOMContentLoaded', applyNightMode);
-}
+}   
 </script>
-</body>
-   
+                                                                 
+</body>   
+      
 </html>
+         
