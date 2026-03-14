@@ -1,27 +1,41 @@
+
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
-
- <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-
-<script>
-window.OneSignalDeferred = window.OneSignalDeferred || [];
-OneSignalDeferred.push(async function(OneSignal) {
-  await OneSignal.init({
-    appId: "249f07c6-54a2-4e50-a5ec-f9021b61e47c",
-    serviceWorkerPath: "OneSignalSDKWorker.js",
-    serviceWorkerUpdaterPath: "OneSignalSDKUpdaterWorker.js"
-  });
-});
-</script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Cookie-Care-Joy 🍪</title>
+
+  <script src="https://median.co/app.js"></script>
+
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <script>
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function(OneSignal) {
+      await OneSignal.init({
+        appId: "249f07c6-54a2-4e50-a5ec-f9021b61e47c",
+        // These MUST exist in your GitHub folder
+        serviceWorkerPath: "OneSignalSDKWorker.js",
+        serviceWorkerUpdaterPath: "OneSignalSDKUpdaterWorker.js"
+      });
+    });
+  </script>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+
+  <style>
+    /* Add this to keep the top of your app from hitting the camera notch */
+    body {
+      margin: 0;
+      padding-top: env(safe-area-inset-top);
+      background-color: #fce7f3; /* Your primary pink */
+    }
+  </style>
+</head>
+</body>
+</html>
   <style>
     *,
     *::before,
