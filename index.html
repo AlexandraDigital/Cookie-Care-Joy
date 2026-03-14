@@ -100,11 +100,10 @@
     // ... [Rest of your React Application Code here] ...
     // Note: I recommend keeping your existing App logic but ensuring 
     // the root rendering call is wrapped in a DOMContentLoaded event.
-
-    window.addEventListener('DOMContentLoaded', () => {
-      const root = ReactDOM.createRoot(document.getElementById('root'));
-      root.render(<App />);
-    });
+// THIS IS THE LINE THAT TURNS ON THE APP
+  const root = ReactDOM.createRoot(document.getElementById('root'));
+  root.render(<App />);
+    
   </script>
 </body>
 
@@ -592,36 +591,7 @@
       const [debugLines, setDebugLines] = React.useState([]);
 
       // Motivational Message Logic
-      React.useEffect(() => {
-        const checkTime = setInterval(() => {
-          const now = new Date();
-          // Check for 5:00 PM (17:00)
-          if (now.getHours() === 17 && now.getMinutes() === 0) {
-            
-            const quotes = [
-              "Time to wrap up and reset. What is one kind thing you can do for yourself tonight?",
-              "Your body is not a burden, it's your home.",
-              "You can not pour from an empty cup. Take care of yourself first.",
-              "Rest is not a reward — it's a requirement.",
-              "Small acts of self-love can create huge shifts in energy.",
-              "Be as kind to yourself as you are to others."
-            ];
-            
-            const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
-
-            window.OneSignalDeferred = window.OneSignalDeferred || [];
-            window.OneSignalDeferred.push(function(OneSignal) {
-              OneSignal.Notifications.displaySelfNotification(
-                "Sweet Reminder 🍪", 
-                randomQuote
-              );
-            });
-          }
-        }, 60000); // Checks every minute
-          
-        return () => clearInterval(checkTime);
-      }, []); 
-
+      
   
 
 
