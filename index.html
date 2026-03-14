@@ -26,6 +26,26 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
   <style>
+
+    /* Existing styles in your file */
+    .night-overlay {
+      position: fixed;
+        inset: 0;
+          z-index: 9000;
+            pointer-events: none;
+              background: linear-gradient(to bottom, rgba(180, 120, 60, 0.08) 0%, rgba(140, 80, 30, 0.13) 100%);
+                animation: nightFadeIn 2s ease forwards;
+                }
+
+                body.night {
+                  background: #f9f0e6 !important;
+                  }
+
+                  @keyframes nightFadeIn {
+                    from { opacity: 0 }
+                      to { opacity: 1 }
+                      }
+
     *,
     *::before,
     *::after {
@@ -69,7 +89,36 @@
   <div id="root"></div>
   <script type="text/babel">
     
-    
+    function applyNightMode() {
+        const hour = new Date().getHours();
+          const isNight = (hour >= 20 || hour < 6); // Active from 8 PM to 6 AM
+            
+              const body = document.body;
+                let overlay = document.getElementById('night-overlay');
+
+                  if (isNight) {
+                      body.classList.add('night');
+                          // Create the overlay if it doesn't exist
+                              if (!overlay) {
+                                    overlay = document.createElement('div');
+                                          overlay.id = 'night-overlay';
+                                                overlay.className = 'night-overlay';
+                                                      document.body.appendChild(overlay);
+                                                          }
+                                                              overlay.style.display = 'block';
+                                                                } else {
+                                                                    body.classList.remove('night');
+                                                                        if (overlay) overlay.style.display = 'none';
+                                                                          }
+                                                                          }
+
+                                                                          // Run immediately on load
+                                                                          applyNightMode();
+
+                                                                          // Check every minute to handle time transitions while the app is open
+                                                                          setInterval(applyNightMode, 60000);
+                                                                          
+    }
     // ... [Rest of your React Application Code here] ...
     // Note: I recommend keeping your existing App logic but ensuring 
     // the root rendering call is wrapped in a DOMContentLoaded event.
@@ -88,6 +137,25 @@
 
 
 <style>
+  /* Existing styles in your file */
+  .night-overlay {
+    position: fixed;
+      inset: 0;
+        z-index: 9000;
+          pointer-events: none;
+            background: linear-gradient(to bottom, rgba(180, 120, 60, 0.08) 0%, rgba(140, 80, 30, 0.13) 100%);
+              animation: nightFadeIn 2s ease forwards;
+              }
+
+              body.night {
+                background: #f9f0e6 !important;
+                }
+
+                @keyframes nightFadeIn {
+                  from { opacity: 0 }
+                    to { opacity: 1 }
+                    }
+
     button,
     input {
       font-family: inherit;
