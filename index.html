@@ -588,31 +588,37 @@
   </script>
   <script type="text/babel">
    function App() {
-    const [lang, setLang] = React.useState('en');
+      const [lang, setLang] = React.useState('en');
+      const [debugLines, setDebugLines] = React.useState([]);
 
-    // --- PASTE THE JAVASCRIPT HERE ---
-    React.useEffect(() => {
-      const checkTime = setInterval(() => {
-        const now = new Date();
-        // Checks for 5:00 PM (17:00)
-        if (now.getHours() === 17 && now.getMinutes() === 0) {
-          window.OneSignalDeferred.push(function(OneSignal) {
-            OneSignal.Notifications.displaySelfNotification(
+      // Motivational Message Logic
+      React.useEffect(() => {
+        const checkTime = setInterval(() => {
+          const now = new Date();
+          // Check for 5:00 PM (17:00)
+          if (now.getHours() === 17 && now.getMinutes() === 0) {
+            window.OneSignalDeferred = window.OneSignalDeferred || [];
+            window.OneSignalDeferred.push(function(OneSignal) {
+              OneSignal.Notifications.displaySelfNotification(
               "Sweet Reminder 🍪", 
-              "Time to wrap up and reset. What’s one kind thing you can do for yourself tonight?",
+              "Time to wrap up and reset. What is one kind thing you can do for yourself tonight?",
               "Time to wrap up and reset. What is one kind thing you can do for yourself tonight?",
               "Your body is not a burden, it's your home.",
               "You can not pour from an empty cup. Take care of yourself first.",
              "Rest is not a reward — it's a requirement.",
             "Small acts of self-love can create huge shifts in energy.", 
             "Be as kind to yourself as you are to others."
-        
-            );
-          });
-        }
-      }, 60000); // Checks every minute
-  return () => clearInterval(checkTime);
-}, []);
+        );
+            });
+          }
+        }, 60000);
+          
+          
+      return () => clearInterval(checkTime);
+      }, []);
+const addLog = (msg) => {
+        setDebugLines(prev => [...prev.slice(-10), `${new Date().toLocaleTimeString()}: ${msg}`]);
+      };
 
 const sendMotivationalMessage = () => {
   window.OneSignalDeferred.push(async function(OneSignal) {
