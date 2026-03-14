@@ -17,13 +17,30 @@
       });
     });
   </script>
-
-  
    
 
   <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #ffdae9; /* Pink background */
+      font-family: -apple-system, system-ui, sans-serif;
+      color: #d4418e;
+    }
+    .btn-notify {
+      background-color: #fef08a; /* Yellow button */
+      color: #854d0e;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 20px;
+      font-weight: bold;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      margin-top: 20px;
+    }
+  
     
-    *,
     *::before,
     *::after {
       box-sizing: border-box;
@@ -507,10 +524,19 @@
     const { useState, useEffect } = React;
 
     const App = () => {
-      // Your app code
-      return (
-        <div className="p-4 text-center">
-          <h1>Cookie-Care-Joy 🍪</h1>
+      const handleNotify = () => {
+        OneSignalDeferred.push(function(OneSignal) {
+          OneSignal.showNativePrompt();
+        });
+      };
+     return (
+        <div className="p-8">
+          <h1 style={{ fontSize: '2.5rem', marginBottom: '10px' }}>Cookie-Care-Joy 🍪</h1>
+          <p style={{ fontSize: '1.2rem' }}>Stay sweet, stay strong.</p>
+          
+          <button onClick={handleNotify} className="btn-notify">
+            Enable Care Reminders
+          </button>
         </div>
       );
     };
