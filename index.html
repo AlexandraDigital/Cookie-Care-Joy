@@ -49,7 +49,45 @@
       min-height: 100vh;
       min-height: -webkit-fill-available;
     }
+    .page-content{
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .top-nav {display: flex;}
+    .bottom-nav{display:none;}
+    @media (max-width:1024px){
+      .top-nav{display:none !important;}
+      .bottom-nav{display:flex !important;}
+      .page-content{padding-bottom: 80px !important;}
+    }
+    </style>
+</head>
+<body>
 
+
+    /* Rest of your existing CSS animations and styles... */
+  <div id="root"></div>
+  <script type="text/babel">
+    
+    
+    // ... [Rest of your React Application Code here] ...
+    // Note: I recommend keeping your existing App logic but ensuring 
+    // the root rendering call is wrapped in a DOMContentLoaded event.
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<App />);
+    });
+  </script>
+
+
+
+
+
+
+
+
+</body>
     button,
     input {
       font-family: inherit;
