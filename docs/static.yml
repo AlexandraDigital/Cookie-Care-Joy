@@ -36,5 +36,11 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
+
+        
+        - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # This ensures it grabs index.html and your service workers from the root
+          path: 'Cookie-Care-Joy'
           # Upload entire repository
-         path: 'Cookie-Care-Joy'
