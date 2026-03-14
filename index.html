@@ -597,24 +597,29 @@
           const now = new Date();
           // Check for 5:00 PM (17:00)
           if (now.getHours() === 17 && now.getMinutes() === 0) {
-            window.OneSignalDeferred = window.OneSignalDeferred || [];
-            window.OneSignalDeferred.push(function(OneSignal) {
-              OneSignal.Notifications.displaySelfNotification(
-              "Sweet Reminder 🍪", 
-              "Time to wrap up and reset. What is one kind thing you can do for yourself tonight?",
+            const quotes = [
               "Time to wrap up and reset. What is one kind thing you can do for yourself tonight?",
               "Your body is not a burden, it's your home.",
               "You can not pour from an empty cup. Take care of yourself first.",
-             "Rest is not a reward — it's a requirement.",
-            "Small acts of self-love can create huge shifts in energy.", 
-            "Be as kind to yourself as you are to others."
-        );
+              "Rest is not a reward — it's a requirement.",
+              "Small acts of self-love can create huge shifts in energy.", 
+              "Be as kind to yourself as you are to others."
+            ];
+            
+            // Pick one randomly
+            const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+
+            window.OneSignalDeferred = window.OneSignalDeferred || [];
+            window.OneSignalDeferred.push(function(OneSignal) {
+              OneSignal.Notifications.displaySelfNotification(
+                "Sweet Reminder 🍪", 
+                randomQuote
+              );
             });
           }
         }, 60000);
           
-          
-      return () => clearInterval(checkTime);
+        return () => clearInterval(checkTime);
       }, []);
 const addLog = (msg) => {
         setDebugLines(prev => [...prev.slice(-10), `${new Date().toLocaleTimeString()}: ${msg}`]);
