@@ -1,9 +1,9 @@
 
 {
-  "name": "Your App Name",
-  "short_name": "App",
-  "description": "Description of your awesome app",
-  "start_url": "/",
+  "name": "Cookie-Care-Joy",
+  "short_name": "Cookie-Care-Joy",
+  "description": "A productivity app with self-care fun",
+  "start_url": "/https://alexandradigital.github.io/Cookie-Care-Joy/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
