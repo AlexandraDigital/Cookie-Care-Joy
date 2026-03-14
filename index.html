@@ -3254,6 +3254,28 @@
       .then(() => console.log("Service worker registered"));
   }
   </script>
+  <div id="night-overlay" class="night-overlay" style="display: none;"></div>
+  <script>
+  function applyNightMode() {
+    const hour = new Date().getHours();
+    const isNight = (hour >= 20 || hour < 6); // Active from 8 PM to 6 AM
+    
+    const body = document.body;
+    const overlay = document.getElementById('night-overlay');
+
+    if (isNight) {
+      body.classList.add('night');
+      overlay.style.display = 'block';
+      console.log("Night mode activated based on time.");
+    } else {
+      body.classList.remove('night');
+      overlay.style.display = 'none';
+    }
+  }
+
+  // Run the check as soon as the page loads
+  window.addEventListener('DOMContentLoaded', applyNightMode);
+</script>
 </body>
 
 </html>
