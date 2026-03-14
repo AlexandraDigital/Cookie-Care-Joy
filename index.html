@@ -3298,7 +3298,7 @@
   root.render(<App />);
 
   // Updated registration to satisfy Android Chrome:
-  if ("serviceWorker" in navigator) {
+ if ("serviceWorker" in navigator) {
     window.addEventListener('load', function() {
       navigator.serviceWorker.register("/Cookie-Care-Joy/OneSignalSDKWorker.js", {
         scope: "/Cookie-Care-Joy/" 
