@@ -89,36 +89,9 @@
   <div id="root"></div>
   <script type="text/babel">
     
-    function applyNightMode() {
-        const hour = new Date().getHours();
-          const isNight = (hour >= 20 || hour < 6); // Active from 8 PM to 6 AM
-            
-              const body = document.body;
-                let overlay = document.getElementById('night-overlay');
-
-                  if (isNight) {
-                      body.classList.add('night');
-                          // Create the overlay if it doesn't exist
-                              if (!overlay) {
-                                    overlay = document.createElement('div');
-                                          overlay.id = 'night-overlay';
-                                                overlay.className = 'night-overlay';
-                                                      document.body.appendChild(overlay);
-                                                          }
-                                                              overlay.style.display = 'block';
-                                                                } else {
-                                                                    body.classList.remove('night');
-                                                                        if (overlay) overlay.style.display = 'none';
-                                                                          }
-                                                                          }
-
-                                                                          // Run immediately on load
-                                                                          applyNightMode();
-
-                                                                          // Check every minute to handle time transitions while the app is open
-                                                                          setInterval(applyNightMode, 60000);
+    
                                                                           
-    }
+    
     // ... [Rest of your React Application Code here] ...
     // Note: I recommend keeping your existing App logic but ensuring 
     // the root rendering call is wrapped in a DOMContentLoaded event.
