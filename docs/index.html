@@ -2932,13 +2932,17 @@ OneSignalDeferred.push(async function(OneSignal) {
           // No reload happened — clear the flag so startup doesn't show it again
           localStorage.removeItem("ccj_welcome_pending");
           startMotivationReminder();
-          // Send a sweet caring message ~8s after enable — wait for player ID with retry
-          setTimeout(async () => {
+          // Send a sweet caring message ~8s after enable
+          // Schedule the OS push server-side immediately (send_after=+8s) so it arrives even if app is closed
+          {
             const welcomeMsg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-            // Show in-app pink toast AND fire push so user sees it whether app is open or not
-            document.dispatchEvent(new CustomEvent("ccj-toast", { detail: { title: "Cookie-Care-Joy 🍪", body: welcomeMsg } }));
-            await osPush("Cookie-Care-Joy 🍪", welcomeMsg, null, false); // skipWait=false: retry up to 10s
-          }, 8000);
+            const sweetAt = new Date(Date.now() + 8000);
+            osPush("Cookie-Care-Joy 🍪", welcomeMsg, sweetAt, false); // server-scheduled: arrives outside app too
+            // Also show in-app pink toast at 8s if app stays open
+            setTimeout(() => {
+              document.dispatchEvent(new CustomEvent("ccj-toast", { detail: { title: "Cookie-Care-Joy 🍪", body: welcomeMsg } }));
+            }, 8000);
+          }
           dbg("Notifications enabled");
 
           setNotifPerm("granted");
@@ -3186,8 +3190,9 @@ OneSignalDeferred.push(async function(OneSignal) {
         // Set sentinel immediately so a second call while we wait doesn't double-start
         motivationIntervalRef.current = "pending";
 
-        // Wait 12s for OneSignal to register player ID before scheduling all reminders
-        setTimeout(() => scheduleMotivationReminders(), 12000);
+        // Schedule immediately — scheduleMotivationReminders() waits internally for player ID
+        // This ensures all 57 pushes are queued on OneSignal's servers before the user leaves the app
+        scheduleMotivationReminders();
 
         // Re-schedule once a day while app is open (24h coverage already pre-booked)
         const dayInterval = setInterval(() => {
