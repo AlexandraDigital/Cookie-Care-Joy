@@ -19,6 +19,36 @@ OneSignalDeferred.push(async function(OneSignal) {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Cookie-Care-Joy 🍪</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json" />
+
+  <!-- Theme color (Chrome, Edge, Samsung Internet, Firefox) -->
+  <meta name="theme-color" content="#f9a8d4" />
+
+  <!-- Chrome / Android -->
+  <meta name="mobile-web-app-capable" content="yes" />
+
+  <!-- Safari / iOS (16.4+ supports push notifications in installed PWAs) -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Cookie Care" />
+  <link rel="apple-touch-icon" sizes="48x48" href="icon-48.png" />
+  <link rel="apple-touch-icon" sizes="96x96" href="icon-96.png" />
+  <link rel="apple-touch-icon" sizes="144x144" href="icon-144.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png" />
+  <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png" />
+
+  <!-- Microsoft Edge / Windows -->
+  <meta name="msapplication-TileColor" content="#f9a8d4" />
+  <meta name="msapplication-TileImage" content="icon-144.png" />
+  <meta name="msapplication-tap-highlight" content="no" />
+
+  <!-- Favicon fallback (all browsers) -->
+  <link rel="icon" type="image/png" sizes="48x48" href="icon-48.png" />
+  <link rel="icon" type="image/png" sizes="96x96" href="icon-96.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
@@ -3102,9 +3132,7 @@ OneSignalDeferred.push(async function(OneSignal) {
           firedAlarmsRef.current = [...firedAlarmsRef.current, firing.id + "_" + firing.alertTime];
           setFiredAlarms(prev => [...prev, firing.id + "_" + firing.alertTime]);
           setAlarmTask(firing);
-
-          // Notify at the exact alarm moment (same time as sound)
-          swNotify("Cookie-Care-Joy 🍪", { body: "⏰ Time to do: " + (firing.text || "Task"), icon: cookieIcon }).catch(() => {});
+          // (toast suppressed here — alarm modal is already visible)
 
           try {
             getCtx().resume().then(() => {
