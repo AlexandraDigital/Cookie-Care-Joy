@@ -15,6 +15,14 @@ OneSignalDeferred.push(async function(OneSignal) {
     serviceWorkerParam: { scope: "/Cookie-Care-Joy/" },
     autoResubscribe: true
   });
+  // Show in-app pink toast when a notification arrives while the app is open
+  try {
+    OneSignal.Notifications.addEventListener("foregroundWillDisplay", function(event) {
+      var title = (event.notification && event.notification.title) || "Cookie-Care-Joy 🍪";
+      var body  = (event.notification && event.notification.body)  || "";
+      document.dispatchEvent(new CustomEvent("ccj-toast", { detail: { title: title, body: body } }));
+    });
+  } catch(e) {}
   // Cache player ID immediately after init (covers returning browser users)
   try {
     const pid = OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.id;
@@ -38,7 +46,7 @@ OneSignalDeferred.push(async function(OneSignal) {
       background: linear-gradient(145deg,#fce7ef 0%,#fff0f6 45%,#fdf6fb 100%);
       display: flex; align-items: center; justify-content: center;
       font-size: clamp(80px,16vw,120px); line-height: 1;
-      transition: opacity 0.4s ease;
+      transition: opacity 0.08s ease;
     }
     #pre-splash.hide { opacity: 0; pointer-events: none; }
   </style>
@@ -556,7 +564,8 @@ OneSignalDeferred.push(async function(OneSignal) {
       var el = document.getElementById("pre-splash");
       if (!el) return;
       el.classList.add("hide");
-      setTimeout(function() { el && el.parentNode && el.parentNode.removeChild(el); }, 500);
+      // Remove from DOM after transition (0.08s) so it never blocks clicks
+      setTimeout(function() { if (el && el.parentNode) el.parentNode.removeChild(el); }, 150);
     };
     // Fallback: remove after 5s no matter what
     setTimeout(function() { window.__dismissPreSplash && window.__dismissPreSplash(); }, 5000);
@@ -2926,6 +2935,8 @@ OneSignalDeferred.push(async function(OneSignal) {
           // Send a sweet caring message ~8s after enable — wait for player ID with retry
           setTimeout(async () => {
             const welcomeMsg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
+            // Show in-app pink toast AND fire push so user sees it whether app is open or not
+            document.dispatchEvent(new CustomEvent("ccj-toast", { detail: { title: "Cookie-Care-Joy 🍪", body: welcomeMsg } }));
             await osPush("Cookie-Care-Joy 🍪", welcomeMsg, null, false); // skipWait=false: retry up to 10s
           }, 8000);
           dbg("Notifications enabled");
