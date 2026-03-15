@@ -2854,6 +2854,12 @@ OneSignalDeferred.push(async function(OneSignal) {
             body: "You're all set! Sweet reminders on the way ✨"
           });
           startMotivationReminder();
+          // Send an immediate sweet reminder right after enabling
+          setTimeout(async () => {
+            const welcomeMsg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
+            const sendNow = new Date(Date.now() + 3000); // 3 seconds from now
+            await osPush("Cookie-Care-Joy 🍪", welcomeMsg, sendNow);
+          }, 2000);
           // Re-schedule after 5s to ensure OneSignal player ID is registered by then
           setTimeout(() => { scheduleMotivationReminders(); }, 5000);
           dbg("Notifications enabled");
