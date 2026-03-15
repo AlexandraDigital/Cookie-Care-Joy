@@ -2854,7 +2854,9 @@ OneSignalDeferred.push(async function(OneSignal) {
           if (window.median && window.median.onesignal && window.median.onesignal.register) {
             try { window.median.onesignal.register(); } catch(e) {}
           } else if (window.OneSignal && window.OneSignal.Notifications) {
-            try { await window.OneSignal.Notifications.requestPermission(); } catch(e) {}
+            // Fire-and-forget: do NOT await — requestPermission can hang if the browser
+            // throttles the prompt, freezing the entire Enable button handler.
+            try { window.OneSignal.Notifications.requestPermission().catch(() => {}); } catch(e) {}
           }
 
           // Step 2: Enable in-page mode (toast banners always work as backup)
