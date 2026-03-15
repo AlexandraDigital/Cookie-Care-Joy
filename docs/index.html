@@ -1,0 +1,132 @@
+function CalendarPage({ tasks, setTasks, setCookies, setPage }) {
+  const [selectedDate, setSelectedDate] = React.useState(new Date());
+
+  const startOfMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+  const endOfMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
+  const daysInMonth = endOfMonth.getDate();
+
+  const changeMonth = (offset) => {
+    const newDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + offset, 1);
+    setSelectedDate(newDate);
+  };
+
+  const fmtDate = (d) => d.toISOString().split("T")[0];
+  const tasksForDay = (d) => tasks.filter(t => t.date === fmtDate(d));
+
+  const handleToggleDone = (task) => {
+    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, done: !t.done } : t));
+    if (!task.done) setCookies(1);
+  };
+
+  const handleEditTask = (id, newText) => {
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, text: newText } : t));
+  };
+
+  const handleDeleteTask = (id) => setTasks(prev => prev.filter(t => t.id !== id));
+
+  const handleAddTask = (d, text) => {
+    if (!text.trim()) return;
+    const id = "calendar_" + Date.now();
+    setTasks(prev => [...prev, { id, text: text.trim(), done: false, date: fmtDate(d), alertTime: null }]);
+  };
+
+  const calendar = [];
+  for (let i = 1; i <= daysInMonth; i++) {
+    calendar.push(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), i));
+  }
+
+  const todayStr = fmtDate(new Date());
+
+  return (
+    <div style={{ padding: "16px" }}>
+      <h2>Calendar 📅</h2>
+
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
+        <button onClick={() => changeMonth(-1)} style={{ cursor: "pointer" }}>◀️</button>
+        <span style={{ fontWeight: 700 }}>{selectedDate.toLocaleString("default", { month: "long", year: "numeric" })}</span>
+        <button onClick={() => changeMonth(1)} style={{ cursor: "pointer" }}>▶️</button>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8 }}>
+        {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((d,i) => (
+          <div key={i} style={{ fontWeight: 700, textAlign: "center" }}>{d}</div>
+        ))}
+        {Array(startOfMonth.getDay()).fill(null).map((_, i) => <div key={"empty" + i}></div>)}
+
+        {calendar.map((day) => {
+          const dayTasks = tasksForDay(day);
+          const isToday = fmtDate(day) === todayStr;
+
+          // Badges for the day
+          const badges = [];
+          if (dayTasks.some(t => t.done)) badges.push("🍪");
+          if (dayTasks.some(t => t.text.toLowerCase().includes("self-care") || t.text.toLowerCase().includes("relax"))) badges.push("🌸");
+
+          return (
+            <div key={fmtDate(day)} style={{
+              border: isToday ? "2px solid #f43f6e" : "1px solid #e5e7eb",
+              borderRadius: 8,
+              padding: 4,
+              minHeight: 70,
+              display: "flex",
+              flexDirection: "column",
+              gap: 2,
+              background: "#fff"
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 12, fontWeight: 600 }}>{day.getDate()}</span>
+                <span>{badges.join("")}</span>
+              </div>
+
+              <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 2 }}>
+                {dayTasks.map(task => (
+                  <div key={task.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <input type="checkbox" checked={task.done} onChange={() => handleToggleDone(task)} />
+                    <input
+                      type="text"
+                      value={task.text}
+                      onChange={e => handleEditTask(task.id, e.target.value)}
+                      style={{
+                        flex: 1,
+                        border: "none",
+                        outline: "none",
+                        background: "transparent",
+                        fontSize: 12,
+                        textDecoration: task.done ? "line-through" : "none",
+                        color: task.done ? "#9ca3af" : "#111827"
+                      }}
+                    />
+                    <button onClick={() => handleDeleteTask(task.id)}
+                      style={{ border: "none", background: "transparent", cursor: "pointer", color: "#f43f6e", fontSize: 12 }}>✕</button>
+                  </div>
+                ))}
+              </div>
+
+              <AddDayTask day={day} onAdd={handleAddTask} />
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  );
+}
+
+function AddDayTask({ day, onAdd }) {
+  const [text, setText] = React.useState("");
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onAdd(day, text);
+    setText("");
+  };
+  return (
+    <form onSubmit={handleSubmit} style={{ display: "flex", gap: 2, marginTop: 2 }}>
+      <input
+        value={text}
+        onChange={e => setText(e.target.value)}
+        placeholder="+ task"
+        style={{ flex: 1, border: "1px solid #e5e7eb", borderRadius: 6, padding: 2, fontSize: 10 }}
+      />
+      <button type="submit" style={{ fontSize: 10, background: "#f43f6e", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}>➕</button>
+    </form>
+  );
+}
