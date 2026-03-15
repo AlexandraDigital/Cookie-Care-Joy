@@ -2964,13 +2964,14 @@ OneSignalDeferred.push(async function(OneSignal) {
       const payload = {
         app_id: OS_APP_ID,
         include_player_ids: [pid],
+        include_subscription_ids: [pid],
         contents: { en: body },
         headings: { en: title },
         ios_sound: "default",
         android_sound: "default",
-        large_icon: "https://alexandradigital.github.io/Cookie-Care-Joy/docs/icon-192.png",
-        chrome_web_icon: "https://alexandradigital.github.io/Cookie-Care-Joy/docs/icon-192.png",
-        chrome_web_badge: "https://alexandradigital.github.io/Cookie-Care-Joy/docs/icon-96.png",
+        large_icon: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png",
+        chrome_web_icon: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png",
+        chrome_web_badge: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-96.png",
         url: "https://alexandradigital.github.io/Cookie-Care-Joy/"
       };
       if (sendAt) payload.send_after = sendAt.toUTCString();
