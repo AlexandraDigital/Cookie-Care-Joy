@@ -1,187 +1,184 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Cookie-Care-Joy</title>
-<link rel="manifest" href="manifest.json"/>
-<link rel="icon" href="favicon.png"/>
-
-<!-- React -->
-<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-<!-- OneSignal -->
-<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-<script>
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  OneSignalDeferred.push(async function(OneSignal) {
-    await OneSignal.init({
-      appId: "249f07c6-54a2-4e50-a5ec-f9021b61e47c",
-      serviceWorkerPath: "OneSignalSDKWorker.js",
-      serviceWorkerUpdaterPath: "OneSignalSDKUpdaterWorker.js"
-    });
-  });
-</script>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cookie Care Joy</title>
 <style>
-body{margin:0;font-family:sans-serif;background:#fffbe6;}
-.nav{display:flex;gap:0.5rem;background:#f8f9fa;padding:0.5rem;align-items:center;flex-wrap:wrap;}
-button{cursor:pointer;margin:0.2rem;padding:0.5rem 0.8rem;border-radius:6px;border:none;background:#d63384;color:#fff;}
-button:hover{background:#b02a6e;}
-h2,h3{margin:0.5rem 0;}
-p,li{margin:0.2rem 0;}
-.section{padding:1rem;}
-.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;}
-.modalContent{background:#fff;padding:1rem;border-radius:10px;width:90%;max-width:400px;}
-.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;}
-.cookieAnim{font-size:2rem;animation:spin 2s linear infinite;margin-right:0.5rem;}
-@keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
-.calendarGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-top:0.5rem;}
-.calendarDay{border:1px solid #ccc;padding:0.5rem;text-align:center;border-radius:4px;background:#fff;}
-.nightMode{background:#2c2c2c;color:#fff;}
-input{border:1px solid #ccc;border-radius:6px;padding:0.5rem;width:100%;margin:0.3rem 0;}
+  body { margin:0; padding:0; font-family:system-ui; }
+  .page-root { position: relative; min-height: 100vh; }
+  .night-overlay { position: fixed; inset:0; background: rgba(0,0,0,0.05); pointer-events:none; }
+  @keyframes slideDown { 0% { transform: translateY(-100%);} 100%{ transform: translateY(0);}}
+  @keyframes btnPulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.08);} }
 </style>
 </head>
 <body>
 <div id="root"></div>
 
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
 <script type="text/babel">
 
-// ---------------------------
-// Strings (trilingual placeholders)
-// ---------------------------
-const strings = {
-  en:{ /* same as before, full Index7 content */ },
-  es:{ /* Spanish placeholders */ },
-  zh:{ /* Mandarin placeholders */ }
-};
+// ── CONSTANTS ─────────────────────────────────────────────
+const ROSE="#f43f6e", GOLD="#f59e0b", WHITE="#fff", DARK="#1f2937", GRAY="#6b7280";
+const cookieIcon = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#f43f6e"/><text y="72" x="50" text-anchor="middle" font-size="62">🍪</text></svg>');
+const TRANSLATIONS={en:{
+  btn_wind_down:"WIND DOWN",
+  notif_prompt:"Enable notifications for motivational reminders",
+  notif_enable_short:"Enable",
+  notif_on_msg:"Motivational reminders are on!",
+  notif_turn_off:"Turn off",
+  notif_turn_on:"Turn on",
+  trophy_earned:"Trophy earned!",
+  collected_100:"You collected 100 cookies",
+  you_now_have:"You now have",
+  baker_trophy:"trophy",
+  baker_trophies:"trophies",
+  keep_going:"Keep going!"
+}};
 
-// ---------------------------
-// Today Panel
-// ---------------------------
-const TodayPanel = ({language,tasks,setTasks})=>{
-  const [taskText,setTaskText] = React.useState("");
-  const [folder,setFolder] = React.useState("");
-  const [alertTime,setAlertTime] = React.useState("");
+const caringMsgs=[
+  "time to take care of yourself 🍪",
+  "your future self is rooting for you 🌸",
+  "one sweet step at a time 💕",
+  "you deserve to follow through ✨",
+  "every task done is a cookie earned 🍪",
+  "showing up for yourself is the whole point 🌟",
+  "soft reminder: you matter, and so does this 🌸",
+  "you are doing better than you think 💖",
+  "baking good habits, one task at a time 🍪",
+  "You're already doing better than you think 💖",
+  "This reminder comes with a hug 🤗 Now go crush it!",
+  "Progress over perfection — you've got this 🌈",
+  "Your consistency is your superpower ⚡",
+  "You deserve to follow through for yourself 🌸",
+  "Every task you complete is an act of self-love 🍪"
+];
 
-  const addTask = ()=>{
-    if(taskText.trim()==="") return;
-    const newTask = {text:taskText, folder, alertTime, id:Date.now()};
-    setTasks(prev=>[...prev,newTask]);
-    setTaskText(""); setFolder(""); setAlertTime("");
+// ── HELPER FUNCTIONS ─────────────────────────────────────
+const fmtTime=d=>{const hh=d.getHours(),mm=d.getMinutes();return `${String(hh%12||12).padStart(2,"0")}:${String(mm).padStart(2,"0")} ${hh>=12?"PM":"AM"}`;}
+const parseAlertTimeMs=(alertTime,dateStr)=>{const m=alertTime&&alertTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);if(!m)return null;let h=parseInt(m[1],10),min=parseInt(m[2],10);if(m[3].toUpperCase()==="PM"&&h!==12)h+=12;if(m[3].toUpperCase()==="AM"&&h===12)h=0;const d=new Date(dateStr+"T"+String(h).padStart(2,"0")+":"+String(min).padStart(2,"0")+":00");return isNaN(d.getTime())?null:d.getTime();}
+async function swNotify(title,opts){if(Notification.permission!=="granted")return;try{if("serviceWorker" in navigator){const reg=await navigator.serviceWorker.ready;await reg.showNotification(title,opts);}else{new Notification(title,opts);}}catch(_){try{new Notification(title,opts);}catch(_){} }}
+
+// ── APP COMPONENT ─────────────────────────────────────────
+function App(){
+  const [lang,setLang]=React.useState(localStorage.getItem("ccj_lang")||"en");
+  const t=TRANSLATIONS[lang]||TRANSLATIONS.en;
+
+  const [cookies,setCookies]=React.useState(()=>JSON.parse(localStorage.getItem("ccj_cookies")||"0"));
+  const [tasks,setTasks]=React.useState(()=>JSON.parse(localStorage.getItem("ccj_tasks")||"[]"));
+  const [alarmTask,setAlarmTask]=React.useState(null);
+  const [snoozed,setSnoozed]=React.useState({});
+  const [notifPerm,setNotifPerm]=React.useState(Notification.permission);
+  const [welcomeBack,setWelcomeBack]=React.useState(true);
+
+  const reminderSentRef=React.useRef({day:"",set:new Set()});
+  const firedAlarmsRef=React.useRef([]);
+  const motivationIntervalRef=React.useRef(null);
+
+  React.useEffect(()=>{localStorage.setItem("ccj_cookies",JSON.stringify(cookies));},[cookies]);
+  React.useEffect(()=>{localStorage.setItem("ccj_tasks",JSON.stringify(tasks));},[tasks]);
+  React.useEffect(()=>{localStorage.setItem("ccj_lang",lang);},[lang]);
+
+  const startMotivationReminder=()=>{
+    if(motivationIntervalRef.current)return;
+    setTimeout(()=>{
+      if(Notification.permission==="granted"){const msg=caringMsgs[Math.floor(Math.random()*caringMsgs.length)];swNotify("Cookie-Care-Joy 🍪",{body:msg,icon:cookieIcon});}
+    },4000);
+    motivationIntervalRef.current=setInterval(()=>{
+      if(Notification.permission!=="granted")return;
+      const msg=caringMsgs[Math.floor(Math.random()*caringMsgs.length)];
+      swNotify("Cookie-Care-Joy 🍪",{body:msg,icon:cookieIcon});
+    },30*60*1000);
+  };
+  React.useEffect(()=>{if(Notification.permission==="granted"&&localStorage.getItem("ccj_notif_on")==="true")startMotivationReminder();},[]);
+
+  const handleSnooze=()=>{if(!alarmTask)return;setSnoozed(s=>({...s,[alarmTask.id]:Date.now()+5*60*1000}));setAlarmTask(null);}
+  const handleAlarmDone=()=>{if(!alarmTask)return;setCookies(c=>c+1);setTasks(prev=>prev.map(t=>t.id===alarmTask.id?{...t,done:true}:t));setSnoozed(s=>{const n={...s};delete n[alarmTask.id];return n;});setAlarmTask(null);}
+
+  React.useEffect(()=>{
+    const checkAlarms=()=>{
+      const now=new Date();
+      const todayStr=now.toISOString().split("T")[0];
+      const nowStr=fmtTime(now);
+      const nowMs=now.getTime();
+      if(reminderSentRef.current.day!==todayStr){reminderSentRef.current.day=todayStr;reminderSentRef.current.set.clear();}
+      const firedSet=new Set(firedAlarmsRef.current);
+
+      // 2-min reminder
+      for(const task of tasks){
+        if(task.date!==todayStr||!task.alertTime||task.alertTime==="NOW")continue;
+        const alarmMs=parseAlertTimeMs(task.alertTime,todayStr);if(alarmMs==null)continue;
+        const key=task.id+"_"+task.alertTime;
+        if(reminderSentRef.current.set.has(key))continue;
+        if(nowMs>=alarmMs-2*60*1000&&nowMs<alarmMs){reminderSentRef.current.set.add(key);swNotify("Cookie-Care-Joy 🍪",{body:"In 2 minutes: "+(task.text||"Task"),icon:cookieIcon});}
+      }
+
+      // alarm firing
+      let firing=null;
+      for(const task of tasks){
+        if(task.date!==todayStr||!task.alertTime||task.alertTime==="NOW")continue;
+        if(task.alertTime!==nowStr)continue;
+        if(firedSet.has(task.id+"_"+task.alertTime))continue;
+        const until=snoozed[task.id];if(until!=null&&nowMs<until)continue;
+        firing=task;break;
+      }
+      if(!firing)return;
+      firedAlarmsRef.current=[...firedAlarmsRef.current,firing.id+"_"+firing.alertTime];
+      setAlarmTask(firing);
+      if("vibrate"in navigator)navigator.vibrate([400,200,400,200,800]);
+    };
+    const iv=setInterval(checkAlarms,3000);
+    const warm=setTimeout(checkAlarms,1000);
+    return ()=>{clearInterval(iv);clearTimeout(warm);}
+  },[tasks,snoozed]);
+
+  const requestNotifications=async()=>{
+    if(!("Notification" in window))return alert("Browser does not support notifications");
+    const result=await Notification.requestPermission();
+    if(result==="granted"){localStorage.setItem("ccj_notif_on","true");startMotivationReminder();swNotify("Cookie-Care-Joy 🍪",{body:"You're all set! Sweet reminders on the way ✨",icon:cookieIcon});setNotifPerm("granted");}
   };
 
   return (
-    <div style={{border:"1px solid #d63384",borderRadius:"10px",padding:"1rem",margin:"1rem 0"}}>
-      <h2>What's on your mind?</h2>
-      <input type="text" placeholder="E.g. Drink a glass of water, Read 10 pages..." value={taskText} onChange={e=>setTaskText(e.target.value)}/>
-      <input type="text" placeholder="Folder (e.g. Morning, Work)" value={folder} onChange={e=>setFolder(e.target.value)}/>
-      <label>ALERT TIME</label>
-      <input type="time" value={alertTime} onChange={e=>setAlertTime(e.target.value)}/>
-      <button onClick={addTask}>Add Task</button>
+    <div className="page-root" style={{background:"#fdf6fb",padding:16}}>
+      <h1>Cookie Care Joy 🍪</h1>
+      {notifPerm!=="granted"&&<button onClick={requestNotifications} style={{padding:"8px 16px",borderRadius:12,border:"none",background:ROSE,color:"#fff",cursor:"pointer",fontWeight:700}}>Enable Notifications</button>}
+      <div style={{marginTop:24}}><p>Cookies collected: {cookies}</p><button onClick={()=>setCookies(c=>c+1)} style={{padding:"6px 12px",borderRadius:8,border:"none",background:GOLD,color:"#fff"}}>Earn a Cookie</button></div>
+      <div style={{marginTop:24}}><p>Tasks:</p><ul>{tasks.map(t=><li key={t.id}>{t.text}</li>)}</ul></div>
 
-      {tasks.length>0 && (
-        <div style={{marginTop:"1rem"}}>
-          <h3>≡ To-Do ▾</h3>
-          {tasks.map(t=>(
-            <div key={t.id} style={{border:"1px solid #ccc",borderRadius:"6px",padding:"0.3rem",margin:"0.2rem 0"}}>
-              <strong>{t.text}</strong><br/>
-              <small>Folder: {t.folder} | Alert: {t.alertTime}</small>
-            </div>
-          ))}
-        </div>
-      )}
+      {alarmTask&&<div style={{position:"fixed",top:"20%",left:"50%",transform:"translateX(-50%)",background:WHITE,padding:24,borderRadius:12,boxShadow:"0 0 12px rgba(0,0,0,0.25)",zIndex:500}}>
+        <p><strong>Alarm:</strong> {alarmTask.text}</p>
+        <button onClick={handleSnooze} style={{marginRight:8}}>Snooze 5 min</button>
+        <button onClick={handleAlarmDone}>Done</button>
+      </div>}
 
-      <div style={{marginTop:"0.5rem"}}>
-        <span>📅 {new Date().toLocaleDateString()}</span>
-      </div>
+      {/* Floating Wind Down button */}
+      <button style={{position:"fixed",right:20,bottom:20,zIndex:400,padding:"12px 16px",borderRadius:18,border:"2px solid #fcd34d",background:"#fef9c3",cursor:"pointer",animation:"btnPulse 3s ease-in-out infinite"}}>{t.btn_wind_down}</button>
     </div>
   );
-};
+}
 
-// ---------------------------
-// Scroll Timer
-// ---------------------------
-const ScrollTimer = ({minutes})=>{
-  const [timeLeft,setTimeLeft] = React.useState(minutes*60);
-  React.useEffect(()=>{
-    if(timeLeft<=0) return;
-    const timer = setInterval(()=>setTimeLeft(prev=>prev-1),1000);
-    return ()=>clearInterval(timer);
-  },[timeLeft]);
-  const formatTime = s => `${Math.floor(s/60).toString().padStart(2,"0")}:${(s%60).toString().padStart(2,"0")}`;
-  const percent = (timeLeft/(minutes*60))*100;
-  return (
-    <div style={{border:"1px solid #d63384",borderRadius:"10px",padding:"0.5rem",margin:"1rem 0",background:"#fffbe6"}}>
-      <h3>⏳ Scroll Timer</h3>
-      <div style={{height:"10px",background:"#ccc",borderRadius:"5px",overflow:"hidden"}}>
-        <div style={{height:"10px",width:`${percent}%`,background:"#d63384",transition:"width 1s"}}></div>
-      </div>
-      <p style={{margin:"0.3rem 0"}}>{formatTime(timeLeft)}</p>
-    </div>
-  );
-};
+// ── ERROR BOUNDARY ─────────────────────────────────────────────
+class AppErrorBoundary extends React.Component{
+  constructor(props){super(props);this.state={hasError:false};}
+  static getDerivedStateFromError(){return {hasError:true};}
+  componentDidCatch(err,info){console.error('AppErrorBoundary',err,info);}
+  render(){if(this.state.hasError)return <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:24,background:'#fdf6fb',fontFamily:'system-ui',textAlign:'center'}}><div><p style={{fontSize:18,color:'#1f2937'}}>Something went wrong</p><p style={{fontSize:14,color:'#6b7280'}}>Refresh or try again later.</p><button onClick={()=>window.location.reload()} style={{padding:'10px 20px',fontSize:14,borderRadius:12,border:'none',background:ROSE,color:'#fff',cursor:'pointer',fontWeight:600}}>Refresh</button></div></div>;return this.props.children;}
+}
 
-// ---------------------------
-// SelfCare, CookieJar, Bakery, Calendar, WindDown
-// (same components as Index7, included from previous full code)
-// ---------------------------
+// ── RENDER ROOT ───────────────────────────────────────────────
+const root=ReactDOM.createRoot(document.getElementById('root'));
+root.render(<AppErrorBoundary><App /></AppErrorBoundary>);
 
-// For brevity, we use placeholder components
-const SelfCarePanel = ({language,strings})=><div style={{border:"1px solid #d63384",borderRadius:"10px",padding:"1rem",margin:"1rem 0"}}>Self-Care Panel</div>;
-const CookieJarPanel = ({language,cookies,achievements,strings})=><div style={{border:"1px solid #d63384",borderRadius:"10px",padding:"1rem",margin:"1rem 0"}}>Cookie Jar Panel</div>;
-const BakeryShopPanel = ({language,strings})=><div style={{border:"1px solid #d63384",borderRadius:"10px",padding:"1rem",margin:"1rem 0"}}>Bakery Shop Panel</div>;
-const CalendarPanel = ({language,strings})=><div style={{border:"1px solid #d63384",borderRadius:"10px",padding:"1rem",margin:"1rem 0"}}>Calendar Panel</div>;
-const WindDownPanel = ({language,strings})=><div style={{border:"1px solid #d63384",borderRadius:"10px",padding:"1rem",margin:"1rem 0"}}>Wind Down Panel</div>;
-
-// ---------------------------
-// App
-// ---------------------------
-const App = ()=>{
-  const [language,setLanguage] = React.useState("en");
-  const [tasks,setTasks] = React.useState([]);
-  const [cookies,setCookies] = React.useState(0);
-  const [achievements,setAchievements] = React.useState([]);
-
-  // 2-minute reminder
-  React.useEffect(()=>{
-    const timer = setInterval(()=>{
-      if(Notification.permission==="granted" && tasks.length>0){
-        new Notification("🍪 Cookie-Care Reminder","Don't forget your upcoming task!");
-      }
-    },120000);
-    return ()=>clearInterval(timer);
-  },[tasks]);
-
-  return (
-    <div>
-      <div className="nav">
-        <span className="cookieAnim">🍪</span>
-        <button onClick={()=>setLanguage("en")}>🇬🇧 EN</button>
-        <button onClick={()=>setLanguage("es")}>🇪🇸 ES</button>
-        <button onClick={()=>setLanguage("zh")}>🇨🇳 ZH</button>
-        <span style={{marginLeft:"1rem"}}>🏠 Today</span>
-      </div>
-
-      <div className="section">
-        <TodayPanel language={language} tasks={tasks} setTasks={setTasks}/>
-        <ScrollTimer minutes={25}/>
-        <SelfCarePanel language={language} strings={strings}/>
-        <CookieJarPanel language={language} cookies={cookies} achievements={achievements} strings={strings}/>
-        <BakeryShopPanel language={language} strings={strings}/>
-        <CalendarPanel language={language} strings={strings}/>
-        <WindDownPanel language={language} strings={strings}/>
-      </div>
-    </div>
-  );
-};
-
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+// ── SERVICE WORKER ─────────────────────────────────────────────
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register("/Cookie-Care-Joy/OneSignalSDKWorker.js")
+    .then(()=>console.log("Service worker registered"))
+    .catch(err=>console.error("SW failed:",err));
+}
 
 </script>
 </body>
-</html>
-  </body>
 </html>
