@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cookie-Care-Joy</title>
+
+<!-- React & Babel -->
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<!-- Median App Script -->
+<script src="https://median.co/app.js" defer></script>
+
+<!-- OneSignal SDK -->
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+
+<style>
+body { font-family: sans-serif; text-align: center; padding: 2rem; background: #fff0f5; }
+h1 { color: #d63384; margin-bottom: 1rem; }
+button { background-color: #d63384; color: white; border: none; padding: 0.7rem 1.2rem; border-radius: 8px; cursor: pointer; font-size: 1rem; margin: 0.5rem; }
+button:hover { background-color: #c0266a; }
+p { font-size: 1.2rem; margin-top: 1rem; color: #333; min-height: 2rem; }
+.translation { margin-top: 1rem; font-style: italic; color: #555; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const App = () => {
+  const motivationalMessages = [
+    "You are amazing just as you are! 🌟",
+    "Keep pushing forward, greatness awaits! 💪",
+    "Every small step counts. 🌱",
+    "Smile! The world is brighter because of you. 😊",
+    "Believe in yourself and magic will happen! ✨",
+  ];
+
+  const translations = [
+    "No sé hacia dónde me dirijo, pero voy a llegar allí. 🙏",
+    "Dios ilumina el camino, de mi peor pesadilla a la serenidad pacífica. 🌙",
+    "Si el amor es una batalla, sé que vale la pena el riesgo. ❤️",
+  ];
+
+  const [msg, setMsg] = React.useState("Welcome to Cookie-Care-Joy! 💖");
+  const [showTranslations, setShowTranslations] = React.useState(false);
+  const [currentTranslation, setCurrentTranslation] = React.useState("");
+
+  // Rotate motivational messages every 5 seconds
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      const randomMsg = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
+      setMsg(randomMsg);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Play background alarm after 10 seconds for demo (replace with real scheduling)
+  React.useEffect(() => {
+    const alarmAudio = new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg');
+    const timeout = setTimeout(() => {
+      alarmAudio.play();
+    }, 10000); // demo: 10 sec
+    return () => clearTimeout(timeout);
+  }, []);
+
+  // Show translation button
+  const handleShowTranslation = () => {
+    const randomTrans = translations[Math.floor(Math.random() * translations.length)];
+    setCurrentTranslation(randomTrans);
+    setShowTranslations(true);
+  };
+
+  // Send OneSignal notification 2 minutes before a task
+  const scheduleTaskNotification = () => {
+    if (!window.OneSignal) return;
+    // For demo, schedule in 10 sec instead of 2 min
+    setTimeout(() => {
+      OneSignal.sendSelfNotification(
+        "Task Reminder ⏰",
+        "Your task starts in 2 minutes!",
+        window.location.href,
+        null,
+        { action: "open_url" }
+      );
+    }, 10000); // 10 sec demo
+  };
+
+  // Schedule task notification on load
+  React.useEffect(() => { scheduleTaskNotification(); }, []);
+
+  return (
+    <div>
+      <h1>Cookie-Care-Joy</h1>
+      <p>{msg}</p>
+      <button onClick={handleShowTranslation}>Show Translation</button>
+      <button onClick={() => {
+        const randomMsg = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
+        setMsg(randomMsg);
+        if (window.OneSignal) {
+          OneSignal.sendSelfNotification("Motivation Time! 💌", randomMsg, window.location.href, null, { action: "open_url" });
+        }
+      }}>Get Motivated!</button>
+      {showTranslations && <p className="translation">{currentTranslation}</p>}
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+
+<!-- OneSignal Init -->
+<script>
+window.OneSignalDeferred = window.OneSignalDeferred || [];
+OneSignalDeferred.push(async function(OneSignal) {
+  await OneSignal.init({
+    appId: "249f07c6-54a2-4e50-a5ec-f9021b61e47c",
+    serviceWorkerPath: "OneSignalSDKWorker.js",
+    serviceWorkerUpdaterPath: "OneSignalSDKUpdaterWorker.js"
+  });
+});
+</script>
+</body>
+</html>
