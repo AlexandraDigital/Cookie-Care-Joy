@@ -1355,11 +1355,25 @@ OneSignalDeferred.push(async function(OneSignal) {
             paddingTop: "env(safe-area-inset-top)",
           }}>
             <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 20px", height: 64, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 16 }}>
-              {/* Brand — left */}
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                <span style={{ fontSize: 24 }}>🍪</span>
-                <span style={{ fontWeight: 800, fontSize: 17, color: ROSE, fontFamily: "Georgia,serif", whiteSpace: "nowrap" }}>Cookie-Care-Joy</span>
-              </div>
+              {/* Brand — left (long-press 🍪 3s to reset notifications for testing) */}
+              {(() => {
+                const pressRef = React.useRef(null);
+                const startPress = () => {
+                  pressRef.current = setTimeout(() => {
+                    ["ccj_notif_on","ccj_notif_off","ccj_notif_inpage"].forEach(k => localStorage.removeItem(k));
+                    window.location.reload();
+                  }, 3000);
+                };
+                const cancelPress = () => { clearTimeout(pressRef.current); };
+                return (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, userSelect: "none" }}
+                    onMouseDown={startPress} onMouseUp={cancelPress} onMouseLeave={cancelPress}
+                    onTouchStart={startPress} onTouchEnd={cancelPress} onTouchCancel={cancelPress}>
+                    <span style={{ fontSize: 24 }}>🍪</span>
+                    <span style={{ fontWeight: 800, fontSize: 17, color: ROSE, fontFamily: "Georgia,serif", whiteSpace: "nowrap" }}>Cookie-Care-Joy</span>
+                  </div>
+                );
+              })()}
               {/* Tabs — centered */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
                 {tabs.map(tab => {
@@ -1490,15 +1504,32 @@ OneSignalDeferred.push(async function(OneSignal) {
             })}
             {/* Language dropdown — Mobile */}
             <div style={{ flex: "0 0 52px", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }} onTouchStart={e => e.stopPropagation()}>
-              <button onClick={() => setShowLangDrop(d => !d)} style={{
-                background: "transparent", border: "none", cursor: "pointer",
-                fontFamily: "inherit", padding: "8px 4px 10px",
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-                color: showLangDrop ? ROSE : GRAY,
-              }}>
-                <span style={{ fontSize: 20, lineHeight: 1 }}>{currentLang.flag}</span>
-                <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: 0.2 }}>{lang.toUpperCase()}</span>
-              </button>
+              {(() => {
+                const tapRef = React.useRef({ count: 0, timer: null });
+                const handleLangTap = () => {
+                  setShowLangDrop(d => !d);
+                  tapRef.current.count += 1;
+                  clearTimeout(tapRef.current.timer);
+                  if (tapRef.current.count >= 5) {
+                    tapRef.current.count = 0;
+                    ["ccj_notif_on","ccj_notif_off","ccj_notif_inpage"].forEach(k => localStorage.removeItem(k));
+                    window.location.reload();
+                    return;
+                  }
+                  tapRef.current.timer = setTimeout(() => { tapRef.current.count = 0; }, 1500);
+                };
+                return (
+                  <button onClick={handleLangTap} style={{
+                    background: "transparent", border: "none", cursor: "pointer",
+                    fontFamily: "inherit", padding: "8px 4px 10px",
+                    display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+                    color: showLangDrop ? ROSE : GRAY,
+                  }}>
+                    <span style={{ fontSize: 20, lineHeight: 1 }}>{currentLang.flag}</span>
+                    <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: 0.2 }}>{lang.toUpperCase()}</span>
+                  </button>
+                );
+              })()}
               {showLangDrop && (
                 <div onTouchStart={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} style={{
                   position: "absolute", bottom: "calc(100% + 8px)", right: 0,
