@@ -2638,7 +2638,7 @@ OneSignalDeferred.push(async function(OneSignal) {
 
             {/* The folder button itself — hidden on desktop, triggered via navbar event */}
             <button
-              className="float-hide-desktop,mobile,tablet,touchscreen"
+              className="float-hide-desktop"
               onClick={() => setOpen(o => !o)}
               style={{
                 background: open ? ROSE : ROSE_LIGHT,
@@ -3246,7 +3246,7 @@ OneSignalDeferred.push(async function(OneSignal) {
 
             {/* ── Floating Wind Down button ── */}
             {!showCoolDown && (
-              <button onClick={() => setShowCoolDown(true)} className="float-hide-desktop,mobile,tablet,touchscreen" style={{
+              <button onClick={() => setShowCoolDown(true)} className="float-hide-desktop" style={{
                 position: "fixed", right: 20,
                 bottom: "calc(max(24px,env(safe-area-inset-bottom)) + 72px)",
                 zIndex: 400,
