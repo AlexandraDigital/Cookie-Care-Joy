@@ -2787,6 +2787,8 @@ OneSignalDeferred.push(async function(OneSignal) {
       const splashGoneRef = React.useRef(false);
       const dismissSplash = () => {
         setShowSplash(false);
+        // Remove the pre-splash CSS cover (shows before React loads)
+        if (window.__dismissPreSplash) window.__dismissPreSplash();
         setTimeout(() => {
           setSplashGone(true);
           splashGoneRef.current = true;
@@ -2808,26 +2810,11 @@ OneSignalDeferred.push(async function(OneSignal) {
       useEffect(() => { save("ccj_sound", selectedSound); }, [selectedSound]);
       useEffect(() => { save("ccj_tasks", tasks); }, [tasks]);
       const [notifPerm, setNotifPerm] = useState(() => {
-        // Explicit user dismiss always wins
+        // Simple rule: only hide the pink banner if user explicitly enabled OR dismissed.
+        // No browser API checks — works identically on browsers, iOS, Android.
         if (localStorage.getItem("ccj_notif_off") === "true") return "off";
-        // Detect real browser permission state (null = native app, Notification API not present)
-        const browserPerm = typeof Notification !== "undefined" ? Notification.permission : null;
-        // Browser only: if it has never been asked, always show the pink Enable banner
-        // (handles cleared cookies, new browser, old stale localStorage, etc.)
-        if (browserPerm === "default") return "default";
-        // In-page toast / native Median app already enabled
-        if (localStorage.getItem("ccj_notif_inpage") === "true") return "inpage";
-        // Full push previously enabled
-        if (localStorage.getItem("ccj_notif_on") === "true") {
-          // Native app (browserPerm === null) — trust localStorage, no reset
-          if (browserPerm === null) return "granted";
-          // Browser with permission still granted — confirmed on
-          if (browserPerm === "granted") return "granted";
-          // Browser permission was revoked by user — reset so banner reappears
-          localStorage.removeItem("ccj_notif_on");
-          return "default";
-        }
-        return "default";
+        if (localStorage.getItem("ccj_notif_on") === "true") return "granted";
+        return "default"; // ← show pink Enable banner
       });
       const [notifEnabled, setNotifEnabled] = useState(false);
       const [welcomeBack, setWelcomeBack] = useState(false);
@@ -2847,15 +2834,7 @@ OneSignalDeferred.push(async function(OneSignal) {
         return () => document.removeEventListener("ccj-toast", handler);
       }, [addToast]);
 
-      // Sync with browser: if permission already granted AND user had previously enabled, confirm state
-      // Do NOT auto-grant if ccj_notif_on is absent (e.g. after a reset) — that would hide the Enable button
-      useEffect(() => {
-        if (typeof Notification !== "undefined" && Notification.permission === "granted"
-            && localStorage.getItem("ccj_notif_on") === "true"
-            && localStorage.getItem("ccj_notif_off") !== "true") {
-          setNotifPerm("granted");
-        }
-      }, []);
+      // notifPerm synced purely from localStorage — no browser API override needed
 
       // If a page reload happened right after enabling (e.g. from service worker registration),
       // show the welcome toast and send the native welcome push now that the page is fresh.
@@ -2920,7 +2899,7 @@ OneSignalDeferred.push(async function(OneSignal) {
           }, 8000);
           dbg("Notifications enabled");
 
-          setNotifPerm("inpage");
+          setNotifPerm("granted");
           setNotifEnabled(true);
           setTimeout(() => setNotifEnabled(false), 4000);
           setWelcomeBack(false);
