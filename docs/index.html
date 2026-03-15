@@ -2760,11 +2760,31 @@ OneSignalDeferred.push(async function(OneSignal) {
       const [notifError, setNotifError] = React.useState("");
       const [debugLines, setDebugLines] = React.useState([]);
 
-      // Sync with browser: if permission already granted, hide pink banner and remember
+      // Sync with browser: if permission already granted, hide pink banner and ensure OneSignal is subscribed
       useEffect(() => {
         if (typeof Notification !== "undefined" && Notification.permission === "granted" && localStorage.getItem("ccj_notif_off") !== "true") {
           localStorage.setItem("ccj_notif_on", "true");
           setNotifPerm("granted");
+          // Ensure OneSignal subscription is active (permission may have been granted but subscription never completed)
+          const ensureOSOptIn = async () => {
+            let tries = 0;
+            while (tries < 60) {
+              if (window.OneSignal && window.OneSignal.User && window.OneSignal.User.PushSubscription) {
+                const sub = window.OneSignal.User.PushSubscription;
+                if (!sub.optedIn) { try { await sub.optIn(); } catch(e) {} }
+                // Schedule reminders if not done today
+                const today = new Date().toISOString().split("T")[0];
+                if (localStorage.getItem("ccj_last_sched") !== today) {
+                  localStorage.setItem("ccj_last_sched", today);
+                  setTimeout(() => { try { scheduleAllReminders(); } catch(e) {} }, 2000);
+                }
+                break;
+              }
+              await new Promise(r => setTimeout(r, 100));
+              tries++;
+            }
+          };
+          ensureOSOptIn();
         }
       }, []);
 
@@ -2797,11 +2817,18 @@ OneSignalDeferred.push(async function(OneSignal) {
       const requestNotifications = async () => {
         setNotifError("");
 
-        const grantSuccess = () => {
+        const grantSuccess = async () => {
           localStorage.setItem("ccj_notif_on", "true");
           localStorage.setItem("ccj_notif_off", "false");
           setNotifPerm("granted");
           setWelcomeBack(false);
+          // Ensure OneSignal subscription is active
+          try {
+            if (window.OneSignal && window.OneSignal.User && window.OneSignal.User.PushSubscription) {
+              const sub = window.OneSignal.User.PushSubscription;
+              if (!sub.optedIn) await sub.optIn();
+            }
+          } catch(e) {}
           setTimeout(() => scheduleAllReminders(), 2000);
         };
 
