@@ -2784,16 +2784,21 @@ OneSignalDeferred.push(async function(OneSignal) {
       useEffect(() => { save("ccj_sound", selectedSound); }, [selectedSound]);
       useEffect(() => { save("ccj_tasks", tasks); }, [tasks]);
       const [notifPerm, setNotifPerm] = useState(() => {
+        // Explicit user dismiss always wins
         if (localStorage.getItem("ccj_notif_off") === "true") return "off";
+        // Detect real browser permission state
+        const browserPerm = typeof Notification !== "undefined" ? Notification.permission : null;
+        // If the browser has never been asked, always show the pink Enable banner
+        // (handles cleared cookies, new browser, old stale localStorage, etc.)
+        if (browserPerm === "default") return "default";
+        // In-page toast fallback already enabled
         if (localStorage.getItem("ccj_notif_inpage") === "true") return "inpage";
+        // Full push enabled and browser still has the permission
         if (localStorage.getItem("ccj_notif_on") === "true") {
-          // For browsers: if the OS permission was revoked or this is a new browser,
-          // reset so the pink Enable banner shows again instead of hiding it.
-          if (typeof Notification !== "undefined" && Notification.permission !== "granted") {
-            localStorage.removeItem("ccj_notif_on");
-            return "default";
-          }
-          return "granted";
+          if (browserPerm === "granted") return "granted";
+          // Permission revoked or unavailable — reset and re-prompt
+          localStorage.removeItem("ccj_notif_on");
+          return "default";
         }
         return "default";
       });
