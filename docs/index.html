@@ -3051,12 +3051,7 @@ OneSignalDeferred.push(async function(OneSignal) {
         }
         dbg("startMotivationReminder started");
 
-        // Send one motivational toast right away so user sees it immediately
-        setTimeout(() => {
-          const msg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-          swNotify("Cookie-Care-Joy 🍪", { body: msg, icon: cookieIcon }).catch(() => {});
-          dbg("First motivational toast sent");
-        }, 3000);
+        // Motivational reminders are scheduled via OneSignal — no immediate duplicate toast
 
         // Schedule real native push notifications via OneSignal (survive app close)
         scheduleMotivationReminders();
