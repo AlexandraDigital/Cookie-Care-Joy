@@ -2859,9 +2859,7 @@ OneSignalDeferred.push(async function(OneSignal) {
           dbg("Notifications enabled");
 
           setNotifPerm("inpage");
-          setNotifEnabled(true);
           setWelcomeBack(false);
-          setTimeout(() => setNotifEnabled(false), 5000);
         } catch (e) {
           dbg("Error: " + (e && e.message));
           setNotifError("Something went wrong. Try again! 😔");
