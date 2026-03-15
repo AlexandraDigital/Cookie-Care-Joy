@@ -2949,7 +2949,11 @@ OneSignalDeferred.push(async function(OneSignal) {
         contents: { en: body },
         headings: { en: title },
         ios_sound: "default",
-        android_sound: "default"
+        android_sound: "default",
+        large_icon: "https://alexandradigital.github.io/Cookie-Care-Joy/docs/icon-192.png",
+        chrome_web_icon: "https://alexandradigital.github.io/Cookie-Care-Joy/docs/icon-192.png",
+        chrome_web_badge: "https://alexandradigital.github.io/Cookie-Care-Joy/docs/icon-96.png",
+        url: "https://alexandradigital.github.io/Cookie-Care-Joy/"
       };
       if (sendAt) payload.send_after = sendAt.toUTCString();
       try {
@@ -3114,7 +3118,7 @@ OneSignalDeferred.push(async function(OneSignal) {
             const aKey = task.id + "_" + task.alertTime + "_" + taskDate;
             if (!osScheduledAlarms[aKey]) {
               const sendAt = new Date(alarmMs);
-              osPush("⏰ Time to do!", task.text || "Task reminder", sendAt).then(id => {
+              osPush("Cookie Care Joy ⏰ " + (task.text || "Task reminder"), "Tap to open your reminder 🍪", sendAt).then(id => {
                 if (id) {
                   const stored = JSON.parse(localStorage.getItem("ccj_os_alarms") || "{}");
                   stored[aKey] = id;
