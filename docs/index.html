@@ -2878,13 +2878,11 @@ OneSignalDeferred.push(async function(OneSignal) {
           // No reload happened — clear the flag so startup doesn't show it again
           localStorage.removeItem("ccj_welcome_pending");
           startMotivationReminder();
-          // Send a sweet caring message ~8s after enable (gives OneSignal time to register player ID)
+          // Send a sweet caring message ~8s after enable — wait for player ID with retry
           setTimeout(async () => {
             const welcomeMsg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-            await osPush("Cookie-Care-Joy 🍪", welcomeMsg, null, true);
+            await osPush("Cookie-Care-Joy 🍪", welcomeMsg, null, false); // skipWait=false: retry up to 10s
           }, 8000);
-          // Re-schedule after 10s to ensure OneSignal player ID is registered by then
-          setTimeout(() => { scheduleMotivationReminders(); }, 10000);
           dbg("Notifications enabled");
 
           setNotifPerm("inpage");
@@ -2989,8 +2987,8 @@ OneSignalDeferred.push(async function(OneSignal) {
       return localStorage.getItem("ccj_os_player_id") || null;
     }
 
-    async function osPush(title, body, sendAt /* Date or null = immediate */, skipWait = false) {
-      const pid = skipWait ? await getOsPlayerId() : await waitForPlayerId(8000);
+    async function osPush(title, body, sendAt /* Date or null = immediate */, skipWait = false, knownPid = null) {
+      const pid = knownPid || (skipWait ? await getOsPlayerId() : await waitForPlayerId(10000));
       if (!pid) return null;
       const payload = {
         app_id: OS_APP_ID,
@@ -3091,6 +3089,10 @@ OneSignalDeferred.push(async function(OneSignal) {
       const motivationIntervalRef = React.useRef(null);
 
       async function scheduleMotivationReminders() {
+        // Wait for OneSignal player ID once — avoids 8s-per-message retry hang
+        const pid = await waitForPlayerId(12000);
+        if (!pid) { dbg("scheduleMotivationReminders: no player ID, aborting"); return; }
+
         // Cancel any previously-scheduled motivation reminders
         const oldIds = JSON.parse(localStorage.getItem("ccj_sched_ids") || "[]");
         for (const id of oldIds) cancelOsPush(id).catch(() => {});
@@ -3112,7 +3114,7 @@ OneSignalDeferred.push(async function(OneSignal) {
 
           const msg = shuffled[msgIndex % shuffled.length];
           msgIndex++;
-          const id = await osPush("Cookie-Care-Joy 🍪", msg, sendAt);
+          const id = await osPush("Cookie-Care-Joy 🍪", msg, sendAt, false, pid);
           if (id) newIds.push(id);
         }
 
@@ -3127,16 +3129,17 @@ OneSignalDeferred.push(async function(OneSignal) {
           return;
         }
         dbg("startMotivationReminder started");
+        // Set sentinel immediately so a second call while we wait doesn't double-start
+        motivationIntervalRef.current = "pending";
 
-        // Motivational reminders are scheduled via OneSignal — no immediate duplicate toast
-
-        // Schedule real native push notifications via OneSignal (survive app close)
-        scheduleMotivationReminders();
+        // Wait 12s for OneSignal to register player ID before scheduling all reminders
+        setTimeout(() => scheduleMotivationReminders(), 12000);
 
         // Re-schedule once a day while app is open (24h coverage already pre-booked)
-        motivationIntervalRef.current = setInterval(() => {
+        const dayInterval = setInterval(() => {
           scheduleMotivationReminders();
         }, 24 * 60 * 60 * 1000);
+        motivationIntervalRef.current = dayInterval;
       }
 
       useEffect(() => {
