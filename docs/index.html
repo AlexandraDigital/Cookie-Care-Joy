@@ -12,8 +12,24 @@ OneSignalDeferred.push(async function(OneSignal) {
   await OneSignal.init({
     appId: "249f07c6-54a2-4e50-a5ec-f9021b61e47c",
     serviceWorkerPath: "OneSignalSDKWorker.js",
-    serviceWorkerUpdaterPath: "OneSignalSDKUpdaterWorker.js"
+    serviceWorkerUpdaterPath: "OneSignalSDKUpdaterWorker.js",
+    serviceWorkerParam: { scope: "/" },
+    autoResubscribe: true
   });
+  // Cache player ID immediately after init (covers returning browser users)
+  try {
+    const pid = OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.id;
+    if (pid) localStorage.setItem("ccj_os_player_id", pid);
+  } catch(e) {}
+  // Also cache whenever subscription changes (new browser users granting permission)
+  try {
+    OneSignal.User.PushSubscription.addEventListener("change", function(event) {
+      try {
+        const pid = event && event.current && event.current.id;
+        if (pid) localStorage.setItem("ccj_os_player_id", pid);
+      } catch(e) {}
+    });
+  } catch(e) {}
 });
 </script>
   <meta charset="UTF-8" />
@@ -2925,6 +2941,7 @@ OneSignalDeferred.push(async function(OneSignal) {
     const OS_API_KEY = "Key os_v2_app_espqprsuujhfbjpm7ebbwypepraqjwfoyy5ebwe33g2s5po2jsp6ohoesi4mwb77kpevaurzluw6vsarppzyqmu2zx3hwbpejku6yzi";
 
     async function getOsPlayerId() {
+      // 1. Median (Android/iOS app wrapper)
       try {
         if (window.median && window.median.onesignal && window.median.onesignal.getInfo) {
           const info = await new Promise(resolve => window.median.onesignal.getInfo({ callback: resolve }));
@@ -2932,12 +2949,14 @@ OneSignalDeferred.push(async function(OneSignal) {
           if (pid) { localStorage.setItem("ccj_os_player_id", pid); return pid; }
         }
       } catch(e) {}
+      // 2. OneSignal Web SDK v16 (browsers)
       try {
         if (window.OneSignal && window.OneSignal.User && window.OneSignal.User.PushSubscription) {
           const pid = window.OneSignal.User.PushSubscription.id;
           if (pid) { localStorage.setItem("ccj_os_player_id", pid); return pid; }
         }
       } catch(e) {}
+      // 3. Fallback: cached value from previous session
       return localStorage.getItem("ccj_os_player_id") || null;
     }
 
