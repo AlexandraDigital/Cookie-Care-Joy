@@ -2838,6 +2838,27 @@ OneSignalDeferred.push(async function(OneSignal) {
         }
       }, []);
 
+      // If a page reload happened right after enabling (e.g. from service worker registration),
+      // show the welcome toast and send the native welcome push now that the page is fresh.
+      useEffect(() => {
+        if (localStorage.getItem("ccj_welcome_pending") === "true"
+            && localStorage.getItem("ccj_notif_on") === "true") {
+          localStorage.removeItem("ccj_welcome_pending");
+          setTimeout(() => {
+            document.dispatchEvent(new CustomEvent("ccj-toast", {
+              detail: {
+                title: "🍪 Cookie-Care-Joy",
+                body: "You're all set! Sweet reminders on the way ✨"
+              }
+            }));
+            // Player ID should now be cached from OneSignal's subscription change event
+            const msg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
+            osPush("Cookie-Care-Joy 🍪", msg, null, true).catch(() => {});
+            startMotivationReminder();
+          }, 1500);
+        }
+      }, []);
+
       // #region agent log (debug notifications)
       window.__ccjDebug = window.__ccjDebug || [];
       const dbg = (msg) => {
@@ -2865,18 +2886,16 @@ OneSignalDeferred.push(async function(OneSignal) {
           localStorage.setItem("ccj_notif_off", "false");
 
           // Step 3: Show welcome notification + start reminders
+          // Set flag before swNotify in case a service worker update causes a page reload
+          localStorage.setItem("ccj_welcome_pending", "true");
           await swNotify("🍪 Cookie-Care-Joy", {
             body: "You're all set! Sweet reminders on the way ✨"
           });
+          // No reload happened — clear the flag so startup doesn't show it again
+          localStorage.removeItem("ccj_welcome_pending");
           startMotivationReminder();
-          // Send an immediate sweet reminder right after enabling
-          setTimeout(async () => {
-            const welcomeMsg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-            const sendNow = new Date(Date.now() + 3000); // 3 seconds from now
-            await osPush("Cookie-Care-Joy 🍪", welcomeMsg, sendNow);
-          }, 2000);
-          // Re-schedule after 5s to ensure OneSignal player ID is registered by then
-          setTimeout(() => { scheduleMotivationReminders(); }, 5000);
+          // Re-schedule after 10s to ensure OneSignal player ID is registered by then
+          setTimeout(() => { scheduleMotivationReminders(); }, 10000);
           dbg("Notifications enabled");
 
           setNotifPerm("inpage");
