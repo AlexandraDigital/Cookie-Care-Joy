@@ -3030,18 +3030,30 @@ OneSignalDeferred.push(async function(OneSignal) {
         const oldIds = JSON.parse(localStorage.getItem("ccj_sched_ids") || "[]");
         for (const id of oldIds) cancelOsPush(id).catch(() => {});
 
-        // Schedule 8 reminders, one every 30 min for the next 4 hours
+        // Schedule sweet reminders across the next 24 hours at cozy times
+        // so they arrive even if the app is never opened again today
         const newIds = [];
         const shuffled = [...caringMsgs].sort(() => Math.random() - 0.5);
-        for (let i = 1; i <= 8; i++) {
-          const sendAt = new Date(Date.now() + i * 30 * 60 * 1000);
-          const msg = shuffled[(i - 1) % shuffled.length];
+        const now = new Date();
+
+        // Pick 6 send times spread across the next 24 hours at friendly hours
+        const friendlyHours = [8, 10, 12, 15, 18, 21]; // morning → night
+        let msgIndex = 0;
+        for (const hour of friendlyHours) {
+          // Build a Date for today at that hour; if it's already passed, use tomorrow
+          const sendAt = new Date(now);
+          sendAt.setHours(hour, 0, 0, 0);
+          if (sendAt <= now) sendAt.setDate(sendAt.getDate() + 1);
+
+          const msg = shuffled[msgIndex % shuffled.length];
+          msgIndex++;
           const id = await osPush("Cookie-Care-Joy 🍪", msg, sendAt);
           if (id) newIds.push(id);
         }
+
         localStorage.setItem("ccj_sched_ids", JSON.stringify(newIds));
         localStorage.setItem("ccj_sched_at", Date.now().toString());
-        dbg("Scheduled " + newIds.length + " motivation reminders via OneSignal");
+        dbg("Scheduled " + newIds.length + " sweet reminders via OneSignal for next 24h");
       }
 
       function startMotivationReminder() {
@@ -3056,10 +3068,10 @@ OneSignalDeferred.push(async function(OneSignal) {
         // Schedule real native push notifications via OneSignal (survive app close)
         scheduleMotivationReminders();
 
-        // Refresh the scheduled queue every 4 hours while app is open
+        // Re-schedule once a day while app is open (24h coverage already pre-booked)
         motivationIntervalRef.current = setInterval(() => {
           scheduleMotivationReminders();
-        }, 4 * 60 * 60 * 1000);
+        }, 24 * 60 * 60 * 1000);
       }
 
       useEffect(() => {
