@@ -13,7 +13,7 @@ OneSignalDeferred.push(async function(OneSignal) {
     appId: "249f07c6-54a2-4e50-a5ec-f9021b61e47c",
     serviceWorkerPath: "OneSignalSDKWorker.js",
     serviceWorkerUpdaterPath: "OneSignalSDKUpdaterWorker.js",
-    serviceWorkerParam: { scope: "/" },
+    serviceWorkerParam: { scope: "/Cookie-Care-Joy/" },
     autoResubscribe: true
   });
   // Cache player ID immediately after init (covers returning browser users)
@@ -3018,7 +3018,8 @@ OneSignalDeferred.push(async function(OneSignal) {
       // Always show in-page toast for immediate visual feedback
       document.dispatchEvent(new CustomEvent("ccj-toast", { detail: { title, body } }));
       // Also fire real OneSignal native push (works outside the app via Median)
-      osPush(title, body, null, true).catch(() => {});
+      // Wait up to 8s for player ID so browsers have time to register subscription
+      osPush(title, body, null, false).catch(() => {});
     }
 
        const cookieIcon = "data:image/svg+xml," + encodeURIComponent(
