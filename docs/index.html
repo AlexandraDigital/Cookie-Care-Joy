@@ -3101,14 +3101,17 @@ OneSignalDeferred.push(async function(OneSignal) {
 
           // (2-minute early warning removed — notification fires with alarm)
 
-          // 1b) Schedule real OneSignal push for any today task alarm not yet scheduled
+          // 1b) Schedule real OneSignal push for ALL future task alarms (any date)
+          //     so they fire even if the app is never opened again that day
           const osScheduledAlarms = JSON.parse(localStorage.getItem("ccj_os_alarms") || "{}");
           let alarmsChanged = false;
           for (const task of tasks) {
-            if (task.date !== todayStr || !task.alertTime || task.alertTime === "NOW") continue;
-            const alarmMs = parseAlertTimeMs(task.alertTime, todayStr);
+            if (!task.alertTime || task.alertTime === "NOW") continue;
+            // Use the task's own date (could be today, tomorrow, any future date)
+            const taskDate = task.date || todayStr;
+            const alarmMs = parseAlertTimeMs(task.alertTime, taskDate);
             if (alarmMs == null || alarmMs <= nowMs) continue;
-            const aKey = task.id + "_" + task.alertTime;
+            const aKey = task.id + "_" + task.alertTime + "_" + taskDate;
             if (!osScheduledAlarms[aKey]) {
               const sendAt = new Date(alarmMs);
               osPush("⏰ Time to do!", task.text || "Task reminder", sendAt).then(id => {
