@@ -3071,7 +3071,7 @@ OneSignalDeferred.push(async function(OneSignal) {
         const now = new Date();
 
         // Pick 6 send times spread across the next 24 hours at friendly hours
-        const friendlyHours = [8, 10, 12, 15, 18, 21]; // morning → night
+        const friendlyHours = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]; // every hour 8am → 9pm
         let msgIndex = 0;
         for (const hour of friendlyHours) {
           // Build a Date for today at that hour; if it's already passed, use tomorrow
