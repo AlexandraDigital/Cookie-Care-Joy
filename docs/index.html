@@ -2838,6 +2838,8 @@ OneSignalDeferred.push(async function(OneSignal) {
             body: "You're all set! Sweet reminders on the way ✨"
           });
           startMotivationReminder();
+          // Re-schedule after 5s to ensure OneSignal player ID is registered by then
+          setTimeout(() => { scheduleMotivationReminders(); }, 5000);
           dbg("Notifications enabled");
 
           setNotifPerm("inpage");
@@ -2939,8 +2941,8 @@ OneSignalDeferred.push(async function(OneSignal) {
       return localStorage.getItem("ccj_os_player_id") || null;
     }
 
-    async function osPush(title, body, sendAt /* Date or null = immediate */) {
-      const pid = await getOsPlayerId();
+    async function osPush(title, body, sendAt /* Date or null = immediate */, skipWait = false) {
+      const pid = skipWait ? await getOsPlayerId() : await waitForPlayerId(8000);
       if (!pid) return null;
       const payload = {
         app_id: OS_APP_ID,
@@ -2967,6 +2969,17 @@ OneSignalDeferred.push(async function(OneSignal) {
       return null;
     }
 
+    /* ── Retry helper: waits up to maxMs for a OneSignal player ID ── */
+    async function waitForPlayerId(maxMs = 10000) {
+      const start = Date.now();
+      while (Date.now() - start < maxMs) {
+        const pid = await getOsPlayerId();
+        if (pid) return pid;
+        await new Promise(r => setTimeout(r, 1500));
+      }
+      return null;
+    }
+
     async function cancelOsPush(notifId) {
       try {
         await fetch("https://onesignal.com/api/v1/notifications/" + notifId + "?app_id=" + OS_APP_ID, {
@@ -2981,7 +2994,7 @@ OneSignalDeferred.push(async function(OneSignal) {
       // Always show in-page toast for immediate visual feedback
       document.dispatchEvent(new CustomEvent("ccj-toast", { detail: { title, body } }));
       // Also fire real OneSignal native push (works outside the app via Median)
-      osPush(title, body, null).catch(() => {});
+      osPush(title, body, null, true).catch(() => {});
     }
 
        const cookieIcon = "data:image/svg+xml," + encodeURIComponent(
