@@ -3070,13 +3070,13 @@ OneSignalDeferred.push(async function(OneSignal) {
         const shuffled = [...caringMsgs].sort(() => Math.random() - 0.5);
         const now = new Date();
 
-        // Pick 6 send times spread across the next 24 hours at friendly hours
-        const friendlyHours = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]; // every hour 8am → 9pm
+        // Every 30 minutes from 6am to 11pm
+        const friendlySlots = [[6,0], [6,30], [7,0], [7,30], [8,0], [8,30], [9,0], [9,30], [10,0], [10,30], [11,0], [11,30], [12,0], [12,30], [13,0], [13,30], [14,0], [14,30], [15,0], [15,30], [16,0], [16,30], [17,0], [17,30], [18,0], [18,30], [19,0], [19,30], [20,0], [20,30], [21,0], [21,30], [22,0], [22,30], [23,0], [23,0]];
         let msgIndex = 0;
-        for (const hour of friendlyHours) {
-          // Build a Date for today at that hour; if it's already passed, use tomorrow
+        for (const [hour, minute] of friendlySlots) {
+          // Build a Date for today at that time; if it's already passed, use tomorrow
           const sendAt = new Date(now);
-          sendAt.setHours(hour, 0, 0, 0);
+          sendAt.setHours(hour, minute, 0, 0);
           if (sendAt <= now) sendAt.setDate(sendAt.getDate() + 1);
 
           const msg = shuffled[msgIndex % shuffled.length];
