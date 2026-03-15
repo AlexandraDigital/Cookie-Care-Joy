@@ -32,6 +32,16 @@ OneSignalDeferred.push(async function(OneSignal) {
 });
 </script>
   <meta charset="UTF-8" />
+  <style id="pre-splash-style">
+    #pre-splash {
+      position: fixed; inset: 0; z-index: 99999;
+      background: linear-gradient(145deg,#fce7ef 0%,#fff0f6 45%,#fdf6fb 100%);
+      display: flex; align-items: center; justify-content: center;
+      font-size: clamp(80px,16vw,120px); line-height: 1;
+      transition: opacity 0.4s ease;
+    }
+    #pre-splash.hide { opacity: 0; pointer-events: none; }
+  </style>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Cookie-Care-Joy 🍪</title>
 
@@ -539,6 +549,18 @@ OneSignalDeferred.push(async function(OneSignal) {
 </head>
 
 <body>
+  <div id="pre-splash">🍪</div>
+  <script>
+    // Dismiss pre-splash as soon as React SplashScreen takes over (~100ms after load)
+    window.__dismissPreSplash = function() {
+      var el = document.getElementById("pre-splash");
+      if (!el) return;
+      el.classList.add("hide");
+      setTimeout(function() { el && el.parentNode && el.parentNode.removeChild(el); }, 500);
+    };
+    // Fallback: remove after 5s no matter what
+    setTimeout(function() { window.__dismissPreSplash && window.__dismissPreSplash(); }, 5000);
+  </script>
   <div id="root"></div>
   <script>
 
@@ -1001,6 +1023,8 @@ OneSignalDeferred.push(async function(OneSignal) {
       const tSplash = (TRANSLATIONS[localStorage.getItem("ccj_lang") || "en"] || TRANSLATIONS.en);
 
       React.useEffect(() => {
+        // Remove the pre-React CSS cover now that React splash is mounted
+        if (window.__dismissPreSplash) window.__dismissPreSplash();
         const t1 = setTimeout(() => { setPhase("crumble"); setShowCrumbs(true); }, 750);
         const t2 = setTimeout(() => setPhase("text"), 1000);
         const t3 = setTimeout(() => setPhase("out"), 2800);
@@ -2786,17 +2810,20 @@ OneSignalDeferred.push(async function(OneSignal) {
       const [notifPerm, setNotifPerm] = useState(() => {
         // Explicit user dismiss always wins
         if (localStorage.getItem("ccj_notif_off") === "true") return "off";
-        // Detect real browser permission state
+        // Detect real browser permission state (null = native app, Notification API not present)
         const browserPerm = typeof Notification !== "undefined" ? Notification.permission : null;
-        // If the browser has never been asked, always show the pink Enable banner
+        // Browser only: if it has never been asked, always show the pink Enable banner
         // (handles cleared cookies, new browser, old stale localStorage, etc.)
         if (browserPerm === "default") return "default";
-        // In-page toast fallback already enabled
+        // In-page toast / native Median app already enabled
         if (localStorage.getItem("ccj_notif_inpage") === "true") return "inpage";
-        // Full push enabled and browser still has the permission
+        // Full push previously enabled
         if (localStorage.getItem("ccj_notif_on") === "true") {
+          // Native app (browserPerm === null) — trust localStorage, no reset
+          if (browserPerm === null) return "granted";
+          // Browser with permission still granted — confirmed on
           if (browserPerm === "granted") return "granted";
-          // Permission revoked or unavailable — reset and re-prompt
+          // Browser permission was revoked by user — reset so banner reappears
           localStorage.removeItem("ccj_notif_on");
           return "default";
         }
@@ -3112,14 +3139,17 @@ OneSignalDeferred.push(async function(OneSignal) {
         const now = new Date();
 
         // Every 25 minutes starting from now, for the next 24 hours (~57 messages)
+        // Fire all API calls in parallel so scheduling completes in seconds, not minutes
         const INTERVAL_MS = 25 * 60 * 1000;
         const TOTAL = 57;
+        const pushPromises = [];
         for (let i = 0; i < TOTAL; i++) {
           const sendAt = new Date(now.getTime() + INTERVAL_MS * (i + 1));
           const msg = shuffled[i % shuffled.length];
-          const id = await osPush("Cookie-Care-Joy 🍪", msg, sendAt, false, pid);
-          if (id) newIds.push(id);
+          pushPromises.push(osPush("Cookie-Care-Joy 🍪", msg, sendAt, false, pid));
         }
+        const results = await Promise.all(pushPromises);
+        results.forEach(id => { if (id) newIds.push(id); });
 
         localStorage.setItem("ccj_sched_ids", JSON.stringify(newIds));
         localStorage.setItem("ccj_sched_at", Date.now().toString());
