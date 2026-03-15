@@ -3057,9 +3057,14 @@ OneSignalDeferred.push(async function(OneSignal) {
         headings: { en: title },
         ios_sound: "default",
         android_sound: "default",
+        android_channel_id: "cookie-care-joy",
+        android_accent_color: "FFFF69B4",
+        android_visibility: 1,
+        small_icon: "ic_stat_onesignal_default",
         large_icon: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png",
         chrome_web_icon: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png",
         chrome_web_badge: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-96.png",
+        priority: 10,
         url: "https://alexandradigital.github.io/Cookie-Care-Joy/"
       };
       if (sendAt) payload.send_after = sendAt.toUTCString();
