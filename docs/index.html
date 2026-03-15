@@ -11,7 +11,8 @@ window.OneSignalDeferred = window.OneSignalDeferred || [];
 OneSignalDeferred.push(async function(OneSignal) {
   await OneSignal.init({
     appId: "249f07c6-54a2-4e50-a5ec-f9021b61e47c",
-    serviceWorkerPath: "OneSignalSDKWorker.js",
+    serviceWorkerPath: "/Cookie-Care-Joy/OneSignalSDKWorker.js",
+    serviceWorkerParam: { scope: "/Cookie-Care-Joy/" },
   });
 });
 </script>
@@ -2778,10 +2779,8 @@ OneSignalDeferred.push(async function(OneSignal) {
 
       const requestNotifications = async () => {
         setNotifError("");
-        dbg("Enable clicked");
 
         const grantSuccess = () => {
-          dbg("Granted - scheduling push notifications");
           localStorage.setItem("ccj_notif_on", "true");
           localStorage.setItem("ccj_notif_off", "false");
           setNotifPerm("granted");
@@ -2789,62 +2788,65 @@ OneSignalDeferred.push(async function(OneSignal) {
           setTimeout(() => scheduleAllReminders(), 2000);
         };
 
-        // 1. Try OneSignal first — best cross-browser support
+        // ── Path A: OneSignal is loaded ──
         if (window.OneSignal && window.OneSignal.Notifications) {
           try {
-            dbg("Trying OneSignal.Notifications.requestPermission");
+            // Already granted via OneSignal?
             if (window.OneSignal.Notifications.permission === true) {
-              dbg("OneSignal: already granted");
               grantSuccess();
               return;
             }
-            const osResult = await window.OneSignal.Notifications.requestPermission();
-            dbg("OneSignal result: " + osResult);
-            if (osResult === true || osResult === "granted" || osResult) {
+            // OneSignal v16: requestPermission() returns void — check .permission AFTER the call
+            await window.OneSignal.Notifications.requestPermission();
+            if (window.OneSignal.Notifications.permission === true) {
               grantSuccess();
               return;
             }
+            // Native browser may also reflect the grant
+            if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+              grantSuccess();
+              return;
+            }
+            // User denied or dismissed
+            if (typeof Notification !== "undefined" && Notification.permission === "denied") {
+              setNotifError("Notifications blocked. Open browser Settings → site permissions to allow, then try again.");
+              return;
+            }
+            // Dismissed without choosing — let them try again
+            setNotifError("Tap Enable again to allow notifications 🔔");
+            return;
           } catch (e) {
-            dbg("OneSignal error: " + (e && e.message));
+            // OneSignal threw — fall through to native below
           }
         }
 
-        // 2. Fall back to native Notification API
+        // ── Path B: No OneSignal — use native Notification API ──
         if (!("Notification" in window)) {
-          dbg("No Notification API — showing iOS guidance");
+          // iOS Safari non-PWA
           setNotifError("On iPhone: tap Share → \"Add to Home Screen\", then open the app from there 📲");
           return;
         }
 
         if (Notification.permission === "denied") {
-          setNotifError("Notifications are blocked. Open your browser Settings → site permissions, allow notifications, then try again.");
-          dbg("Permission already denied");
+          setNotifError("Notifications blocked. Open browser Settings → site permissions to allow, then try again.");
           return;
         }
 
         if (Notification.permission === "granted") {
-          dbg("Native: already granted");
           grantSuccess();
           return;
         }
 
         try {
-          let result = await Promise.resolve(Notification.requestPermission());
-          dbg("Native permission result: " + result);
-
+          const result = await Promise.resolve(Notification.requestPermission());
           if (result === "granted" || Notification.permission === "granted") {
-            if (window.OneSignal && window.OneSignal.Notifications) {
-              try { await window.OneSignal.Notifications.requestPermission(); } catch (_) {}
-            }
             grantSuccess();
           } else if (result === "denied") {
             setNotifError("Notifications blocked. Check browser settings to allow them.");
           } else {
             setNotifError("Tap Enable again, or on iPhone tap Share → \"Add to Home Screen\" first 📲");
-            dbg("Result not granted: " + result);
           }
         } catch (e) {
-          dbg("Error: " + (e && e.message));
           setNotifError("Something went wrong. Try again! 😔");
         }
       };
