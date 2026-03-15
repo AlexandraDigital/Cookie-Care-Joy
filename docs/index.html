@@ -2687,9 +2687,9 @@ OneSignalDeferred.push(async function(OneSignal) {
             }
             if (isOn && splashGoneRef.current) {
               const _today = new Date().toISOString().split("T")[0];
-              const _lastSched = localStorage.getItem("ccj_last_sched") || "";
+              const _lastSched = sessionStorage.getItem("ccj_last_sched") || "";
               if (_lastSched !== _today) {
-                localStorage.setItem("ccj_last_sched", _today);
+                sessionStorage.setItem("ccj_last_sched", _today);
                 scheduleAllReminders();
               }
             }
@@ -2735,7 +2735,7 @@ OneSignalDeferred.push(async function(OneSignal) {
       const [showSplash, setShowSplash] = useState(true);
       const [splashGone, setSplashGone] = useState(false);
       const splashGoneRef = React.useRef(false);
-      const dismissSplash = () => { setShowSplash(false); setTimeout(() => { setSplashGone(true); splashGoneRef.current = true; const _isOn = localStorage.getItem("ccj_notif_on") === "true"; if (_isOn && typeof Notification !== "undefined" && Notification.permission === "granted") { const _today = new Date().toISOString().split("T")[0]; const _lastSched = localStorage.getItem("ccj_last_sched") || ""; if (_lastSched !== _today) { localStorage.setItem("ccj_last_sched", _today); scheduleAllReminders(); } } }, 500); };
+      const dismissSplash = () => { setShowSplash(false); setTimeout(() => { setSplashGone(true); splashGoneRef.current = true; const _isOn = localStorage.getItem("ccj_notif_on") === "true"; if (_isOn && typeof Notification !== "undefined" && Notification.permission === "granted") { const _today = new Date().toISOString().split("T")[0]; const _lastSched = sessionStorage.getItem("ccj_last_sched") || ""; if (_lastSched !== _today) { sessionStorage.setItem("ccj_last_sched", _today); scheduleAllReminders(); } } }, 500); };
       React.useEffect(() => { const el = document.getElementById("ccj-presplash"); if (el) { el.style.transition = "opacity 0.08s"; el.style.opacity = "0"; setTimeout(() => el && el.remove(), 80); } }, []);
       const [cookies, setCookiesRaw] = useState(() => load("ccj_cookies", 0));
       const [trophies, setTrophies] = useState(() => load("ccj_trophies", 0));
@@ -2778,8 +2778,8 @@ OneSignalDeferred.push(async function(OneSignal) {
                 if (!sub.optedIn) { try { await sub.optIn(); } catch(e) {} }
                 // Schedule reminders if not done today
                 const today = new Date().toISOString().split("T")[0];
-                if (localStorage.getItem("ccj_last_sched") !== today) {
-                  localStorage.setItem("ccj_last_sched", today);
+                if (sessionStorage.getItem("ccj_last_sched") !== today) {
+                  sessionStorage.setItem("ccj_last_sched", today);
                   setTimeout(() => { try { scheduleAllReminders(); } catch(e) {} }, 500);
                 }
                 break;
