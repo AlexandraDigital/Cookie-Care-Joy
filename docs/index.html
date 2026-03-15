@@ -61,7 +61,6 @@ OneSignalDeferred.push(async function(OneSignal) {
   <meta name="msapplication-tap-highlight" content="no" />
 
   <!-- Favicon fallback (all browsers) -->
-  <link rel="shortcut icon" href="favicon.ico" />
   <link rel="icon" type="image/png" sizes="48x48" href="icon-48.png" />
   <link rel="icon" type="image/png" sizes="96x96" href="icon-96.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
@@ -2730,11 +2729,11 @@ OneSignalDeferred.push(async function(OneSignal) {
         let welcomeTimer;
         const handleVisibility = () => {
           if (document.visibilityState === "visible") {
-            // Only show welcome back if user has already dealt with notification prompt
+            // Show full green banner when returning if notifications are on
             const isOn = localStorage.getItem("ccj_notif_on") === "true";
             if (isOn && splashGoneRef.current) {
-              setWelcomeBack(true);
-              welcomeTimer = setTimeout(() => setWelcomeBack(false), 3000);
+              setNotifEnabled(true);
+              welcomeTimer = setTimeout(() => setNotifEnabled(false), 4000);
             }
           }
         };
