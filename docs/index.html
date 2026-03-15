@@ -2894,6 +2894,11 @@ OneSignalDeferred.push(async function(OneSignal) {
           // No reload happened — clear the flag so startup doesn't show it again
           localStorage.removeItem("ccj_welcome_pending");
           startMotivationReminder();
+          // Send a sweet caring message ~8s after enable (gives OneSignal time to register player ID)
+          setTimeout(async () => {
+            const welcomeMsg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
+            await osPush("Cookie-Care-Joy 🍪", welcomeMsg, null, true);
+          }, 8000);
           // Re-schedule after 10s to ensure OneSignal player ID is registered by then
           setTimeout(() => { scheduleMotivationReminders(); }, 10000);
           dbg("Notifications enabled");
