@@ -2772,7 +2772,7 @@ OneSignalDeferred.push(async function(OneSignal) {
       const dbg = (msg) => {
         window.__ccjDebug.push(msg);
         setDebugLines(prev => [...prev.slice(-4), msg]);
-        try { fetch("http://127.0.0.1:7867/ingest/53ecdc7f-4f8d-4739-b49c-3f391649e866", { method: "POST", headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "80bb47" }, body: JSON.stringify({ sessionId: "80bb47", location: "index.html", message: msg, data: {}, timestamp: Date.now() }) }).catch(function(){}); } catch(e){}
+        /* debug fetch removed */
       };
       // #endregion
 
@@ -3280,12 +3280,7 @@ OneSignalDeferred.push(async function(OneSignal) {
               />
             )}
 
-            {/* Debug: last notification steps (tell developer what you see here) */}
-            {debugLines.length > 0 && (
-              <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.85)", color: "#a5f3fc", fontSize: 10, padding: "6px 8px", zIndex: 9999, maxHeight: 60, overflow: "auto" }}>
-                {debugLines.slice(-5).join(" · ")}
-              </div>
-            )}
+            {/* debug bar removed */}
           </div>
         </LangContext.Provider>
       );
