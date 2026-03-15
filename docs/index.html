@@ -2817,10 +2817,12 @@ OneSignalDeferred.push(async function(OneSignal) {
         return () => document.removeEventListener("ccj-toast", handler);
       }, [addToast]);
 
-      // Sync with browser: if permission already granted, hide pink banner and remember
+      // Sync with browser: if permission already granted AND user had previously enabled, hide pink banner
+      // Do NOT auto-grant if ccj_notif_on is absent (e.g. after a reset) — that would hide the Enable button
       useEffect(() => {
-        if (typeof Notification !== "undefined" && Notification.permission === "granted" && localStorage.getItem("ccj_notif_off") !== "true") {
-          localStorage.setItem("ccj_notif_on", "true");
+        if (typeof Notification !== "undefined" && Notification.permission === "granted"
+            && localStorage.getItem("ccj_notif_on") === "true"
+            && localStorage.getItem("ccj_notif_off") !== "true") {
           setNotifPerm("granted");
         }
       }, []);
