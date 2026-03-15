@@ -2766,11 +2766,6 @@ OneSignalDeferred.push(async function(OneSignal) {
         setTimeout(() => {
           setSplashGone(true);
           splashGoneRef.current = true;
-          // Show pink reminder if notifications were previously enabled (handles app reload / webview restart)
-          if (localStorage.getItem("ccj_notif_on") === "true") {
-            setNotifEnabled(true);
-            setTimeout(() => setNotifEnabled(false), 4000);
-          }
         }, 500);
       };
       const [cookies, setCookiesRaw] = useState(() => load("ccj_cookies", 0));
@@ -2791,7 +2786,15 @@ OneSignalDeferred.push(async function(OneSignal) {
       const [notifPerm, setNotifPerm] = useState(() => {
         if (localStorage.getItem("ccj_notif_off") === "true") return "off";
         if (localStorage.getItem("ccj_notif_inpage") === "true") return "inpage";
-        if (localStorage.getItem("ccj_notif_on") === "true") return "granted";
+        if (localStorage.getItem("ccj_notif_on") === "true") {
+          // For browsers: if the OS permission was revoked or this is a new browser,
+          // reset so the pink Enable banner shows again instead of hiding it.
+          if (typeof Notification !== "undefined" && Notification.permission !== "granted") {
+            localStorage.removeItem("ccj_notif_on");
+            return "default";
+          }
+          return "granted";
+        }
         return "default";
       });
       const [notifEnabled, setNotifEnabled] = useState(false);
