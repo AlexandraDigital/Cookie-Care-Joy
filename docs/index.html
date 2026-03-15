@@ -42,6 +42,10 @@ OneSignalDeferred.push(async function(OneSignal) {
       font-family: system-ui, -apple-system, sans-serif;
     }
 
+    body, html {
+      background: #fdf6fb;
+    }
+
     #root {
       min-height: 100vh;
       min-height: -webkit-fill-available;
@@ -2776,7 +2780,7 @@ OneSignalDeferred.push(async function(OneSignal) {
                 const today = new Date().toISOString().split("T")[0];
                 if (localStorage.getItem("ccj_last_sched") !== today) {
                   localStorage.setItem("ccj_last_sched", today);
-                  setTimeout(() => { try { scheduleAllReminders(); } catch(e) {} }, 2000);
+                  setTimeout(() => { try { scheduleAllReminders(); } catch(e) {} }, 500);
                 }
                 break;
               }
@@ -2829,7 +2833,7 @@ OneSignalDeferred.push(async function(OneSignal) {
               if (!sub.optedIn) await sub.optIn();
             }
           } catch(e) {}
-          setTimeout(() => scheduleAllReminders(), 2000);
+          setTimeout(() => scheduleAllReminders(), 500);
         };
 
         // ── Path A: OneSignal ──
