@@ -3106,17 +3106,12 @@ OneSignalDeferred.push(async function(OneSignal) {
         const shuffled = [...caringMsgs].sort(() => Math.random() - 0.5);
         const now = new Date();
 
-        // Every 30 minutes from 6am to 11pm
-        const friendlySlots = [[6,0], [6,30], [7,0], [7,30], [8,0], [8,30], [9,0], [9,30], [10,0], [10,30], [11,0], [11,30], [12,0], [12,30], [13,0], [13,30], [14,0], [14,30], [15,0], [15,30], [16,0], [16,30], [17,0], [17,30], [18,0], [18,30], [19,0], [19,30], [20,0], [20,30], [21,0], [21,30], [22,0], [22,30], [23,0], [23,0]];
-        let msgIndex = 0;
-        for (const [hour, minute] of friendlySlots) {
-          // Build a Date for today at that time; if it's already passed, use tomorrow
-          const sendAt = new Date(now);
-          sendAt.setHours(hour, minute, 0, 0);
-          if (sendAt <= now) sendAt.setDate(sendAt.getDate() + 1);
-
-          const msg = shuffled[msgIndex % shuffled.length];
-          msgIndex++;
+        // Every 25 minutes starting from now, for the next 24 hours (~57 messages)
+        const INTERVAL_MS = 25 * 60 * 1000;
+        const TOTAL = 57;
+        for (let i = 0; i < TOTAL; i++) {
+          const sendAt = new Date(now.getTime() + INTERVAL_MS * (i + 1));
+          const msg = shuffled[i % shuffled.length];
           const id = await osPush("Cookie-Care-Joy 🍪", msg, sendAt, false, pid);
           if (id) newIds.push(id);
         }
