@@ -2777,7 +2777,18 @@ OneSignalDeferred.push(async function(OneSignal) {
       const [showSplash, setShowSplash] = useState(true);
       const [splashGone, setSplashGone] = useState(false);
       const splashGoneRef = React.useRef(false);
-      const dismissSplash = () => { setShowSplash(false); setTimeout(() => { setSplashGone(true); splashGoneRef.current = true; }, 500); };
+      const dismissSplash = () => {
+        setShowSplash(false);
+        setTimeout(() => {
+          setSplashGone(true);
+          splashGoneRef.current = true;
+          // Show green reminder if notifications were previously enabled (handles app reload / webview restart)
+          if (localStorage.getItem("ccj_notif_on") === "true") {
+            setNotifEnabled(true);
+            setTimeout(() => setNotifEnabled(false), 4000);
+          }
+        }, 500);
+      };
       const [cookies, setCookiesRaw] = useState(() => load("ccj_cookies", 0));
       const [trophies, setTrophies] = useState(() => load("ccj_trophies", 0));
       const [showTrophy, setShowTrophy] = useState(false);
@@ -2817,7 +2828,7 @@ OneSignalDeferred.push(async function(OneSignal) {
         return () => document.removeEventListener("ccj-toast", handler);
       }, [addToast]);
 
-      // Sync with browser: if permission already granted AND user had previously enabled, hide pink banner
+      // Sync with browser: if permission already granted AND user had previously enabled, confirm state
       // Do NOT auto-grant if ccj_notif_on is absent (e.g. after a reset) — that would hide the Enable button
       useEffect(() => {
         if (typeof Notification !== "undefined" && Notification.permission === "granted"
