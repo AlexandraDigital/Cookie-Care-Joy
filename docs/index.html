@@ -11,18 +11,10 @@ window.OneSignalDeferred = window.OneSignalDeferred || [];
 OneSignalDeferred.push(async function(OneSignal) {
   await OneSignal.init({
     appId: "249f07c6-54a2-4e50-a5ec-f9021b61e47c",
-    serviceWorkerPath: "/Cookie-Care-Joy/OneSignalSDKWorker.js",
+    serviceWorkerPath: "OneSignalSDKWorker.js",
     serviceWorkerParam: { scope: "/Cookie-Care-Joy/" },
     autoResubscribe: true
   });
-  // Show in-app pink toast when a notification arrives while the app is open
-  try {
-    OneSignal.Notifications.addEventListener("foregroundWillDisplay", function(event) {
-      var title = (event.notification && event.notification.title) || "Cookie-Care-Joy 🍪";
-      var body  = (event.notification && event.notification.body)  || "";
-      document.dispatchEvent(new CustomEvent("ccj-toast", { detail: { title: title, body: body } }));
-    });
-  } catch(e) {}
   // Cache player ID immediately after init (covers returning browser users)
   try {
     const pid = OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.id;
@@ -37,19 +29,20 @@ OneSignalDeferred.push(async function(OneSignal) {
       } catch(e) {}
     });
   } catch(e) {}
+  // Show in-app pink toast when a push arrives while the app is open
+  try {
+    OneSignal.Notifications.addEventListener("foregroundWillDisplay", function(e) {
+      try {
+        var n = e.notification;
+        document.dispatchEvent(new CustomEvent("ccj-toast", {
+          detail: { title: (n && n.title) || "Cookie-Care-Joy 🍪", body: (n && n.body) || "" }
+        }));
+      } catch(err) {}
+    });
+  } catch(e) {}
 });
 </script>
   <meta charset="UTF-8" />
-  <style id="pre-splash-style">
-    #pre-splash {
-      position: fixed; inset: 0; z-index: 99999;
-      background: linear-gradient(145deg,#fce7ef 0%,#fff0f6 45%,#fdf6fb 100%);
-      display: flex; align-items: center; justify-content: center;
-      font-size: clamp(80px,16vw,120px); line-height: 1;
-      transition: opacity 0.08s ease;
-    }
-    #pre-splash.hide { opacity: 0; pointer-events: none; }
-  </style>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Cookie-Care-Joy 🍪</title>
 
@@ -557,18 +550,17 @@ OneSignalDeferred.push(async function(OneSignal) {
 </head>
 
 <body>
-  <div id="pre-splash">🍪</div>
+  <!-- Instant pink cover: hides white flash before React mounts -->
+  <div id="ccj-presplash" style="position:fixed;inset:0;z-index:10000;background:linear-gradient(145deg,#fce7ef 0%,#fff0f6 45%,#fdf6fb 100%);display:flex;align-items:center;justify-content:center;font-size:80px;pointer-events:none;transition:opacity 0.08s ease">🍪</div>
   <script>
-    // Dismiss pre-splash as soon as React SplashScreen takes over (~100ms after load)
-    window.__dismissPreSplash = function() {
-      var el = document.getElementById("pre-splash");
-      if (!el) return;
-      el.classList.add("hide");
-      // Remove from DOM after transition (0.08s) so it never blocks clicks
-      setTimeout(function() { if (el && el.parentNode) el.parentNode.removeChild(el); }, 150);
-    };
-    // Fallback: remove after 5s no matter what
-    setTimeout(function() { window.__dismissPreSplash && window.__dismissPreSplash(); }, 5000);
+    // Dismiss pre-splash after React's first two render frames (seamless handoff to animated splash)
+    (function() {
+      function removeCover() {
+        var el = document.getElementById("ccj-presplash");
+        if (el) { el.style.opacity = "0"; setTimeout(function() { if (el.parentNode) el.parentNode.removeChild(el); }, 90); }
+      }
+      requestAnimationFrame(function() { requestAnimationFrame(removeCover); });
+    })();
   </script>
   <div id="root"></div>
   <script>
@@ -1032,8 +1024,6 @@ OneSignalDeferred.push(async function(OneSignal) {
       const tSplash = (TRANSLATIONS[localStorage.getItem("ccj_lang") || "en"] || TRANSLATIONS.en);
 
       React.useEffect(() => {
-        // Remove the pre-React CSS cover now that React splash is mounted
-        if (window.__dismissPreSplash) window.__dismissPreSplash();
         const t1 = setTimeout(() => { setPhase("crumble"); setShowCrumbs(true); }, 750);
         const t2 = setTimeout(() => setPhase("text"), 1000);
         const t3 = setTimeout(() => setPhase("out"), 2800);
@@ -1364,25 +1354,32 @@ OneSignalDeferred.push(async function(OneSignal) {
             paddingTop: "env(safe-area-inset-top)",
           }}>
             <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 20px", height: 64, display: "grid", gridTemplateColumns: "auto 1fr auto", alignItems: "center", gap: 16 }}>
-              {/* Brand — left (long-press 🍪 3s to reset notifications for testing) */}
-              {(() => {
-                const pressRef = React.useRef(null);
-                const startPress = () => {
-                  pressRef.current = setTimeout(() => {
-                    ["ccj_notif_on","ccj_notif_off","ccj_notif_inpage"].forEach(k => localStorage.removeItem(k));
-                    window.location.reload();
-                  }, 3000);
-                };
-                const cancelPress = () => { clearTimeout(pressRef.current); };
-                return (
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, userSelect: "none" }}
-                    onMouseDown={startPress} onMouseUp={cancelPress} onMouseLeave={cancelPress}
-                    onTouchStart={startPress} onTouchEnd={cancelPress} onTouchCancel={cancelPress}>
-                    <span style={{ fontSize: 24 }}>🍪</span>
-                    <span style={{ fontWeight: 800, fontSize: 17, color: ROSE, fontFamily: "Georgia,serif", whiteSpace: "nowrap" }}>Cookie-Care-Joy</span>
-                  </div>
-                );
-              })()}
+              {/* Brand — left (3s long-press on 🍪 resets notification state for testing) */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                <span
+                  style={{ fontSize: 24, cursor: "default", userSelect: "none" }}
+                  onMouseDown={e => {
+                    const t = setTimeout(() => {
+                      ["ccj_notif_on","ccj_notif_off","ccj_notif_inpage","ccj_welcome_pending","ccj_os_player_id","ccj_sched_ids","ccj_sched_at"].forEach(k => localStorage.removeItem(k));
+                      window.location.reload();
+                    }, 3000);
+                    const cancel = () => clearTimeout(t);
+                    document.addEventListener("mouseup", cancel, { once: true });
+                    document.addEventListener("mouseleave", cancel, { once: true });
+                  }}
+                  onTouchStart={e => {
+                    const t = setTimeout(() => {
+                      e.preventDefault();
+                      ["ccj_notif_on","ccj_notif_off","ccj_notif_inpage","ccj_welcome_pending","ccj_os_player_id","ccj_sched_ids","ccj_sched_at"].forEach(k => localStorage.removeItem(k));
+                      window.location.reload();
+                    }, 3000);
+                    const cancel = () => clearTimeout(t);
+                    document.addEventListener("touchend", cancel, { once: true });
+                    document.addEventListener("touchcancel", cancel, { once: true });
+                  }}
+                >🍪</span>
+                <span style={{ fontWeight: 800, fontSize: 17, color: ROSE, fontFamily: "Georgia,serif", whiteSpace: "nowrap" }}>Cookie-Care-Joy</span>
+              </div>
               {/* Tabs — centered */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
                 {tabs.map(tab => {
@@ -1511,34 +1508,30 @@ OneSignalDeferred.push(async function(OneSignal) {
                 </button>
               );
             })}
-            {/* Language dropdown — Mobile */}
+            {/* Language dropdown — Mobile (5x rapid taps = reset notifications) */}
             <div style={{ flex: "0 0 52px", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }} onTouchStart={e => e.stopPropagation()}>
-              {(() => {
-                const tapRef = React.useRef({ count: 0, timer: null });
-                const handleLangTap = () => {
-                  setShowLangDrop(d => !d);
-                  tapRef.current.count += 1;
-                  clearTimeout(tapRef.current.timer);
-                  if (tapRef.current.count >= 5) {
-                    tapRef.current.count = 0;
-                    ["ccj_notif_on","ccj_notif_off","ccj_notif_inpage"].forEach(k => localStorage.removeItem(k));
+              <button onClick={(() => {
+                let taps = 0, timer = null;
+                return (ev) => {
+                  taps++;
+                  clearTimeout(timer);
+                  if (taps >= 5) {
+                    taps = 0;
+                    ["ccj_notif_on","ccj_notif_off","ccj_notif_inpage","ccj_welcome_pending","ccj_os_player_id","ccj_sched_ids","ccj_sched_at"].forEach(k => localStorage.removeItem(k));
                     window.location.reload();
                     return;
                   }
-                  tapRef.current.timer = setTimeout(() => { tapRef.current.count = 0; }, 1500);
+                  timer = setTimeout(() => { taps = 0; setShowLangDrop(d => !d); }, 400);
                 };
-                return (
-                  <button onClick={handleLangTap} style={{
-                    background: "transparent", border: "none", cursor: "pointer",
-                    fontFamily: "inherit", padding: "8px 4px 10px",
-                    display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-                    color: showLangDrop ? ROSE : GRAY,
-                  }}>
-                    <span style={{ fontSize: 20, lineHeight: 1 }}>{currentLang.flag}</span>
-                    <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: 0.2 }}>{lang.toUpperCase()}</span>
-                  </button>
-                );
-              })()}
+              })()} style={{
+                background: "transparent", border: "none", cursor: "pointer",
+                fontFamily: "inherit", padding: "8px 4px 10px",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+                color: showLangDrop ? ROSE : GRAY,
+              }}>
+                <span style={{ fontSize: 20, lineHeight: 1 }}>{currentLang.flag}</span>
+                <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: 0.2 }}>{lang.toUpperCase()}</span>
+              </button>
               {showLangDrop && (
                 <div onTouchStart={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} style={{
                   position: "absolute", bottom: "calc(100% + 8px)", right: 0,
@@ -2735,7 +2728,22 @@ OneSignalDeferred.push(async function(OneSignal) {
                       <p style={{ margin: 0, fontSize: 12, color: GRAY }}>{t.load_backup_sub}</p>
                     </div>
                   </button>
-
+                  <div style={{ height: 1, background: "#f3f4f6", margin: "8px 0" }} />
+                  <button onClick={() => { setOpen(false); if (window._appResetNotif) window._appResetNotif(); }} style={{
+                    width: "100%", padding: "14px", border: "none", borderRadius: 14,
+                    background: "#f0f9ff", cursor: "pointer", fontFamily: "inherit",
+                    display: "flex", alignItems: "center", gap: 12,
+                    transition: "background 0.15s",
+                  }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#e0f2fe"}
+                    onMouseLeave={e => e.currentTarget.style.background = "#f0f9ff"}
+                  >
+                    <span style={{ fontSize: 22, width: 28, textAlign: "center" }}>🔔</span>
+                    <div style={{ textAlign: "left" }}>
+                      <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#0369a1" }}>Reset notifications</p>
+                      <p style={{ margin: 0, fontSize: 12, color: GRAY }}>Re-trigger the permission prompt</p>
+                    </div>
+                  </button>
                 </div>
               </div>
             )}
@@ -2777,7 +2785,7 @@ OneSignalDeferred.push(async function(OneSignal) {
         let welcomeTimer;
         const handleVisibility = () => {
           if (document.visibilityState === "visible") {
-            // Show pink confirmation banner when returning if notifications are on
+            // Show full green banner when returning if notifications are on
             const isOn = localStorage.getItem("ccj_notif_on") === "true";
             if (isOn && splashGoneRef.current) {
               setNotifEnabled(true);
@@ -2827,11 +2835,10 @@ OneSignalDeferred.push(async function(OneSignal) {
       const splashGoneRef = React.useRef(false);
       const dismissSplash = () => {
         setShowSplash(false);
-        // Remove the pre-splash CSS cover (shows before React loads)
-        if (window.__dismissPreSplash) window.__dismissPreSplash();
         setTimeout(() => {
           setSplashGone(true);
           splashGoneRef.current = true;
+          // (no auto-green banner — let notifPerm state handle banner display)
         }, 500);
       };
       const [cookies, setCookiesRaw] = useState(() => load("ccj_cookies", 0));
@@ -2850,11 +2857,10 @@ OneSignalDeferred.push(async function(OneSignal) {
       useEffect(() => { save("ccj_sound", selectedSound); }, [selectedSound]);
       useEffect(() => { save("ccj_tasks", tasks); }, [tasks]);
       const [notifPerm, setNotifPerm] = useState(() => {
-        // Simple rule: only hide the pink banner if user explicitly enabled OR dismissed.
-        // No browser API checks — works identically on browsers, iOS, Android.
         if (localStorage.getItem("ccj_notif_off") === "true") return "off";
+        if (localStorage.getItem("ccj_notif_inpage") === "true") return "inpage";
         if (localStorage.getItem("ccj_notif_on") === "true") return "granted";
-        return "default"; // ← show pink Enable banner
+        return "default";
       });
       const [notifEnabled, setNotifEnabled] = useState(false);
       const [welcomeBack, setWelcomeBack] = useState(false);
@@ -2874,7 +2880,15 @@ OneSignalDeferred.push(async function(OneSignal) {
         return () => document.removeEventListener("ccj-toast", handler);
       }, [addToast]);
 
-      // notifPerm synced purely from localStorage — no browser API override needed
+      // Sync with browser: if permission already granted AND user had previously enabled, confirm state
+      // Do NOT auto-grant if ccj_notif_on is absent (e.g. after a reset) — that would hide the Enable button
+      useEffect(() => {
+        if (typeof Notification !== "undefined" && Notification.permission === "granted"
+            && localStorage.getItem("ccj_notif_on") === "true"
+            && localStorage.getItem("ccj_notif_off") !== "true") {
+          setNotifPerm("granted");
+        }
+      }, []);
 
       // If a page reload happened right after enabling (e.g. from service worker registration),
       // show the welcome toast and send the native welcome push now that the page is fresh.
@@ -2932,22 +2946,21 @@ OneSignalDeferred.push(async function(OneSignal) {
           // No reload happened — clear the flag so startup doesn't show it again
           localStorage.removeItem("ccj_welcome_pending");
           startMotivationReminder();
-          // Send a sweet caring message ~8s after enable
-          // Schedule the OS push server-side immediately (send_after=+8s) so it arrives even if app is closed
-          {
-            const welcomeMsg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-            const sweetAt = new Date(Date.now() + 8000);
-            osPush("Cookie-Care-Joy 🍪", welcomeMsg, sweetAt, false); // server-scheduled: arrives outside app too
-            // Also show in-app pink toast at 8s if app stays open
+          // Schedule first sweet message server-side at +8s (arrives even if app is closed immediately)
+          (async () => {
+            const sweetMsg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
+            const eightSec = new Date(Date.now() + 8000);
+            osPush("Cookie-Care-Joy 🍪", sweetMsg, eightSec).catch(() => {});
+            // Also show in-app toast if user stays in the app
             setTimeout(() => {
-              document.dispatchEvent(new CustomEvent("ccj-toast", { detail: { title: "Cookie-Care-Joy 🍪", body: welcomeMsg } }));
+              document.dispatchEvent(new CustomEvent("ccj-toast", {
+                detail: { title: "Cookie-Care-Joy 🍪", body: sweetMsg }
+              }));
             }, 8000);
-          }
+          })();
           dbg("Notifications enabled");
 
-          setNotifPerm("granted");
-          setNotifEnabled(true);
-          setTimeout(() => setNotifEnabled(false), 4000);
+          setNotifPerm("inpage");
           setWelcomeBack(false);
         } catch (e) {
           dbg("Error: " + (e && e.message));
@@ -3047,11 +3060,12 @@ OneSignalDeferred.push(async function(OneSignal) {
       return localStorage.getItem("ccj_os_player_id") || null;
     }
 
-    async function osPush(title, body, sendAt /* Date or null = immediate */, skipWait = false, knownPid = null) {
-      const pid = knownPid || (skipWait ? await getOsPlayerId() : await waitForPlayerId(10000));
+    async function osPush(title, body, sendAt /* Date or null = immediate */, skipWait = false) {
+      const pid = skipWait ? await getOsPlayerId() : await waitForPlayerId(8000);
       if (!pid) return null;
       const payload = {
         app_id: OS_APP_ID,
+        include_player_ids: [pid],
         include_subscription_ids: [pid],
         contents: { en: body },
         headings: { en: title },
@@ -3069,7 +3083,7 @@ OneSignalDeferred.push(async function(OneSignal) {
       };
       if (sendAt) payload.send_after = sendAt.toUTCString();
       try {
-        const res = await fetch("https://api.onesignal.com/notifications", {
+        const res = await fetch("https://onesignal.com/api/v1/notifications", {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": OS_API_KEY },
           body: JSON.stringify(payload)
@@ -3093,7 +3107,7 @@ OneSignalDeferred.push(async function(OneSignal) {
 
     async function cancelOsPush(notifId) {
       try {
-        await fetch("https://api.onesignal.com/notifications/" + notifId + "?app_id=" + OS_APP_ID, {
+        await fetch("https://onesignal.com/api/v1/notifications/" + notifId + "?app_id=" + OS_APP_ID, {
           method: "DELETE", headers: { "Authorization": OS_API_KEY }
         });
       } catch(e) {}
@@ -3154,32 +3168,28 @@ OneSignalDeferred.push(async function(OneSignal) {
       const motivationIntervalRef = React.useRef(null);
 
       async function scheduleMotivationReminders() {
-        // Wait for OneSignal player ID once — avoids 8s-per-message retry hang
-        const pid = await waitForPlayerId(12000);
-        if (!pid) { dbg("scheduleMotivationReminders: no player ID, aborting"); return; }
-
         // Cancel any previously-scheduled motivation reminders
         const oldIds = JSON.parse(localStorage.getItem("ccj_sched_ids") || "[]");
         for (const id of oldIds) cancelOsPush(id).catch(() => {});
 
-        // Schedule sweet reminders across the next 24 hours at cozy times
-        // so they arrive even if the app is never opened again today
+        // Schedule sweet reminders starting at now+25min, every 25 minutes for 24h (~57 messages)
+        // Uses relative timing so they work no matter what time of day the user enables
         const newIds = [];
         const shuffled = [...caringMsgs].sort(() => Math.random() - 0.5);
         const now = new Date();
-
-        // Every 25 minutes starting from now, for the next 24 hours (~57 messages)
-        // Fire all API calls in parallel so scheduling completes in seconds, not minutes
-        const INTERVAL_MS = 25 * 60 * 1000;
-        const TOTAL = 57;
+        const INTERVAL_MS = 25 * 60 * 1000; // 25 minutes
+        const TOTAL = 57;                    // ~24h coverage
         const pushPromises = [];
         for (let i = 0; i < TOTAL; i++) {
           const sendAt = new Date(now.getTime() + INTERVAL_MS * (i + 1));
           const msg = shuffled[i % shuffled.length];
-          pushPromises.push(osPush("Cookie-Care-Joy 🍪", msg, sendAt, false, pid));
+          pushPromises.push(
+            osPush("Cookie-Care-Joy 🍪", msg, sendAt)
+              .then(id => { if (id) newIds.push(id); })
+              .catch(() => {})
+          );
         }
-        const results = await Promise.all(pushPromises);
-        results.forEach(id => { if (id) newIds.push(id); });
+        await Promise.all(pushPromises);
 
         localStorage.setItem("ccj_sched_ids", JSON.stringify(newIds));
         localStorage.setItem("ccj_sched_at", Date.now().toString());
@@ -3192,18 +3202,16 @@ OneSignalDeferred.push(async function(OneSignal) {
           return;
         }
         dbg("startMotivationReminder started");
-        // Set sentinel immediately so a second call while we wait doesn't double-start
-        motivationIntervalRef.current = "pending";
 
-        // Schedule immediately — scheduleMotivationReminders() waits internally for player ID
-        // This ensures all 57 pushes are queued on OneSignal's servers before the user leaves the app
+        // Motivational reminders are scheduled via OneSignal — no immediate duplicate toast
+
+        // Schedule real native push notifications via OneSignal (survive app close)
         scheduleMotivationReminders();
 
         // Re-schedule once a day while app is open (24h coverage already pre-booked)
-        const dayInterval = setInterval(() => {
+        motivationIntervalRef.current = setInterval(() => {
           scheduleMotivationReminders();
         }, 24 * 60 * 60 * 1000);
-        motivationIntervalRef.current = dayInterval;
       }
 
       useEffect(() => {
@@ -3392,6 +3400,20 @@ OneSignalDeferred.push(async function(OneSignal) {
             {(() => {
               // ONE banner at a time — priority order
               if (!splashGone) return null;
+              if (welcomeBack) return (
+                <div style={{ position: "fixed", top: "max(18px, env(safe-area-inset-top))", left: "50%", transform: "translateX(-50%)", zIndex: 800, background: "linear-gradient(90deg,#22c55e,#16a34a)", borderRadius: 999, boxShadow: "0 4px 18px rgba(34,197,94,0.35)", padding: "9px 20px", display: "flex", alignItems: "center", gap: 8, animation: "slideDown 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards", whiteSpace: "nowrap", pointerEvents: "none" }}>
+                  <span style={{ fontSize: 16 }}>🔔</span>
+                  <span style={{ fontSize: 13, color: "#fff", fontWeight: 700 }}>{t.notif_on_msg || "Notifications are on ✅"}</span>
+                </div>
+              );
+              if (notifEnabled) return (
+                <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 700, background: "linear-gradient(90deg,#22c55e,#16a34a)", boxShadow: "0 2px 12px rgba(34,197,94,0.4)", paddingTop: "calc(13px + env(safe-area-inset-top))", paddingBottom: "13px", paddingLeft: "16px", paddingRight: "16px", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, animation: "slideDown 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards" }}>
+                  <span style={{ fontSize: 20 }}>🔔</span>
+                  <span style={{ fontSize: 13, color: "#fff", fontWeight: 700 }}>{t.notif_on_msg}</span>
+                  <span style={{ fontSize: 16 }}>✅</span>
+                </div>
+              );
+              
               if (notifPerm === "default") return (
                 <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 700, background: notifError ? "#1f2937" : "linear-gradient(90deg,#f43f6e,#fb7185)", boxShadow: "0 2px 12px rgba(244,63,110,0.35)", paddingTop: "env(safe-area-inset-top)", animation: "slideDown 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards", minHeight: 52, transition: "background 0.3s" }}>
                   {notifError ? (
@@ -3410,21 +3432,7 @@ OneSignalDeferred.push(async function(OneSignal) {
                   )}
                 </div>
               );
-              // Green confirmation banner after enabling or when returning with notif on
-              if (welcomeBack) return (
-                <div style={{ position: "fixed", top: "max(18px, env(safe-area-inset-top))", left: "50%", transform: "translateX(-50%)", zIndex: 800, background: "linear-gradient(90deg,#ec4899,#f43f6e)", borderRadius: 999, boxShadow: "0 4px 18px rgba(244,63,110,0.35)", padding: "9px 20px", display: "flex", alignItems: "center", gap: 8, animation: "slideDown 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards", whiteSpace: "nowrap", pointerEvents: "none" }}>
-                  <span style={{ fontSize: 16 }}>🔔</span>
-                  <span style={{ fontSize: 13, color: "#fff", fontWeight: 700 }}>{t.notif_on_msg || "Notifications are on ✅"}</span>
-                </div>
-              );
-              if (notifEnabled) return (
-                <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 700, background: "linear-gradient(90deg,#ec4899,#f43f6e)", boxShadow: "0 2px 12px rgba(244,63,110,0.4)", paddingTop: "calc(13px + env(safe-area-inset-top))", paddingBottom: "13px", paddingLeft: "16px", paddingRight: "16px", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, animation: "slideDown 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards" }}>
-                  <span style={{ fontSize: 20 }}>🔔</span>
-                  <span style={{ fontSize: 13, color: "#fff", fontWeight: 700 }}>{t.notif_on_msg}</span>
-                  <span style={{ fontSize: 16 }}>✅</span>
-                </div>
-              );
-              // No banner if already on or off
+              // No banner if already on or off — only show pink banner on first-time setup
               return null;
             })()}
             <div style={{ height: notifPerm === "default" ? 56 : 0, transition: "height 0.3s", flexShrink: 0 }} />
