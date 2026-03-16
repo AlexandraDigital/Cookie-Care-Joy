@@ -6,8 +6,7 @@ self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
 
 const ICON = 'https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png';
 
-// ── Web Push (server-sent) ───────────────────────────────────────────────────
-// Fires when a push message arrives from a push service (e.g. OneSignal, Web Push server).
+// ── Web Push (server-sent, e.g. OneSignal / Firebase) ────────────────────────
 self.addEventListener('push', e => {
   let data = { title: 'Cookie-Care-Joy 🍪', body: 'Time to take care of yourself ✨' };
   if (e.data) {
@@ -25,41 +24,85 @@ self.addEventListener('push', e => {
 });
 
 // ── SW-side notification scheduling ─────────────────────────────────────────
-// The page posts { type: 'SCHEDULE', fireAt, title, body } messages here so
-// notifications can fire even when the active tab loses focus.
-// Note: browsers may suspend idle service workers; for very long delays the
-// localStorage catchUpNotifs() on next open is the final safety net.
+// The page posts messages here so notifications can fire even when the tab is
+// backgrounded. _swTimers holds all live setTimeout handles keyed by fireAt ms.
 const _swTimers = new Map();
+
+function _scheduleOne(fireAt, title, body) {
+  if (!fireAt || !title) return;
+  if (_swTimers.has(fireAt)) clearTimeout(_swTimers.get(fireAt));
+  const delay = Math.max(0, fireAt - Date.now());
+  const tid = setTimeout(() => {
+    _swTimers.delete(fireAt);
+    self.registration.showNotification(title, {
+      body: body || '',
+      icon: ICON,
+      badge: ICON,
+      tag: 'ccj-sw-' + fireAt,
+      requireInteraction: false,
+    });
+  }, delay);
+  _swTimers.set(fireAt, tid);
+}
 
 self.addEventListener('message', e => {
   if (!e.data) return;
 
-  if (e.data.type === 'SCHEDULE') {
-    const { fireAt, title, body } = e.data;
-    if (!fireAt || !title) return;
-    const delay = Math.max(0, fireAt - Date.now());
-    if (_swTimers.has(fireAt)) clearTimeout(_swTimers.get(fireAt));
-    const tid = setTimeout(() => {
-      _swTimers.delete(fireAt);
-      self.registration.showNotification(title, {
-        body: body || '',
-        icon: ICON,
-        badge: ICON,
-        tag: 'ccj-sw-' + fireAt,
-        requireInteraction: false,
-      });
-    }, delay);
-    _swTimers.set(fireAt, tid);
-  }
+  switch (e.data.type) {
 
-  if (e.data.type === 'CANCEL') {
-    const { fireAt } = e.data;
-    if (_swTimers.has(fireAt)) { clearTimeout(_swTimers.get(fireAt)); _swTimers.delete(fireAt); }
-  }
+    // Schedule a single notification
+    case 'SCHEDULE':
+      _scheduleOne(e.data.fireAt, e.data.title, e.data.body);
+      break;
 
-  if (e.data.type === 'CANCEL_ALL') {
-    for (const [, tid] of _swTimers) clearTimeout(tid);
-    _swTimers.clear();
+    // Full re-sync: clear everything and rebuild from the page's localStorage queue.
+    // Called on page load, after SW restart, and on visibilitychange.
+    // This is the main defence against SW timer loss on SW termination.
+    case 'SYNC_ALL': {
+      for (const tid of _swTimers.values()) clearTimeout(tid);
+      _swTimers.clear();
+      const items = e.data.items || [];
+      for (const { fireAt, title, body } of items) {
+        _scheduleOne(fireAt, title, body);
+      }
+      break;
+    }
+
+    // Cancel a single notification
+    case 'CANCEL':
+      if (_swTimers.has(e.data.fireAt)) {
+        clearTimeout(_swTimers.get(e.data.fireAt));
+        _swTimers.delete(e.data.fireAt);
+      }
+      break;
+
+    // Cancel everything (called when user disables notifications)
+    case 'CANCEL_ALL':
+      for (const tid of _swTimers.values()) clearTimeout(tid);
+      _swTimers.clear();
+      break;
+
+    // Keepalive ping from the page — receiving this resets the SW idle timer.
+    // The page sends this every 20 s while visible, every 25 s while hidden.
+    case 'PING':
+      break;
+  }
+});
+
+// ── Periodic Background Sync ─────────────────────────────────────────────────
+// Fires even when the PWA is fully closed (Chrome Android, installed PWA only).
+// Asks any open window clients to re-sync the queue. If no clients are open,
+// broadcasts a 'REQUEST_SYNC' to all windows on next open via postMessage.
+self.addEventListener('periodicsync', e => {
+  if (e.tag === 'ccj-notif-sync') {
+    e.waitUntil(
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+        for (const client of clients) {
+          // Ask the page to send us SYNC_ALL with its localStorage queue
+          client.postMessage({ type: 'REQUEST_SYNC' });
+        }
+      })
+    );
   }
 });
 

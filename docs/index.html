@@ -3263,19 +3263,74 @@ document.addEventListener("DOMContentLoaded", function() {
       }
 
 
+      // syncSwQueue: sends the full future notification queue to the SW via SYNC_ALL.
+      // Called on page load (after SW ready), on visibilitychange, and on REQUEST_SYNC.
+      // This re-populates SW timers after a SW restart (browsers kill idle SWs after ~30 s).
+      async function syncSwQueue() {
+        if (!("serviceWorker" in navigator)) return;
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          if (!reg.active) return;
+          const q = JSON.parse(localStorage.getItem("ccj_notif_q") || "[]");
+          const future = q.filter(n => n.fireAt > Date.now());
+          reg.active.postMessage({ type: "SYNC_ALL", items: future });
+          dbg("syncSwQueue: synced " + future.length + " items to SW");
+        } catch(e) { dbg("syncSwQueue error: " + e); }
+      }
+
       React.useEffect(() => {
         window._ccjShowToast = (msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 6000); };
-        // Register our service worker (enables background notifications and Notification Triggers API)
+
         if ("serviceWorker" in navigator) {
+          // Register our service worker (enables background notifications and Notification Triggers API)
           navigator.serviceWorker.register("/Cookie-Care-Joy/sw.js", { scope: "/Cookie-Care-Joy/" })
             .then(reg => {
               dbg("SW registered: " + reg.scope);
-              // On page load: catch up on any notifications missed while tab was closed
+              return navigator.serviceWorker.ready;
+            })
+            .then(reg => {
+              // On page load: catch up on missed notifications AND sync full queue to SW
               if (Notification && Notification.permission === "granted") {
                 catchUpNotifs();
+                syncSwQueue();
+              }
+
+              // Register periodic background sync (PWA / Chrome Android only)
+              // This fires the SW even when the app is fully closed
+              if (reg.periodicSync) {
+                reg.periodicSync.register("ccj-notif-sync", { minInterval: 15 * 60 * 1000 })
+                  .then(() => dbg("Periodic sync registered"))
+                  .catch(e => dbg("Periodic sync not available: " + e));
               }
             })
             .catch(e => dbg("SW register error: " + e));
+
+          // Listen for REQUEST_SYNC from the SW (fired by periodicsync when app is closed)
+          navigator.serviceWorker.addEventListener("message", e => {
+            if (e.data && e.data.type === "REQUEST_SYNC") {
+              syncSwQueue();
+            }
+          });
+
+          // Keepalive ping: prevents browser from killing the SW while tab is open.
+          // Sent every 20 s when visible, every 25 s when hidden.
+          // Also re-syncs the queue every 10 pings (~3 min visible, ~4 min hidden).
+          let _pingCount = 0;
+          const _sendPing = async () => {
+            try {
+              const reg = await navigator.serviceWorker.ready;
+              if (reg.active) reg.active.postMessage({ type: "PING" });
+              _pingCount++;
+              if (_pingCount % 10 === 0) syncSwQueue(); // full re-sync every 10 pings
+            } catch(e) {}
+          };
+          const _pingMs = () => document.visibilityState === "visible" ? 20000 : 25000;
+          let _pingTimer = setTimeout(function _ping() {
+            _sendPing();
+            _pingTimer = setTimeout(_ping, _pingMs());
+          }, _pingMs());
+          window._ccjPingTimer = _pingTimer; // store for cleanup if needed
+
         } else if (Notification && Notification.permission === "granted") {
           // No SW support but notifications granted — still catch up
           catchUpNotifs();
@@ -3349,6 +3404,18 @@ document.addEventListener("DOMContentLoaded", function() {
           if (document.visibilityState === "visible") {
             // Catch up on any notifications missed while tab was hidden/closed
             catchUpNotifs();
+            // Re-sync SW queue — SW may have been killed while tab was hidden
+            syncSwQueue();
+            // Detect permission revocation: if user turned off notifications in browser settings
+            // while the tab was hidden, update UI state to match reality
+            if (typeof Notification !== "undefined" && Notification.permission !== "granted") {
+              if (localStorage.getItem("ccj_notif_on") === "true") {
+                dbg("onVisible: notification permission revoked externally — resetting state");
+                localStorage.removeItem("ccj_notif_on");
+                localStorage.removeItem("ccj_notif_q");
+                setNotifEnabled(false);
+              }
+            }
             doCheck();
             clearInterval(iv);
             iv = setInterval(doCheck, VISIBLE_MS);
