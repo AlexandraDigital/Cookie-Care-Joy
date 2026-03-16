@@ -3457,9 +3457,12 @@ document.addEventListener("DOMContentLoaded", function() {
               window._ccjShowToast("🍪 You're all set! Sweet cookie reminders on the way ✨");
             }
           }, 1500);
-          // ── Median uses OneSignal/FCM for all push delivery ─────────────
+          // ── Median uses OneSignal/FCM for all sweet message delivery ───────
           // Do NOT fall through to the SW local-notify path — that would fire
           // every sweet message twice (once via FCM, once via SW setTimeout).
+          // But DO fire the welcome notification locally — the app is always
+          // open for 5+ seconds after enabling, so the SW will be alive to deliver it.
+          localNotify("🍪 Welcome to Cookie-Care-Joy!", "Sweet reminders are set — we'll check in on you 💕", 5000);
           return;
         }
 
