@@ -2801,7 +2801,11 @@ if (!window.IS_MEDIAN_APP) {
       const [splashGone, setSplashGone] = useState(false);
       const splashGoneRef = React.useRef(false);
       const [showBanner, setShowBanner] = useState(false);
-      const dismissSplash = () => { setShowSplash(false); setTimeout(() => { setSplashGone(true); splashGoneRef.current = true; setShowBanner(true); setTimeout(() => setShowBanner(false), 6000);
+      const dismissSplash = () => { setShowSplash(false); setTimeout(() => { setSplashGone(true); splashGoneRef.current = true;
+        // Only show banner if not already registered
+        const alreadyRegistered = localStorage.getItem('ccj_notif_registered') === '1';
+        if (!alreadyRegistered) setShowBanner(true);
+        // No auto-dismiss — banner stays until user taps Enable or X
         if (Notification.permission === 'granted') {
           // Ensure OneSignal subscription is active, wait for ID, then schedule
           (async () => {
@@ -2879,6 +2883,7 @@ if (!window.IS_MEDIAN_APP) {
         const grantSuccess = async () => {
           localStorage.setItem("ccj_notif_on", "true");
           localStorage.setItem("ccj_notif_off", "false");
+          localStorage.setItem("ccj_notif_registered", "1"); // don't show banner again
           setNotifPerm("granted");
           setShowBanner(false);
           // Ensure OneSignal subscription is active and wait for subscription ID to populate
