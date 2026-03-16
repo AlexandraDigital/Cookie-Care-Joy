@@ -634,6 +634,33 @@ document.addEventListener("DOMContentLoaded", function() {
   } catch(e) {}
 })();
 // ── End CCJ early boot ───────────────────────────────────────────────────────
+
+// ── Auto-save queues on close ─────────────────────────────────────────────────
+// Ensures ccj_notif_q (sweet messages) and ccj_task_q (task alarms) are fully
+// persisted to localStorage before the browser tab, PWA, or Median app closes.
+// pagehide fires reliably on iOS Safari, Android Chrome, and desktop browsers.
+// beforeunload is an additional fallback for desktop browsers.
+(function() {
+  function saveQueuesNow() {
+    try {
+      // Flush in-memory scheduled fires back to localStorage
+      var now = Date.now();
+      // Notification queue
+      var nq = [];
+      try { nq = JSON.parse(localStorage.getItem('ccj_notif_q') || '[]'); } catch(e) {}
+      var nqFuture = nq.filter(function(n) { return n.fireAt > now; });
+      localStorage.setItem('ccj_notif_q', JSON.stringify(nqFuture));
+      // Task queue
+      var tq = [];
+      try { tq = JSON.parse(localStorage.getItem('ccj_task_q') || '[]'); } catch(e) {}
+      var tqFuture = tq.filter(function(n) { return n.fireAt > now; });
+      localStorage.setItem('ccj_task_q', JSON.stringify(tqFuture));
+    } catch(e) {}
+  }
+  window.addEventListener('pagehide', saveQueuesNow);
+  window.addEventListener('beforeunload', saveQueuesNow);
+})();
+// ── End auto-save ─────────────────────────────────────────────────────────────
 </script>
 
 <div id="ccj-presplash" style="position:fixed;inset:0;background:linear-gradient(145deg,#fce7ef 0%,#fff0f6 45%,#fdf6fb 100%);z-index:10000;display:flex;align-items:center;justify-content:center;transition:opacity 0.35s ease"><span style="font-size:clamp(100px,18vw,148px);line-height:1;filter:drop-shadow(0 16px 32px rgba(244,63,110,0.3))">🍪</span></div>
@@ -3428,11 +3455,10 @@ document.addEventListener("DOMContentLoaded", function() {
               window._ccjShowToast("🍪 You're all set! Sweet cookie reminders on the way ✨");
             }
           }, 1500);
-          // ── Fall through: also schedule SW-based local notifications ──────
-          // Median WebView (Chrome-based) supports service workers fully.
-          // localNotify → showNotifNow → reg.showNotification works in WebView.
-          // This gives the app the welcome + sweet + 25-min reminders on-device
-          // without needing an OneSignal server campaign.
+          // ── Median uses OneSignal/FCM for all push delivery ─────────────
+          // Do NOT fall through to the SW local-notify path — that would fire
+          // every sweet message twice (once via FCM, once via SW setTimeout).
+          return;
         }
 
         // ── Browser / PWA path ───────────────────────────────────────────────
