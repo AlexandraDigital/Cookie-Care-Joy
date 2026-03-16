@@ -2896,29 +2896,34 @@ if (!window.IS_MEDIAN_APP) {
 
         // ── Path A-0: Median native push (OneSignal integrated via Median dashboard) ──
         if (window.IS_MEDIAN_APP) {
+          // Instant feedback — dismiss banner and mark enabled right away
+          await grantSuccess();
+          // Register + get ID in background (non-blocking)
           try {
             if (window.median && window.median.onesignal) {
-              // Prompt native permission dialog
               window.median.onesignal.register();
-              // Wait for user to respond to permission dialog
-              await new Promise(r => setTimeout(r, 2500));
-              // Get the native subscription ID so we can send pushes
-              window.median.onesignal.getStatus(function(status) {
-                dbg("Median onesignal status: " + JSON.stringify(status));
-                if (status) {
-                  var pid = status.subscriptionId || status.userId || status.pushToken || null;
-                  if (pid) {
-                    window._medianOneSignalId = pid;
-                    localStorage.setItem("ccj_median_player_id", pid);
-                    dbg("Stored Median player ID: " + pid);
+              // Poll getStatus a few times to capture the subscription ID once granted
+              const tryGetId = (attempt) => {
+                window.median.onesignal.getStatus(function(status) {
+                  dbg("Median onesignal status (attempt " + attempt + "): " + JSON.stringify(status));
+                  if (status) {
+                    var pid = status.subscriptionId || status.userId || status.pushToken || null;
+                    if (pid) {
+                      window._medianOneSignalId = pid;
+                      localStorage.setItem("ccj_median_player_id", pid);
+                      dbg("Stored Median player ID: " + pid);
+                      // Re-schedule reminders now that we have the ID
+                      window._remindersSched = false;
+                      scheduleReminders();
+                    } else if (attempt < 5) {
+                      setTimeout(() => tryGetId(attempt + 1), 2000);
+                    }
                   }
-                }
-              });
-              // Give getStatus callback time to fire
-              await new Promise(r => setTimeout(r, 1500));
+                });
+              };
+              setTimeout(() => tryGetId(1), 1500);
             }
           } catch(e) { dbg("Median onesignal.register error: " + e); }
-          await grantSuccess();
           return;
         }
 
@@ -3176,9 +3181,11 @@ if (!window.IS_MEDIAN_APP) {
       // osPushWithId: send OneSignal push using already-resolved playerId (no extra polling)
       async function osPushWithId(playerId, title, body, sendAfterMs) {
         if (!playerId) return;
+        // subscriptionId (new) vs playerId/userId (legacy) — support both
+        const isSubId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(playerId);
         const payload = {
           app_id: OS_APP_ID,
-          include_player_ids: [playerId],
+          ...(isSubId ? { include_subscription_ids: [playerId] } : { include_player_ids: [playerId] }),
           headings: { en: title },
           contents: { en: body },
           android_channel_id: "ccj_reminders",
