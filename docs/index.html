@@ -2954,95 +2954,13 @@ document.addEventListener("DOMContentLoaded", function() {
           localStorage.setItem("ccj_notif_registered", "1"); // don't show banner again
           setNotifPerm("granted");
           setShowBanner(false);
-          // Ensure OneSignal subscription is active and wait for subscription ID to populate
-          try {
-            if (window.OneSignal && window.OneSignal.User && window.OneSignal.User.PushSubscription) {
-              const sub = window.OneSignal.User.PushSubscription;
-              if (!sub.optedIn) await sub.optIn();
-              // Poll for subscription ID (up to 10s — slow networks need more time)
-              for (let _w = 0; _w < 20; _w++) {
-                await new Promise(r => setTimeout(r, 500));
-                if (sub.id) break;
-              }
-              dbg("grantSuccess: subscription id = " + (sub.id || "null"));
-            }
-          } catch(e) { dbg("grantSuccess optIn error: " + e); }
           scheduleReminders();
         };
 
         // ── Path A-0: Median — request native notification permission ──
         if (window.IS_MEDIAN_APP || window.IS_MEDIAN) {
-          // Instant feedback — dismiss banner and mark enabled right away
           await grantSuccess();
-          // Request permission via Median bridge (non-blocking)
-          try {
-            if (window.median && window.median.onesignal) {
-              window.median.onesignal.register();
-              // Poll getStatus a few times to capture the subscription ID once granted
-              const tryGetId = (attempt) => {
-                window.median.onesignal.getStatus(function(status) {
-                  dbg("Median onesignal status (attempt " + attempt + "): " + JSON.stringify(status));
-                  if (status) {
-                    // v5+ uses onesignalId; legacy uses subscriptionId/userId
-                    var idType = status.onesignalId ? "onesignal_id" : (status.subscriptionId ? "subscription_id" : "player_id");
-                    var pid = status.onesignalId || status.subscriptionId || status.userId || status.pushToken || null;
-                    if (pid) {
-                      window._medianOneSignalId = pid;
-                      window._medianOneSignalIdType = idType;
-                      localStorage.setItem("ccj_median_player_id", pid);
-                      localStorage.setItem("ccj_median_id_type", idType);
-                      dbg("Stored Median player ID: " + pid);
-                      // Re-schedule reminders now that we have the ID
-                      window._remindersSched = false;
-                      scheduleReminders();
-                    } else if (attempt < 5) {
-                      setTimeout(() => tryGetId(attempt + 1), 2000);
-                    }
-                  }
-                });
-              };
-              setTimeout(() => tryGetId(1), 1500);
-            }
-          } catch(e) { dbg("Median onesignal.register error: " + e); }
           return;
-        }
-
-        // ── Path A: OneSignal (web browser) ──
-        // IMPORTANT: Do NOT await any macrotask (setInterval/setTimeout) before
-        // calling requestPermission() — it breaks the user-gesture context in
-        // Chrome, Firefox, and Safari and silently blocks the permission dialog.
-        // Use a synchronous readiness check instead.
-        const osReady = !!(window.OneSignal && window.OneSignal.Notifications) && !window._oneSignalFailed;
-        if (osReady) {
-          try {
-            // Already granted?
-            if (window.OneSignal.Notifications.permission === true) {
-              grantSuccess();
-              return;
-            }
-            // OneSignal v16: requestPermission() returns void — check .permission AFTER
-            await window.OneSignal.Notifications.requestPermission();
-            // Give OneSignal a moment to update its internal state
-            await new Promise(r => setTimeout(r, 300));
-            if (window.OneSignal.Notifications.permission === true) {
-              grantSuccess();
-              return;
-            }
-            // Also check native browser permission as fallback
-            if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-              grantSuccess();
-              return;
-            }
-            if (typeof Notification !== "undefined" && Notification.permission === "denied") {
-              setNotifError("Notifications blocked. Go to browser Settings → Site permissions to allow, then try again.");
-              return;
-            }
-            // Dismissed without choosing
-            setNotifError("Tap Enable again to allow notifications 🔔");
-            return;
-          } catch (e) {
-            // OneSignal threw — fall through to native
-          }
         }
 
         // ── Path B: Native Notification API (no OneSignal) ──
