@@ -573,6 +573,65 @@ document.addEventListener("DOMContentLoaded", function() {
   }, 3000);
 });
 </script>
+
+<script>
+// ── CCJ EARLY BOOT: runs BEFORE React mounts ─────────────────────────────────
+// Goal: zero-gap notification delivery at startup.
+// Problem: SW registration + catchUpNotifs live inside React useEffect which
+//          fires 1-3 seconds after page load. Any notification due in that
+//          window is silently dropped.
+// Fix:  1. Register SW immediately (browser deduplicates if already registered)
+//       2. SYNC_ALL: send full future queue to SW the instant it's active
+//       3. Fire any past-due notifications NOW via new Notification() before React
+// ─────────────────────────────────────────────────────────────────────────────
+(function() {
+  try {
+    if (!("serviceWorker" in navigator)) return;
+
+    // Step 1 — register SW now (not waiting for React)
+    var swPromise = navigator.serviceWorker.register("/Cookie-Care-Joy/sw.js", { scope: "/Cookie-Care-Joy/" });
+
+    // Step 2 — as soon as SW is active, send SYNC_ALL + fire overdue items
+    navigator.serviceWorker.ready.then(function(reg) {
+      if (!reg.active) return;
+
+      var raw = localStorage.getItem("ccj_notif_q");
+      if (!raw) return;
+      var q;
+      try { q = JSON.parse(raw); } catch(e) { return; }
+      if (!Array.isArray(q) || q.length === 0) return;
+
+      var now = Date.now();
+      var future = q.filter(function(n) { return n.fireAt > now; });
+      var past   = q.filter(function(n) { return n.fireAt <= now; });
+
+      // Send full future queue to SW — re-hydrates SW timers after a SW restart
+      reg.active.postMessage({ type: "SYNC_ALL", items: future });
+
+      // Fire past-due notifications immediately if permission granted
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+        past.forEach(function(n) {
+          try {
+            reg.showNotification(n.title || "Cookie Care Joy", {
+              body: n.body || "",
+              icon: "/Cookie-Care-Joy/icon-192.png",
+              badge: "/Cookie-Care-Joy/icon-96.png",
+              tag: "ccj-earlyboot-" + n.fireAt
+            });
+          } catch(e) {}
+        });
+        // Remove past items from queue — React catchUpNotifs will see a clean state
+        if (past.length > 0) {
+          localStorage.setItem("ccj_notif_q", JSON.stringify(future));
+        }
+      }
+    }).catch(function() {});
+
+  } catch(e) {}
+})();
+// ── End CCJ early boot ───────────────────────────────────────────────────────
+</script>
+
 <div id="ccj-presplash" style="position:fixed;inset:0;background:linear-gradient(145deg,#fce7ef 0%,#fff0f6 45%,#fdf6fb 100%);z-index:10000;display:flex;align-items:center;justify-content:center;transition:opacity 0.35s ease"><span style="font-size:clamp(100px,18vw,148px);line-height:1;filter:drop-shadow(0 16px 32px rgba(244,63,110,0.3))">🍪</span></div>
   <div id="root"></div>
   <script type="text/babel">
