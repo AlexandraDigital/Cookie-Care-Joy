@@ -9,11 +9,17 @@
 <script>
 window.OneSignalDeferred = window.OneSignalDeferred || [];
 OneSignalDeferred.push(async function(OneSignal) {
-  await OneSignal.init({
-    appId: "249f07c6-54a2-4e50-a5ec-f9021b61e47c",
-    serviceWorkerPath: "/Cookie-Care-Joy/OneSignalSDKWorker.js",
-    serviceWorkerParam: { scope: "/Cookie-Care-Joy/" },
-  });
+  try {
+    await OneSignal.init({
+      appId: "249f07c6-54a2-4e50-a5ec-f9021b61e47c",
+      serviceWorkerPath: "/Cookie-Care-Joy/OneSignalSDKWorker.js",
+      serviceWorkerParam: { scope: "/Cookie-Care-Joy/" },
+    });
+    window._oneSignalReady = true;
+  } catch(e) {
+    console.warn("OneSignal init failed (IndexedDB issue?), falling back to local notifications.", e.message || e);
+    window._oneSignalFailed = true;
+  }
 });
 </script>
   <meta charset="UTF-8" />
@@ -2775,6 +2781,7 @@ OneSignalDeferred.push(async function(OneSignal) {
 
       const waitForOneSignal = () => new Promise((resolve) => {
         // Already ready
+        if (window._oneSignalFailed) { resolve(false); return; } // IndexedDB unavailable
         if (window.OneSignal && window.OneSignal.Notifications) { resolve(true); return; }
         // Wait up to 5 seconds for OneSignal deferred init to complete
         let tries = 0;
@@ -3003,7 +3010,7 @@ OneSignalDeferred.push(async function(OneSignal) {
       const OS_API_KEY = "Key os_v2_app_espqprsuujhfbjpm7ebbwypepraqjwfoyy5ebwe33g2s5po2jsp6ohoesi4mwb77kpevaurzluw6vsarppzyqmu2zx3hwbpejku6yzi";
 
       async function getPlayerId() {
-        if (!window.OneSignal) return null;
+        if (window._oneSignalFailed || !window.OneSignal) return null;
         const getSub = () => {
           // OneSignal SDK v16: subscription ID is at User.PushSubscription.id
           const sub = window.OneSignal.User && window.OneSignal.User.PushSubscription;
