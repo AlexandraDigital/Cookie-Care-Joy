@@ -2709,7 +2709,22 @@ OneSignalDeferred.push(async function(OneSignal) {
       const [splashGone, setSplashGone] = useState(false);
       const splashGoneRef = React.useRef(false);
       const [showBanner, setShowBanner] = useState(false);
-      const dismissSplash = () => { setShowSplash(false); setTimeout(() => { setSplashGone(true); splashGoneRef.current = true; setShowBanner(true); setTimeout(() => setShowBanner(false), 4000); if (Notification.permission === 'granted') { scheduleReminders(); } }, 500); };
+      const dismissSplash = () => { setShowSplash(false); setTimeout(() => { setSplashGone(true); splashGoneRef.current = true; setShowBanner(true); setTimeout(() => setShowBanner(false), 4000);
+        if (Notification.permission === 'granted') {
+          // Ensure OneSignal subscription is active, wait for ID, then schedule
+          (async () => {
+            try {
+              if (window.OneSignal && window.OneSignal.User && window.OneSignal.User.PushSubscription) {
+                const sub = window.OneSignal.User.PushSubscription;
+                if (!sub.optedIn) await sub.optIn();
+                await new Promise(r => setTimeout(r, 2000));
+                dbg("dismissSplash autoStart: sub.id = " + (sub.id || "null"));
+              }
+            } catch(e) { dbg("dismissSplash optIn error: " + e); }
+            scheduleReminders();
+          })();
+        }
+      }, 500); };
       React.useEffect(() => { const el = document.getElementById("ccj-presplash"); if (el) { el.style.transition = "opacity 0.08s"; el.style.opacity = "0"; setTimeout(() => el && el.remove(), 80); } }, []);
       const [cookies, setCookiesRaw] = useState(() => load("ccj_cookies", 0));
       const [trophies, setTrophies] = useState(() => load("ccj_trophies", 0));
@@ -2773,12 +2788,16 @@ OneSignalDeferred.push(async function(OneSignal) {
           localStorage.setItem("ccj_notif_off", "false");
           setNotifPerm("granted");
           setShowBanner(false);
+          // Ensure OneSignal subscription is active and wait for subscription ID to populate
           try {
             if (window.OneSignal && window.OneSignal.User && window.OneSignal.User.PushSubscription) {
               const sub = window.OneSignal.User.PushSubscription;
               if (!sub.optedIn) await sub.optIn();
+              // Give OneSignal time to register subscription and populate PushSubscription.id
+              await new Promise(r => setTimeout(r, 2000));
+              dbg("grantSuccess: subscription id = " + (sub.id || "null"));
             }
-          } catch(e) {}
+          } catch(e) { dbg("grantSuccess optIn error: " + e); }
           scheduleReminders();
         };
 
@@ -2993,12 +3012,32 @@ OneSignalDeferred.push(async function(OneSignal) {
         return null;
       }
 
-      async function osPush(title, body, sendAfterMs) {
-        const playerId = await getPlayerId();
-        if (!playerId) { dbg("osPush: no player ID"); return; }
+      // localNotify: fires a notification via Service Worker when app is open
+      async function localNotify(title, body, delayMs) {
+        if (delayMs > 0) await new Promise(r => setTimeout(r, delayMs));
+        if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+        try {
+          if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+            const reg = await navigator.serviceWorker.ready;
+            reg.showNotification(title, {
+              body,
+              icon: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png",
+              badge: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png",
+              tag: "ccj-" + Date.now(),
+              requireInteraction: false,
+            });
+          } else {
+            new Notification(title, { body, icon: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png" });
+          }
+        } catch(e) { dbg("localNotify error: " + e.message); }
+      }
+
+      // osPushWithId: send OneSignal push using already-resolved playerId (no extra polling)
+      async function osPushWithId(playerId, title, body, sendAfterMs) {
+        if (!playerId) return;
         const payload = {
           app_id: OS_APP_ID,
-          include_subscription_ids: [playerId],
+          include_player_ids: [playerId],
           headings: { en: title },
           contents: { en: body },
           small_icon: "cookie_icon",
@@ -3014,26 +3053,46 @@ OneSignalDeferred.push(async function(OneSignal) {
           payload.send_after = new Date(Date.now() + sendAfterMs).toISOString();
         }
         try {
-          await fetch("https://onesignal.com/api/v1/notifications", {
+          const resp = await fetch("https://onesignal.com/api/v1/notifications", {
             method: "POST",
             headers: { "Content-Type": "application/json", "Authorization": OS_API_KEY },
             body: JSON.stringify(payload),
           });
+          const data = await resp.json();
+          dbg("osPush " + (resp.ok ? "OK" : "ERR") + " send_after=" + (sendAfterMs||0) + "ms: " + JSON.stringify(data).substring(0, 120));
         } catch(e) { dbg("osPush error: " + e.message); }
+      }
+
+      // osPush: legacy wrapper — resolves player ID then calls osPushWithId
+      async function osPush(title, body, sendAfterMs) {
+        const playerId = await getPlayerId();
+        if (!playerId) { dbg("osPush: no player ID"); return; }
+        await osPushWithId(playerId, title, body, sendAfterMs);
       }
 
       async function scheduleReminders() {
         dbg("scheduleReminders: start");
-        await osPush("🍪 Cookie-Care-Joy", "You're all set! Sweet reminders on the way ✨", 2000);
+
+        // ── Local notifications (fires while app is open, immediate) ──
+        localNotify("🍪 Cookie-Care-Joy", "You\'re all set! Sweet reminders on the way ✨", 2000);
+        const firstLocal = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
+        localNotify("Cookie-Care-Joy 🍪", firstLocal, 5000);
+
+        // ── OneSignal push (background/closed delivery) ──
+        // Get player ID ONCE to avoid 59 separate 10s polling loops
+        const playerId = await getPlayerId();
+        if (!playerId) { dbg("scheduleReminders: no OneSignal player ID — local-only"); return; }
+
+        await osPushWithId(playerId, "🍪 Cookie-Care-Joy", "You\'re all set! Sweet reminders on the way ✨", 2000);
         const first = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-        await osPush("Cookie-Care-Joy 🍪", first, 5000);
+        await osPushWithId(playerId, "Cookie-Care-Joy 🍪", first, 5000);
         const promises = [];
         for (let i = 1; i <= 57; i++) {
           const msg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-          promises.push(osPush("Cookie-Care-Joy 🍪", msg, 5000 + i * 25 * 60 * 1000));
+          promises.push(osPushWithId(playerId, "Cookie-Care-Joy 🍪", msg, 5000 + i * 25 * 60 * 1000));
         }
         await Promise.all(promises);
-        dbg("scheduleReminders: done");
+        dbg("scheduleReminders: done, player=" + playerId);
       }
 
       React.useEffect(() => {
@@ -3077,7 +3136,9 @@ OneSignalDeferred.push(async function(OneSignal) {
             if (reminderSentRef.current.set.has(key)) continue;
             if (nowMs >= alarmMs - TWO_MIN_MS && nowMs < alarmMs) {
               reminderSentRef.current.set.add(key);
-              osPush("Cookie-Care-Joy 🍪", "⏰ In 2 minutes: " + (task.text || "Task"), 0);
+              const taskMsg = "⏰ In 2 minutes: " + (task.text || "Task");
+              localNotify("Cookie-Care-Joy 🍪", taskMsg, 0);
+              osPush("Cookie-Care-Joy 🍪", taskMsg, 0);
             }
           }
 
