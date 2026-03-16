@@ -3342,7 +3342,6 @@ await new Promise(r => setTimeout(r, 1500));
 
       async function scheduleReminders() {
         if (window._remindersSched) { dbg("scheduleReminders: already scheduled, skip"); return; }
-        window._remindersSched = true;
         dbg("scheduleReminders: start");
 
         // Get player ID ONCE — determines which delivery path to use
@@ -3350,6 +3349,7 @@ await new Promise(r => setTimeout(r, 1500));
 
         if (playerId) {
           // ── OneSignal server push (works closed/background/any device) ──
+          window._remindersSched = true;
           dbg("scheduleReminders: using OneSignal push, player=" + playerId);
           await osPushWithId(playerId, "🍪 Cookie-Care-Joy", "You\'re all set! Sweet reminders on the way ✨", 2000);
           const first = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
