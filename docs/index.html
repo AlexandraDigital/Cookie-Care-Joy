@@ -3193,22 +3193,6 @@ document.addEventListener("DOMContentLoaded", function() {
           localStorage.setItem("ccj_notif_q", JSON.stringify(q.filter(n => n.fireAt !== fireAt)));
         } catch(e) {}
       }
-      // ── Voice / TTS helper ────────────────────────────────────────────────────
-      // Speaks notification and alarm text aloud using the Web Speech API.
-      // Safe to call anywhere — silently skips if API not available.
-      function speakCCJ(text) {
-        if (typeof window.speechSynthesis === 'undefined') return;
-        // Strip emoji for cleaner speech
-        const clean = (text || '').replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{2B50}\u{2B55}\uFE00-\uFE0F\u200D\u20E3]/gu, '').trim();
-        if (!clean) return;
-        window.speechSynthesis.cancel(); // stop anything already speaking
-        const utt = new SpeechSynthesisUtterance(clean);
-        utt.lang = 'en-US';
-        utt.rate = 0.95;
-        utt.pitch = 1.1;
-        utt.volume = 1.0;
-        window.speechSynthesis.speak(utt);
-      }
 
       async function showNotifNow(title, body, fireAt) {
         const _isMedian = window.IS_MEDIAN_APP || window.IS_MEDIAN;
@@ -3222,7 +3206,6 @@ document.addEventListener("DOMContentLoaded", function() {
         if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
         // Speak the notification aloud when app is in foreground
         if (document.visibilityState === 'visible') {
-          speakCCJ(title + (body ? '. ' + body : ''));
         }
         const ICON = "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png";
         try {
@@ -3599,7 +3582,6 @@ document.addEventListener("DOMContentLoaded", function() {
           setAlarmTask(firing);
 
           // Speak the alarm task name aloud
-          speakCCJ("Alarm! " + (firing.text || firing.title || "Your task is due now"));
 
           try {
             getCtx().resume().then(() => {
