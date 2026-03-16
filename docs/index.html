@@ -2857,24 +2857,16 @@ document.addEventListener("DOMContentLoaded", function() {
         if (_isMedian) {
           try {
             if (window.median && window.median.onesignal) {
-              // Hook median_onesignal_info callback to fire grantSuccess once subscribed
-              window._pendingMedianGrant = true;
-              const _prevInfo = window.median_onesignal_info;
-              window.median_onesignal_info = function(info) {
-                if (typeof _prevInfo === 'function') _prevInfo(info);
-                if (!window._pendingMedianGrant) return;
-                window._pendingMedianGrant = false;
-                window.median_onesignal_info = _prevInfo || null;
-                grantSuccess();
-              };
-              // Fallback: grant after 8 s if the callback never fires
+              // Set the pending grant callback — permanent median_onesignal_info will call it
+              window._ccjMedianGrantCb = grantSuccess;
+              // Fallback: grant after 5 s if the callback never fires (e.g. already subscribed)
               setTimeout(function() {
-                if (window._pendingMedianGrant) {
-                  window._pendingMedianGrant = false;
+                if (typeof window._ccjMedianGrantCb === 'function') {
+                  window._ccjMedianGrantCb = null;
                   grantSuccess();
                 }
-              }, 3000);
-              // Trigger native Android permission dialog
+              }, 5000);
+              // Trigger native Android FCM/OneSignal permission dialog
               window.median.onesignal.register();
             } else {
               // Bridge not ready — grant directly
@@ -3079,7 +3071,18 @@ document.addEventListener("DOMContentLoaded", function() {
       }
       async function showNotifNow(title, body) {
         const _isMedian = window.IS_MEDIAN_APP || window.IS_MEDIAN;
-        if (!_isMedian && (typeof Notification === "undefined" || Notification.permission !== "granted")) return;
+        // ── Median / Android WebView path ──
+        // The browser Notification API and Service Worker showNotification() are
+        // unavailable inside a Median WebView. Show an in-app toast instead so
+        // the user sees the reminder while the app is open.
+        // Background delivery is handled by OneSignal (FCM) server-sent pushes.
+        if (_isMedian) {
+          if (typeof window._ccjShowToast === 'function') {
+            window._ccjShowToast(title + (body ? ': ' + body : ''));
+          }
+          return;
+        }
+        if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
         const ICON = "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png";
         try {
           if (navigator.serviceWorker && navigator.serviceWorker.controller) {
@@ -3209,26 +3212,46 @@ document.addEventListener("DOMContentLoaded", function() {
 
       async function scheduleReminders() {
         if (window._remindersSched) { dbg("scheduleReminders: already scheduled, skip"); return; }
+        window._remindersSched = true;
+
+        // ── Median / Android WebView path ────────────────────────────────────
+        // Android kills page-side setTimeout timers when the app is backgrounded,
+        // so browser-style local notifications are unreliable here.
+        // Instead: enable OneSignal foreground notifications (shows FCM push even
+        // while app is open) and refresh the push token. Background push delivery
+        // is handled server-side via OneSignal + Firebase Cloud Messaging.
+        if (window.IS_MEDIAN_APP || window.IS_MEDIAN) {
+          dbg("scheduleReminders: Median mode — configuring OneSignal/FCM foreground notifications");
+          if (window.median && window.median.onesignal) {
+            // Show FCM push notifications even while the app is in the foreground
+            window.median.onesignal.enableForegroundNotifications(true);
+            // Refresh and store the FCM push token via the permanent median_onesignal_info callback
+            window.median.onesignal.info({ callback: 'median_onesignal_info' });
+          }
+          // Show immediate in-app confirmation toast
+          setTimeout(function() {
+            if (typeof window._ccjShowToast === 'function') {
+              window._ccjShowToast("🍪 You're all set! Sweet cookie reminders on the way ✨");
+            }
+          }, 1500);
+          return;
+        }
+
+        // ── Browser / PWA path ───────────────────────────────────────────────
         // If a saved queue exists the user already enabled — catchUpNotifs() will restore it.
         // Don't re-schedule (would pick new random messages and double-fill the queue).
-        if (!window.IS_MEDIAN_APP && !window.IS_MEDIAN) {
-          try {
-            const saved = JSON.parse(localStorage.getItem("ccj_notif_q") || "[]");
-            if (saved.length > 0) {
-              dbg("scheduleReminders: restoring " + saved.length + " saved notifications via catchUpNotifs");
-              window._remindersSched = true;
-              catchUpNotifs();
-              return;
-            }
-          } catch(e) {}
-        }
-        dbg("scheduleReminders: fresh start");
-        window._remindersSched = true;
+        try {
+          const saved = JSON.parse(localStorage.getItem("ccj_notif_q") || "[]");
+          if (saved.length > 0) {
+            dbg("scheduleReminders: restoring " + saved.length + " saved notifications via catchUpNotifs");
+            catchUpNotifs();
+            return;
+          }
+        } catch(e) {}
+
+        dbg("scheduleReminders: fresh start — browser/PWA local notification path");
         // Clear any stale saved queue before building a fresh one
         localStorage.removeItem("ccj_notif_q");
-
-        // ── Browser/PWA + Median path — local notifications ─────────────────
-        dbg("scheduleReminders: browser/PWA local notification path");
         localNotify("🍪 Cookie-Care-Joy", "You\'re all set! Sweet reminders on the way ✨", 2000);
         const firstLocal = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
         localNotify("Cookie-Care-Joy 🍪", firstLocal, 62000);
@@ -3238,6 +3261,7 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         dbg("scheduleReminders: browser/PWA done — all notifications scheduled");
       }
+
 
       React.useEffect(() => {
         window._ccjShowToast = (msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 6000); };
@@ -3619,6 +3643,47 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // ── Median JS Bridge init ────────────────────────────────────────────────
     if (IS_MEDIAN) {
+
+      // ── OneSignal / FCM info callback (permanent — called by Median on every page load) ──
+      // Must be defined here (synchronously, before React) so it's available at load time.
+      // Stores the FCM push token and OneSignal ID in localStorage for later use.
+      window.median_onesignal_info = function(info) {
+        try {
+          // Supports OneSignal SDK v5 (info.subscription.token) and legacy v4 (info.oneSignalPushToken)
+          var token = (info && info.subscription && info.subscription.token)
+                        ? info.subscription.token
+                        : (info && info.oneSignalPushToken) || null;
+          var osId  = (info && info.oneSignalId)
+                        ? info.oneSignalId
+                        : (info && info.oneSignalUserId) || null;
+          var opted = (info && info.subscription && info.subscription.optedIn !== undefined)
+                        ? !!info.subscription.optedIn
+                        : !!(info && info.oneSignalSubscribed);
+          if (token) localStorage.setItem('ccj_onesignal_token', token);
+          if (osId)  localStorage.setItem('ccj_onesignal_id',    osId);
+          localStorage.setItem('ccj_onesignal_subscribed', opted ? '1' : '0');
+          // Fire any pending grant callback (set by requestNotifications)
+          if (typeof window._ccjMedianGrantCb === 'function') {
+            var cb = window._ccjMedianGrantCb;
+            window._ccjMedianGrantCb = null;
+            cb();
+          }
+        } catch(e) {}
+      };
+
+      // ── Push notification tap handler ────────────────────────────────────
+      // Called by Median when user taps a push notification (even from background).
+      window.median_onesignal_push_opened = function(data) {
+        try {
+          localStorage.setItem('ccj_notif_last_opened', JSON.stringify({ at: Date.now(), data: data }));
+          // Show toast if app is in foreground
+          var body = data && data.notification && (data.notification.body || data.notification.alert);
+          if (body && typeof window._ccjShowToast === 'function') {
+            window._ccjShowToast('🍪 ' + body);
+          }
+        } catch(e) {}
+      };
+
       // Called by Median once the native bridge is ready
       window.median_ready = function () {
         // Bridge is confirmed active — update flag
