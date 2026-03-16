@@ -3364,7 +3364,11 @@ document.addEventListener("DOMContentLoaded", function() {
               window._ccjShowToast("🍪 You're all set! Sweet cookie reminders on the way ✨");
             }
           }, 1500);
-          return;
+          // ── Fall through: also schedule SW-based local notifications ──────
+          // Median WebView (Chrome-based) supports service workers fully.
+          // localNotify → showNotifNow → reg.showNotification works in WebView.
+          // This gives the app the welcome + sweet + 25-min reminders on-device
+          // without needing an OneSignal server campaign.
         }
 
         // ── Browser / PWA path ───────────────────────────────────────────────
