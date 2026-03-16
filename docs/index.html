@@ -2915,8 +2915,13 @@ document.addEventListener("DOMContentLoaded", function() {
 
             const disableNotifications = () => {
         localStorage.setItem("ccj_notif_off", "true");
+        localStorage.removeItem("ccj_notif_q");
         setNotifPerm("off");
         setShowBanner(false);
+        // Cancel all service-worker-scheduled notifications
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({ type: 'CANCEL_ALL' });
+        }
       };
 
       const resetNotifications = () => {
@@ -3118,6 +3123,15 @@ document.addEventListener("DOMContentLoaded", function() {
               removePendingNotif(n.fireAt);
               await showNotifNow(n.title, n.body);
             }, delay);
+            // Also re-delegate to the service worker for background delivery
+            const swMsg = { type: 'SCHEDULE', fireAt: n.fireAt, title: n.title, body: n.body };
+            if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+              navigator.serviceWorker.controller.postMessage(swMsg);
+            } else if (navigator.serviceWorker) {
+              navigator.serviceWorker.ready
+                .then(reg => { if (reg.active) reg.active.postMessage(swMsg); })
+                .catch(() => {});
+            }
           }
           dbg("catchUpNotifs: fired=" + past.length + " rescheduled=" + newScheduled + " skipped=" + (future.length - newScheduled));
         } catch(e) { dbg("catchUpNotifs error: " + e); }
@@ -3152,7 +3166,21 @@ document.addEventListener("DOMContentLoaded", function() {
           await showNotifNow(title, body);
         };
         if ((delayMs || 0) <= 0) { doFire(); }
-        else { setTimeout(doFire, delayMs); }
+        else {
+          setTimeout(doFire, delayMs);
+          // Also delegate to the service worker — it can fire the notification
+          // even when this page tab is not in focus or is briefly closed.
+          if ('serviceWorker' in navigator) {
+            const swMsg = { type: 'SCHEDULE', fireAt, title, body };
+            if (navigator.serviceWorker.controller) {
+              navigator.serviceWorker.controller.postMessage(swMsg);
+            } else {
+              navigator.serviceWorker.ready
+                .then(reg => { if (reg.active) reg.active.postMessage(swMsg); })
+                .catch(() => {});
+            }
+          }
+        }
       }
 
 
