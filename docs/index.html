@@ -2898,8 +2898,24 @@ if (!window.IS_MEDIAN_APP) {
         if (window.IS_MEDIAN_APP) {
           try {
             if (window.median && window.median.onesignal) {
+              // Prompt native permission dialog
               window.median.onesignal.register();
-              await new Promise(r => setTimeout(r, 1200));
+              // Wait for user to respond to permission dialog
+              await new Promise(r => setTimeout(r, 2500));
+              // Get the native subscription ID so we can send pushes
+              window.median.onesignal.getStatus(function(status) {
+                dbg("Median onesignal status: " + JSON.stringify(status));
+                if (status) {
+                  var pid = status.subscriptionId || status.userId || status.pushToken || null;
+                  if (pid) {
+                    window._medianOneSignalId = pid;
+                    localStorage.setItem("ccj_median_player_id", pid);
+                    dbg("Stored Median player ID: " + pid);
+                  }
+                }
+              });
+              // Give getStatus callback time to fire
+              await new Promise(r => setTimeout(r, 1500));
             }
           } catch(e) { dbg("Median onesignal.register error: " + e); }
           await grantSuccess();
@@ -3098,6 +3114,26 @@ if (!window.IS_MEDIAN_APP) {
       const OS_API_KEY = "Key os_v2_app_espqprsuujhfbjpm7ebbwypepraqjwfoyy5ebwe33g2s5po2jsp6ohoesi4mwb77kpevaurzluw6vsarppzyqmu2zx3hwbpejku6yzi";
 
       async function getPlayerId() {
+        // ── Median native player ID (stored after register + getStatus) ──
+        if (window.IS_MEDIAN_APP) {
+          const stored = window._medianOneSignalId || localStorage.getItem("ccj_median_player_id");
+          if (stored) { dbg("getPlayerId (Median): " + stored); return stored; }
+          // Try fetching live if not stored yet
+          if (window.median && window.median.onesignal) {
+            return await new Promise(function(resolve) {
+              window.median.onesignal.getStatus(function(status) {
+                var pid = (status && (status.subscriptionId || status.userId || status.pushToken)) || null;
+                if (pid) {
+                  window._medianOneSignalId = pid;
+                  localStorage.setItem("ccj_median_player_id", pid);
+                }
+                dbg("getPlayerId (Median live): " + pid);
+                resolve(pid);
+              });
+            });
+          }
+          return null;
+        }
         if (window._oneSignalFailed || !window.OneSignal) return null;
         const getSub = () => {
           // OneSignal SDK v16: subscription ID is at User.PushSubscription.id
@@ -3626,10 +3662,9 @@ if (!window.IS_MEDIAN_APP) {
         if (window.median && window.median.navigationbar) {
           window.median.navigationbar.hide();
         }
-        // Auto-register for native push notifications (OneSignal via Median dashboard)
-        if (window.median && window.median.onesignal) {
-          window.median.onesignal.register();
-        }
+        // Restore any previously stored Median player ID into memory
+        var storedPid = localStorage.getItem("ccj_median_player_id");
+        if (storedPid) { window._medianOneSignalId = storedPid; }
       };
 
       // Android hardware back button — let Median handle history navigation
