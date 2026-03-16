@@ -2993,6 +2993,8 @@ document.addEventListener("DOMContentLoaded", function() {
         setNotifError("");
 
         const grantSuccess = async () => {
+          if (window._ccjGrantDone) return; // guard: only run once
+          window._ccjGrantDone = true;
           localStorage.setItem("ccj_notif_on", "true");
           localStorage.setItem("ccj_notif_off", "false");
           localStorage.setItem("ccj_notif_registered", "1"); // don't show banner again
