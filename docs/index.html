@@ -3353,21 +3353,33 @@ document.addEventListener("DOMContentLoaded", function() {
             tq.push({ fireAt, title, body });
             localStorage.setItem("ccj_task_q", JSON.stringify(tq));
           }
+          // Also persist exact-alarm-time entry so SW fires even if app is fully closed
+          if (!tq.find(n => n.fireAt === alarmMs)) {
+            tq.push({ fireAt: alarmMs, title: "\u23F0 Alarm! \u2014 Cookie-Care-Joy", body: task.text || "Your task is due now \uD83C\uDF6A" });
+            localStorage.setItem("ccj_task_q", JSON.stringify(tq));
+          }
         } catch(e) {}
 
-        // Tell the SW — it fires even when the tab is backgrounded/closed
-        const swMsg = { type: "SCHEDULE", fireAt, title, body };
-        if (navigator.serviceWorker) {
+        // Helper to send SW message via controller or ready
+        const _swPost = (msg) => {
+          if (!navigator.serviceWorker) return;
           if (navigator.serviceWorker.controller) {
-            navigator.serviceWorker.controller.postMessage(swMsg);
+            navigator.serviceWorker.controller.postMessage(msg);
           } else {
             navigator.serviceWorker.ready
-              .then(reg => { if (reg.active) reg.active.postMessage(swMsg); })
+              .then(reg => { if (reg.active) reg.active.postMessage(msg); })
               .catch(() => {});
           }
-        }
+        };
 
-        // Page-side timer (fires if tab stays open until alarm time)
+        // Tell the SW — fires 2-min pre-alarm even when tab is backgrounded/closed
+        _swPost({ type: "SCHEDULE", fireAt, title, body });
+        // Tell SW — fires exact-alarm notification when app is fully closed
+        _swPost({ type: "SCHEDULE", fireAt: alarmMs,
+          title: "\u23F0 Alarm! \u2014 Cookie-Care-Joy",
+          body: task.text || "Your task is due now \uD83C\uDF6A" });
+
+        // Page-side timer (fires if tab stays open until 2-min mark)
         if (!window._ccjTaskTimers) window._ccjTaskTimers = new Map();
         if (!window._ccjTaskTimers.has(fireAt)) {
           window._ccjTaskTimers.set(fireAt, setTimeout(async () => {
@@ -3581,7 +3593,20 @@ document.addEventListener("DOMContentLoaded", function() {
           setFiredAlarms(prev => [...prev, firing.id + "_" + firing.alertTime]);
           setAlarmTask(firing);
 
-          // Speak the alarm task name aloud
+          // Cancel the exact-alarm SW notification — AlarmModal handles in-app UX.
+          // Also close any already-shown notification with matching tag.
+          (() => {
+            const _alarmMs = parseAlertTimeMs(firing.alertTime, todayStr);
+            if (!_alarmMs) return;
+            const _cancel = { type: 'CANCEL', fireAt: _alarmMs };
+            if (navigator.serviceWorker) {
+              if (navigator.serviceWorker.controller)
+                navigator.serviceWorker.controller.postMessage(_cancel);
+              navigator.serviceWorker.ready.then(reg => {
+                reg.getNotifications({ tag: 'ccj-' + _alarmMs }).then(ns => ns.forEach(n => n.close()));
+              }).catch(() => {});
+            }
+          })();
 
           try {
             getCtx().resume().then(() => {
