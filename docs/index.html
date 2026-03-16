@@ -2801,7 +2801,7 @@ if (!window.IS_MEDIAN_APP) {
       const [splashGone, setSplashGone] = useState(false);
       const splashGoneRef = React.useRef(false);
       const [showBanner, setShowBanner] = useState(false);
-      const dismissSplash = () => { setShowSplash(false); setTimeout(() => { setSplashGone(true); splashGoneRef.current = true; if (!window.IS_MEDIAN_APP) { setShowBanner(true); setTimeout(() => setShowBanner(false), 4000); }
+      const dismissSplash = () => { setShowSplash(false); setTimeout(() => { setSplashGone(true); splashGoneRef.current = true; setShowBanner(true); setTimeout(() => setShowBanner(false), 6000);
         if (Notification.permission === 'granted') {
           // Ensure OneSignal subscription is active, wait for ID, then schedule
           (async () => {
