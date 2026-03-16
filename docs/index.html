@@ -3390,7 +3390,7 @@ document.addEventListener("DOMContentLoaded", function() {
         // Clear any stale saved queue before building a fresh one
         localStorage.removeItem("ccj_notif_q");
         // Welcome notification — fires 2 seconds after enabling
-        localNotify("🍪 Welcome to Cookie-Care-Joy!", "Sweet reminders are set — we\'ll check in on you 💕", 2000);
+        localNotify("🍪 Welcome to Cookie-Care-Joy!", "Sweet reminders are set — we\'ll check in on you 💕", 5000); // fires after cookie splash animation (3.4s) is fully gone
         // First sweet message — fires after 5 minutes ("after a while")
         const firstLocal = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
         localNotify("Cookie-Care-Joy 🌸", firstLocal, 5 * 60 * 1000);
