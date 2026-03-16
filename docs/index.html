@@ -3206,6 +3206,8 @@ if (!window.IS_MEDIAN_APP) {
           if (stored) { dbg("getPlayerId (Median): " + stored); return stored; }
           // Try fetching live if not stored yet
           if (window.median && window.median.onesignal) {
+            try { window.median.onesignal.register(); } catch(e) {}
+await new Promise(r => setTimeout(r, 1500));
             return await new Promise(function(resolve) {
               window.median.onesignal.getStatus(function(status) {
                 var idType = (status && status.onesignalId) ? "onesignal_id" : ((status && status.subscriptionId) ? "subscription_id" : "player_id");
