@@ -2,8 +2,7 @@
 <html lang="en">
 
 <head>
-
-
+  <meta charset="UTF-8" />
  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 
 <script>
@@ -22,7 +21,6 @@ OneSignalDeferred.push(async function(OneSignal) {
   }
 });
 </script>
-  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <!-- PWA manifest (required for Android install + iOS 16.4+ push) -->
   <link rel="manifest" href="/Cookie-Care-Joy/manifest.json" />
@@ -515,9 +513,6 @@ OneSignalDeferred.push(async function(OneSignal) {
 <body>
   <div id="ccj-presplash" style="position:fixed;inset:0;background:#fdf6fb;z-index:9999;display:flex;align-items:center;justify-content:center"><span style="font-size:72px;line-height:1">🍪</span></div>
   <div id="root"></div>
-  <script>
-
-  </script>
   <script type="text/babel">
     const { useState, useEffect } = React;
 
