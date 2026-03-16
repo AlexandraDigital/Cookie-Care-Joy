@@ -11,7 +11,24 @@ window.IS_MEDIAN_APP = (
   typeof window.gonative !== "undefined"
 );
 </script>
- <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+ 
+<script>
+// ── Median Bridge: capture OneSignal ID as early as possible ──
+// Median calls this automatically after each page load (must be non-deferred global)
+function median_onesignal_info(info) {
+  if (!info) return;
+  var pid = (info.subscription && info.subscription.id) || info.oneSignalId || info.oneSignalUserId || null;
+  if (pid) {
+    window._medianOneSignalId = pid;
+    var isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}/.test(pid);
+    window._medianOneSignalIdType = info.subscription ? "onesignal_id" : (isUUID ? "onesignal_id" : "player_id");
+    try { localStorage.setItem("ccj_median_player_id", pid); localStorage.setItem("ccj_median_id_type", window._medianOneSignalIdType); } catch(e) {}
+    // If reminders haven't been scheduled yet, re-run now that we have the ID
+    if (window._pendingReminders) { window._remindersSched = false; window._pendingReminders = false; if (window._scheduleRemindersRef) window._scheduleRemindersRef(); }
+  }
+}
+</script>
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 
 <script>
 // Skip OneSignal web SDK in Median — push notifications are handled natively
@@ -2944,8 +2961,11 @@ if (!window.IS_MEDIAN_APP) {
             if (window.OneSignal && window.OneSignal.User && window.OneSignal.User.PushSubscription) {
               const sub = window.OneSignal.User.PushSubscription;
               if (!sub.optedIn) await sub.optIn();
-              // Give OneSignal time to register subscription and populate PushSubscription.id
-              await new Promise(r => setTimeout(r, 2000));
+              // Poll for subscription ID (up to 10s — slow networks need more time)
+              for (let _w = 0; _w < 20; _w++) {
+                await new Promise(r => setTimeout(r, 500));
+                if (sub.id) break;
+              }
               dbg("grantSuccess: subscription id = " + (sub.id || "null"));
             }
           } catch(e) { dbg("grantSuccess optIn error: " + e); }
@@ -2990,7 +3010,11 @@ if (!window.IS_MEDIAN_APP) {
         }
 
         // ── Path A: OneSignal (web browser) ──
-        const osReady = await waitForOneSignal();
+        // IMPORTANT: Do NOT await any macrotask (setInterval/setTimeout) before
+        // calling requestPermission() — it breaks the user-gesture context in
+        // Chrome, Firefox, and Safari and silently blocks the permission dialog.
+        // Use a synchronous readiness check instead.
+        const osReady = !!(window.OneSignal && window.OneSignal.Notifications) && !window._oneSignalFailed;
         if (osReady) {
           try {
             // Already granted?
@@ -3245,7 +3269,7 @@ await new Promise(r => setTimeout(r, 1500));
       }
 
       // localNotify: fires a notification via Service Worker when app is open
-      async function localNotify(title, body, delayMs) {
+      async async function localNotify(title, body, delayMs) {
         if (delayMs > 0) await new Promise(r => setTimeout(r, delayMs));
         if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
         try {
@@ -3265,7 +3289,7 @@ await new Promise(r => setTimeout(r, 1500));
       }
 
       // osPushWithId: send OneSignal push using already-resolved playerId (no extra polling)
-      async function osPushWithId(playerId, title, body, sendAfterMs) {
+      async async function osPushWithId(playerId, title, body, sendAfterMs) {
         if (!playerId) return;
         // Determine correct targeting field based on ID type
         const idType = window._medianOneSignalIdType || localStorage.getItem("ccj_median_id_type") || "player_id";
@@ -3340,7 +3364,7 @@ await new Promise(r => setTimeout(r, 1500));
         dbg("scheduleTaskPush: push scheduled OK");
       }
 
-      async function scheduleReminders() {
+      async async function scheduleReminders() {
         if (window._remindersSched) { dbg("scheduleReminders: already scheduled, skip"); return; }
         dbg("scheduleReminders: start");
 
