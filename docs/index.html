@@ -2796,7 +2796,7 @@ document.addEventListener("DOMContentLoaded", function() {
         const alreadyRegistered = localStorage.getItem('ccj_notif_registered') === '1';
         if (!alreadyRegistered) setShowBanner(true);
         // No auto-dismiss — banner stays until user taps Enable or X
-        if (Notification.permission === 'granted') {
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
           scheduleReminders();
         }
       }, 500); };
@@ -3088,6 +3088,11 @@ document.addEventListener("DOMContentLoaded", function() {
       // catchUpNotifs: call on startup + visibilitychange.
       // Fires notifications that were missed while tab was closed/hidden,
       // and reschedules future ones via setTimeout so they still fire.
+      // Tracks which fireAt timestamps already have a live setTimeout this session.
+      // Prevents duplicate notifications when catchUpNotifs() is called multiple times
+      // (SW registration, dismissSplash, and visibilitychange all call it).
+      window._ccjScheduledFires = window._ccjScheduledFires || new Set();
+
       async function catchUpNotifs() {
         const _isMedian = window.IS_MEDIAN_APP || window.IS_MEDIAN;
         if (!_isMedian && (typeof Notification === "undefined" || Notification.permission !== "granted")) return;
@@ -3100,16 +3105,21 @@ document.addEventListener("DOMContentLoaded", function() {
           // Fire missed notifications immediately (batched to avoid spam — max 3)
           const toFire = past.slice(-3);
           for (const n of toFire) await showNotifNow(n.title, n.body);
-          // Persist only future entries; reschedule them as setTimeouts
+          // Persist only future entries; reschedule as setTimeouts — skip any already scheduled
           localStorage.setItem("ccj_notif_q", JSON.stringify(future));
+          let newScheduled = 0;
           for (const n of future) {
+            if (window._ccjScheduledFires.has(n.fireAt)) continue; // already has a live timer
+            window._ccjScheduledFires.add(n.fireAt);
+            newScheduled++;
             const delay = n.fireAt - now;
             setTimeout(async () => {
+              window._ccjScheduledFires.delete(n.fireAt);
               removePendingNotif(n.fireAt);
               await showNotifNow(n.title, n.body);
             }, delay);
           }
-          dbg("catchUpNotifs: fired=" + past.length + " rescheduled=" + future.length);
+          dbg("catchUpNotifs: fired=" + past.length + " rescheduled=" + newScheduled + " skipped=" + (future.length - newScheduled));
         } catch(e) { dbg("catchUpNotifs error: " + e); }
       }
 
