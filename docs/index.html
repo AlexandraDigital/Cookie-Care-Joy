@@ -1836,8 +1836,10 @@ OneSignalDeferred.push(async function(OneSignal) {
 
       const addTask = form => {
         const newId = Date.now();
-        setTasks(prev => [...prev, { id: newId, ...form, done: false }]);
+        const newTask = { id: newId, ...form, done: false };
+        setTasks(prev => [...prev, newTask]);
         setShowForm(false);
+        scheduleTaskPush(newTask);
       };
       const toggleTask = id => {
         const t = tasks.find(t => t.id === id);
@@ -1849,6 +1851,8 @@ OneSignalDeferred.push(async function(OneSignal) {
       };
       const editTask = (id, changes) => {
         setTasks(prev => prev.map(t => t.id === id ? { ...t, ...changes } : t));
+        const existing = tasks.find(t => t.id === id);
+        if (existing) scheduleTaskPush({ ...existing, ...changes });
       };
 
       return (
@@ -1945,8 +1949,10 @@ OneSignalDeferred.push(async function(OneSignal) {
       selectedTasks.forEach(t => { const k = t.folder || "General"; if (!grouped[k]) grouped[k] = []; grouped[k].push(t); });
       const addTask = form => {
         const newId = Date.now();
-        setTasks(prev => [...prev, { id: newId, ...form, date: selected, done: false }]);
+        const newTask = { id: newId, ...form, date: selected, done: false };
+        setTasks(prev => [...prev, newTask]);
         setShowForm(false);
+        scheduleTaskPush(newTask);
       };
       const toggleTask = id => {
         const t = tasks.find(t => t.id === id);
@@ -1954,7 +1960,11 @@ OneSignalDeferred.push(async function(OneSignal) {
         setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
       };
       const removeTask = id => setTasks(prev => prev.filter(t => t.id !== id));
-      const editTask = (id, changes) => setTasks(prev => prev.map(t => t.id === id ? { ...t, ...changes } : t));
+      const editTask = (id, changes) => {
+        setTasks(prev => prev.map(t => t.id === id ? { ...t, ...changes } : t));
+        const existing = tasks.find(t => t.id === id);
+        if (existing) scheduleTaskPush({ ...existing, ...changes });
+      };
 
       return (
         <div className="page-content" style={{ padding: "32px 28px", maxWidth: 1100, margin: "0 auto" }}>
@@ -3068,6 +3078,30 @@ OneSignalDeferred.push(async function(OneSignal) {
         const playerId = await getPlayerId();
         if (!playerId) { dbg("osPush: no player ID"); return; }
         await osPushWithId(playerId, title, body, sendAfterMs);
+      }
+
+      // scheduleTaskPush: called when a task is saved — schedules a OneSignal push
+      // 2 minutes BEFORE the task's alertTime so it works even when app is closed.
+      async function scheduleTaskPush(task) {
+        if (!task || !task.alertTime || task.alertTime === "NOW") return;
+        const dateStr = task.date || new Date().toISOString().split("T")[0];
+        const m = task.alertTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+        if (!m) return;
+        let h = parseInt(m[1], 10);
+        const min = parseInt(m[2], 10);
+        if (m[3].toUpperCase() === "PM" && h !== 12) h += 12;
+        if (m[3].toUpperCase() === "AM" && h === 12) h = 0;
+        const alarmMs = new Date(dateStr + "T" + String(h).padStart(2,"0") + ":" + String(min).padStart(2,"0") + ":00").getTime();
+        const pushMs = alarmMs - 2 * 60 * 1000; // 2 minutes before
+        const nowMs = Date.now();
+        if (pushMs <= nowMs) { dbg("scheduleTaskPush: time already past"); return; }
+        const delayMs = pushMs - nowMs;
+        const taskMsg = "⏰ In 2 minutes: " + (task.text || "Task");
+        dbg("scheduleTaskPush: scheduling in " + Math.round(delayMs/1000) + "s for: " + task.text);
+        const playerId = await getPlayerId();
+        if (!playerId) { dbg("scheduleTaskPush: no player ID"); return; }
+        await osPushWithId(playerId, "Cookie-Care-Joy 🍪", taskMsg, delayMs);
+        dbg("scheduleTaskPush: push scheduled OK");
       }
 
       async function scheduleReminders() {
