@@ -662,7 +662,7 @@ document.addEventListener("DOMContentLoaded", function() {
   }, 3000);
 });
 </script>
-<div id="ccj-presplash" style="position:fixed;inset:0;background:#fdf6fb;z-index:9999;display:flex;align-items:center;justify-content:center"><span style="font-size:72px;line-height:1">🍪</span></div>
+<div id="ccj-presplash" style="position:fixed;inset:0;background:linear-gradient(145deg,#fce7ef 0%,#fff0f6 45%,#fdf6fb 100%);z-index:10000;display:flex;align-items:center;justify-content:center;transition:opacity 0.35s ease"><span style="font-size:clamp(100px,18vw,148px);line-height:1;filter:drop-shadow(0 16px 32px rgba(244,63,110,0.3))">🍪</span></div>
   <div id="root"></div>
   <script type="text/babel">
     const { useState, useEffect } = React;
@@ -2886,21 +2886,10 @@ document.addEventListener("DOMContentLoaded", function() {
         if (!alreadyRegistered) setShowBanner(true);
         // No auto-dismiss — banner stays until user taps Enable or X
         if (Notification.permission === 'granted') {
-          // Ensure OneSignal subscription is active, wait for ID, then schedule
-          (async () => {
-            try {
-              if (window.OneSignal && window.OneSignal.User && window.OneSignal.User.PushSubscription) {
-                const sub = window.OneSignal.User.PushSubscription;
-                if (!sub.optedIn) await sub.optIn();
-                await new Promise(r => setTimeout(r, 2000));
-                dbg("dismissSplash autoStart: sub.id = " + (sub.id || "null"));
-              }
-            } catch(e) { dbg("dismissSplash optIn error: " + e); }
-            scheduleReminders();
-          })();
+          scheduleReminders();
         }
       }, 500); };
-      React.useEffect(() => { const el = document.getElementById("ccj-presplash"); if (el) { el.style.transition = "opacity 0.08s"; el.style.opacity = "0"; setTimeout(() => el && el.remove(), 80); } }, []);
+      React.useEffect(() => { const el = document.getElementById("ccj-presplash"); if (el) { setTimeout(() => { el.style.opacity = "0"; setTimeout(() => el && el.remove(), 400); }, 50); } }, []);
       const [cookies, setCookiesRaw] = useState(() => load("ccj_cookies", 0));
       const [trophies, setTrophies] = useState(() => load("ccj_trophies", 0));
       const [showTrophy, setShowTrophy] = useState(false);
