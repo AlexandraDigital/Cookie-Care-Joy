@@ -3580,72 +3580,110 @@ OneSignalDeferred.push(async function(OneSignal) {
   </div>
 
   <script>
-    (function () {
-      const DISMISS_KEY = "ccj_install_dismissed";
-      if (localStorage.getItem(DISMISS_KEY)) return;
+    // ── Median.co (GoNative) detection ──────────────────────────────────────
+    // Median injects "median" or "gonative" into the user agent string
+    // and exposes a window.median bridge object when running as a native app.
+    var IS_MEDIAN = (
+      /median|gonative/i.test(navigator.userAgent) ||
+      typeof window.median !== "undefined" ||
+      typeof window.gonative !== "undefined"
+    );
 
-      const isStandalone =
-        window.navigator.standalone === true ||
-        window.matchMedia("(display-mode: standalone)").matches ||
-        window.matchMedia("(display-mode: fullscreen)").matches;
-      if (isStandalone) return;
-
-      const ua = navigator.userAgent;
-      const isIOS = /iP(hone|od|ad)/.test(ua) && !(window).MSStream;
-      const isIOSSafari = isIOS && /Safari/.test(ua) && !/CriOS|FxiOS|OPiOS|mercury/.test(ua);
-
-      function dismiss(key) {
-        localStorage.setItem(key || DISMISS_KEY, "1");
-      }
-
-      if (isIOSSafari) {
-        // Show iOS banner after 4 seconds
-        setTimeout(function () {
-          var el = document.getElementById("ccj-ios-install");
-          if (el) el.style.display = "block";
-        }, 4000);
-        var closeBtn = document.getElementById("ccj-ios-close");
-        if (closeBtn) {
-          closeBtn.addEventListener("click", function () {
-            var el = document.getElementById("ccj-ios-install");
-            if (el) el.style.display = "none";
-            dismiss();
-          });
+    // ── Median JS Bridge init ────────────────────────────────────────────────
+    if (IS_MEDIAN) {
+      // Called by Median once the native bridge is ready
+      window.median_ready = function () {
+        // Set status bar style (Android: dark icons on light bg)
+        if (window.median && window.median.statusbar) {
+          window.median.statusbar.set({ style: "default", color: "#fdf6fb" });
         }
-      } else if (!isIOS) {
-        // Android / Desktop Chrome — use beforeinstallprompt
-        var deferredPrompt = null;
-        window.addEventListener("beforeinstallprompt", function (e) {
-          e.preventDefault();
-          deferredPrompt = e;
+        // Hide the native navigation bar / loading indicator
+        if (window.median && window.median.navigationbar) {
+          window.median.navigationbar.hide();
+        }
+      };
+
+      // Android hardware back button — let Median handle history navigation
+      document.addEventListener("backbutton", function () {
+        if (window.history.length > 1) {
+          window.history.back();
+        }
+      }, false);
+
+      // Suppress install banners — not needed inside native app
+      var iosBanner = document.getElementById("ccj-ios-install");
+      var androidBanner = document.getElementById("ccj-android-install");
+      if (iosBanner) iosBanner.style.display = "none";
+      if (androidBanner) androidBanner.style.display = "none";
+
+    } else {
+      // ── Browser install banners (non-Median only) ──────────────────────────
+      (function () {
+        const DISMISS_KEY = "ccj_install_dismissed";
+        if (localStorage.getItem(DISMISS_KEY)) return;
+
+        const isStandalone =
+          window.navigator.standalone === true ||
+          window.matchMedia("(display-mode: standalone)").matches ||
+          window.matchMedia("(display-mode: fullscreen)").matches;
+        if (isStandalone) return;
+
+        const ua = navigator.userAgent;
+        const isIOS = /iP(hone|od|ad)/.test(ua) && !window.MSStream;
+        const isIOSSafari = isIOS && /Safari/.test(ua) && !/CriOS|FxiOS|OPiOS|mercury/.test(ua);
+
+        function dismiss() {
+          localStorage.setItem(DISMISS_KEY, "1");
+        }
+
+        if (isIOSSafari) {
           setTimeout(function () {
-            var el = document.getElementById("ccj-android-install");
-            if (el) el.style.display = "flex";
+            var el = document.getElementById("ccj-ios-install");
+            if (el) el.style.display = "block";
           }, 4000);
-        });
-        var installBtn = document.getElementById("ccj-android-btn");
-        if (installBtn) {
-          installBtn.addEventListener("click", function () {
-            if (!deferredPrompt) return;
-            deferredPrompt.prompt();
-            deferredPrompt.userChoice.then(function () {
-              deferredPrompt = null;
+          var closeBtn = document.getElementById("ccj-ios-close");
+          if (closeBtn) {
+            closeBtn.addEventListener("click", function () {
+              var el = document.getElementById("ccj-ios-install");
+              if (el) el.style.display = "none";
+              dismiss();
+            });
+          }
+        } else if (!isIOS) {
+          // Android / Desktop Chrome — use beforeinstallprompt
+          var deferredPrompt = null;
+          window.addEventListener("beforeinstallprompt", function (e) {
+            e.preventDefault();
+            deferredPrompt = e;
+            setTimeout(function () {
+              var el = document.getElementById("ccj-android-install");
+              if (el) el.style.display = "flex";
+            }, 4000);
+          });
+          var installBtn = document.getElementById("ccj-android-btn");
+          if (installBtn) {
+            installBtn.addEventListener("click", function () {
+              if (!deferredPrompt) return;
+              deferredPrompt.prompt();
+              deferredPrompt.userChoice.then(function () {
+                deferredPrompt = null;
+                var el = document.getElementById("ccj-android-install");
+                if (el) el.style.display = "none";
+                dismiss();
+              });
+            });
+          }
+          var androidClose = document.getElementById("ccj-android-close");
+          if (androidClose) {
+            androidClose.addEventListener("click", function () {
               var el = document.getElementById("ccj-android-install");
               if (el) el.style.display = "none";
               dismiss();
             });
-          });
+          }
         }
-        var androidClose = document.getElementById("ccj-android-close");
-        if (androidClose) {
-          androidClose.addEventListener("click", function () {
-            var el = document.getElementById("ccj-android-install");
-            if (el) el.style.display = "none";
-            dismiss();
-          });
-        }
-      }
-    })();
+      })();
+    }
   </script>
 </body>
 
