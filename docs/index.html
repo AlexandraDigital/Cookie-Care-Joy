@@ -3,23 +3,34 @@
 
 <head>
   <meta charset="UTF-8" />
+<script>
+// ── Median.co (GoNative) detection — set as early as possible ──────────────
+window.IS_MEDIAN_APP = (
+  /median|gonative/i.test(navigator.userAgent) ||
+  typeof window.median !== "undefined" ||
+  typeof window.gonative !== "undefined"
+);
+</script>
  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 
 <script>
-window.OneSignalDeferred = window.OneSignalDeferred || [];
-OneSignalDeferred.push(async function(OneSignal) {
-  try {
-    await OneSignal.init({
-      appId: "249f07c6-54a2-4e50-a5ec-f9021b61e47c",
-      serviceWorkerPath: "/Cookie-Care-Joy/OneSignalSDKWorker.js",
-      serviceWorkerParam: { scope: "/Cookie-Care-Joy/" },
-    });
-    window._oneSignalReady = true;
-  } catch(e) {
-    console.warn("OneSignal init failed (IndexedDB issue?), falling back to local notifications.", e.message || e);
-    window._oneSignalFailed = true;
-  }
-});
+// Skip OneSignal web SDK in Median — push notifications are handled natively
+if (!window.IS_MEDIAN_APP) {
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    try {
+      await OneSignal.init({
+        appId: "249f07c6-54a2-4e50-a5ec-f9021b61e47c",
+        serviceWorkerPath: "/Cookie-Care-Joy/OneSignalSDKWorker.js",
+        serviceWorkerParam: { scope: "/Cookie-Care-Joy/" },
+      });
+      window._oneSignalReady = true;
+    } catch(e) {
+      console.warn("OneSignal init failed (IndexedDB issue?), falling back to local notifications.", e.message || e);
+      window._oneSignalFailed = true;
+    }
+  });
+}
 </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <!-- PWA manifest (required for Android install + iOS 16.4+ push) -->
@@ -2790,7 +2801,7 @@ OneSignalDeferred.push(async function(OneSignal) {
       const [splashGone, setSplashGone] = useState(false);
       const splashGoneRef = React.useRef(false);
       const [showBanner, setShowBanner] = useState(false);
-      const dismissSplash = () => { setShowSplash(false); setTimeout(() => { setSplashGone(true); splashGoneRef.current = true; setShowBanner(true); setTimeout(() => setShowBanner(false), 4000);
+      const dismissSplash = () => { setShowSplash(false); setTimeout(() => { setSplashGone(true); splashGoneRef.current = true; if (!window.IS_MEDIAN_APP) { setShowBanner(true); setTimeout(() => setShowBanner(false), 4000); }
         if (Notification.permission === 'granted') {
           // Ensure OneSignal subscription is active, wait for ID, then schedule
           (async () => {
@@ -2883,7 +2894,19 @@ OneSignalDeferred.push(async function(OneSignal) {
           scheduleReminders();
         };
 
-        // ── Path A: OneSignal ──
+        // ── Path A-0: Median native push (OneSignal integrated via Median dashboard) ──
+        if (window.IS_MEDIAN_APP) {
+          try {
+            if (window.median && window.median.onesignal) {
+              window.median.onesignal.register();
+              await new Promise(r => setTimeout(r, 1200));
+            }
+          } catch(e) { dbg("Median onesignal.register error: " + e); }
+          await grantSuccess();
+          return;
+        }
+
+        // ── Path A: OneSignal (web browser) ──
         const osReady = await waitForOneSignal();
         if (osReady) {
           try {
@@ -3593,6 +3616,8 @@ OneSignalDeferred.push(async function(OneSignal) {
     if (IS_MEDIAN) {
       // Called by Median once the native bridge is ready
       window.median_ready = function () {
+        // Bridge is confirmed active — update flag
+        window.IS_MEDIAN_APP = true;
         // Set status bar style (Android: dark icons on light bg)
         if (window.median && window.median.statusbar) {
           window.median.statusbar.set({ style: "default", color: "#fdf6fb" });
@@ -3600,6 +3625,10 @@ OneSignalDeferred.push(async function(OneSignal) {
         // Hide the native navigation bar / loading indicator
         if (window.median && window.median.navigationbar) {
           window.median.navigationbar.hide();
+        }
+        // Auto-register for native push notifications (OneSignal via Median dashboard)
+        if (window.median && window.median.onesignal) {
+          window.median.onesignal.register();
         }
       };
 
