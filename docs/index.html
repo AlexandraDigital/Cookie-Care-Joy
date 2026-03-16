@@ -3189,7 +3189,7 @@ document.addEventListener("DOMContentLoaded", function() {
           localStorage.setItem("ccj_notif_q", JSON.stringify(q.filter(n => n.fireAt !== fireAt)));
         } catch(e) {}
       }
-      async function showNotifNow(title, body) {
+      async function showNotifNow(title, body, fireAt) {
         const _isMedian = window.IS_MEDIAN_APP || window.IS_MEDIAN;
         // ── Median / Android WebView path ──
         if (_isMedian) {
@@ -3207,7 +3207,7 @@ document.addEventListener("DOMContentLoaded", function() {
           // after hard-reload, and when controller hasn't been claimed yet.
           if ("serviceWorker" in navigator) {
             const reg = await navigator.serviceWorker.ready;
-            await reg.showNotification(title, { body, icon: ICON, badge: ICON, tag: "ccj-" + Date.now(), requireInteraction: false });
+            await reg.showNotification(title, { body, icon: ICON, badge: ICON, tag: "ccj-" + (fireAt || Date.now()), requireInteraction: false });
           } else {
             new Notification(title, { body, icon: ICON });
           }
@@ -3250,7 +3250,7 @@ document.addEventListener("DOMContentLoaded", function() {
             setTimeout(async () => {
               window._ccjScheduledFires.delete(n.fireAt);
               removePendingNotif(n.fireAt);
-              await showNotifNow(n.title, n.body);
+              await showNotifNow(n.title, n.body, n.fireAt);
             }, delay);
             // Also re-delegate to the service worker for background delivery
             const swMsg = { type: 'SCHEDULE', fireAt: n.fireAt, title: n.title, body: n.body };
@@ -3296,7 +3296,7 @@ document.addEventListener("DOMContentLoaded", function() {
         savePendingNotif(fireAt, title, body);
         const doFire = async () => {
           removePendingNotif(fireAt);
-          await showNotifNow(title, body);
+          await showNotifNow(title, body, fireAt);
         };
         if ((delayMs || 0) <= 0) { doFire(); }
         else {

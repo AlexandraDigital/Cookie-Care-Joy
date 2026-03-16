@@ -38,7 +38,7 @@ function _scheduleOne(fireAt, title, body) {
       body: body || '',
       icon: ICON,
       badge: ICON,
-      tag: 'ccj-sw-' + fireAt,
+      tag: 'ccj-' + fireAt,
       requireInteraction: false,
     });
   }, delay);
