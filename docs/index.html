@@ -653,7 +653,16 @@ if (!window.IS_MEDIAN_APP) {
 </head>
 
 <body>
-  <div id="ccj-presplash" style="position:fixed;inset:0;background:#fdf6fb;z-index:9999;display:flex;align-items:center;justify-content:center"><span style="font-size:72px;line-height:1">🍪</span></div>
+  <script>
+// Failsafe: always hide presplash after 3s even if React crashes (Median WebView safety net)
+document.addEventListener("DOMContentLoaded", function() {
+  setTimeout(function() {
+    var el = document.getElementById("ccj-presplash");
+    if (el) { el.style.transition = "opacity 0.3s"; el.style.opacity = "0"; setTimeout(function(){ if(el && el.parentNode) el.parentNode.removeChild(el); }, 300); }
+  }, 3000);
+});
+</script>
+<div id="ccj-presplash" style="position:fixed;inset:0;background:#fdf6fb;z-index:9999;display:flex;align-items:center;justify-content:center"><span style="font-size:72px;line-height:1">🍪</span></div>
   <div id="root"></div>
   <script type="text/babel">
     const { useState, useEffect } = React;
@@ -2972,11 +2981,11 @@ if (!window.IS_MEDIAN_APP) {
           scheduleReminders();
         };
 
-        // ── Path A-0: Median native push (OneSignal integrated via Median dashboard) ──
-        if (window.IS_MEDIAN_APP) {
+        // ── Path A-0: Median — request native notification permission ──
+        if (window.IS_MEDIAN_APP || window.IS_MEDIAN) {
           // Instant feedback — dismiss banner and mark enabled right away
           await grantSuccess();
-          // Register + get ID in background (non-blocking)
+          // Request permission via Median bridge (non-blocking)
           try {
             if (window.median && window.median.onesignal) {
               window.median.onesignal.register();
@@ -3270,6 +3279,23 @@ await new Promise(r => setTimeout(r, 1500));
 
       // localNotify: fires a notification via Service Worker when app is open
       async async function localNotify(title, body, delayMs) {
+        const triggerSec = Math.max(1, Math.round((delayMs || 0) / 1000));
+        // ── Median path: use native local notifications (no delay loop needed) ──
+        if (window.IS_MEDIAN_APP || window.IS_MEDIAN) {
+          try {
+            if (window.median && window.median.notification && window.median.notification.schedule) {
+              window.median.notification.schedule({
+                title: title,
+                body: body,
+                identifier: "ccj-" + Date.now() + "-" + Math.random().toString(36).slice(2),
+                triggerInSeconds: triggerSec
+              });
+              dbg("localNotify (Median): scheduled in " + triggerSec + "s");
+            }
+          } catch(e) { dbg("localNotify Median error: " + e.message); }
+          return;
+        }
+        // ── Browser/PWA path ──────────────────────────────────────────────────
         if (delayMs > 0) await new Promise(r => setTimeout(r, delayMs));
         if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
         try {
@@ -3367,13 +3393,33 @@ await new Promise(r => setTimeout(r, 1500));
       async async function scheduleReminders() {
         if (window._remindersSched) { dbg("scheduleReminders: already scheduled, skip"); return; }
         dbg("scheduleReminders: start");
+        window._remindersSched = true;
 
+        // ── Median path: use native local notifications (work when app is closed) ──
+        if (window.IS_MEDIAN_APP || window.IS_MEDIAN) {
+          dbg("scheduleReminders: Median local notifications path");
+          // Welcome push
+          localNotify("🍪 Cookie-Care-Joy", "You\'re all set! Sweet reminders on the way ✨", 2000);
+          // 2-minute task ready reminder
+          localNotify("Cookie-Care-Joy 🍪", "Your cookies should be ready soon! 🍪⏱️", 2 * 60 * 1000);
+          // First sweet message at ~1 minute
+          const firstMsg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
+          localNotify("Cookie-Care-Joy 🍪", firstMsg, 62000);
+          // Sweet messages every 25 minutes (up to 57 more)
+          for (let i = 1; i <= 57; i++) {
+            const msg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
+            localNotify("Cookie-Care-Joy 🍪", msg, 62000 + i * 25 * 60 * 1000);
+          }
+          dbg("scheduleReminders: Median path done — all notifications scheduled");
+          return;
+        }
+
+        // ── Browser/PWA path ──────────────────────────────────────────────────
         // Get player ID ONCE — determines which delivery path to use
         const playerId = await getPlayerId();
 
         if (playerId) {
           // ── OneSignal server push (works closed/background/any device) ──
-          window._remindersSched = true;
           dbg("scheduleReminders: using OneSignal push, player=" + playerId);
           await osPushWithId(playerId, "🍪 Cookie-Care-Joy", "You\'re all set! Sweet reminders on the way ✨", 2000);
           const first = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
@@ -3389,6 +3435,7 @@ await new Promise(r => setTimeout(r, 1500));
           // ── Fallback: local service worker (app must stay open) ──
           dbg("scheduleReminders: no OneSignal player ID — using local fallback");
           localNotify("🍪 Cookie-Care-Joy", "You\'re all set! Sweet reminders on the way ✨", 2000);
+          localNotify("Cookie-Care-Joy 🍪", "Your cookies should be ready soon! 🍪⏱️", 2 * 60 * 1000);
           const firstLocal = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
           localNotify("Cookie-Care-Joy 🍪", firstLocal, 62000);
           for (let i = 1; i <= 57; i++) {
