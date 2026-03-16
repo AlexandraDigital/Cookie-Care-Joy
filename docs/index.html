@@ -595,15 +595,16 @@ document.addEventListener("DOMContentLoaded", function() {
     navigator.serviceWorker.ready.then(function(reg) {
       if (!reg.active) return;
 
-      var raw = localStorage.getItem("ccj_notif_q");
-      if (!raw) return;
-      var q;
-      try { q = JSON.parse(raw); } catch(e) { return; }
-      if (!Array.isArray(q) || q.length === 0) return;
+      // Merge both queues: caring reminders + task alarms
+      var q1 = [], q2 = [];
+      try { q1 = JSON.parse(localStorage.getItem("ccj_notif_q") || "[]"); } catch(e) {}
+      try { q2 = JSON.parse(localStorage.getItem("ccj_task_q")  || "[]"); } catch(e) {}
+      var allItems = q1.concat(q2);
+      if (allItems.length === 0) return;
 
       var now = Date.now();
-      var future = q.filter(function(n) { return n.fireAt > now; });
-      var past   = q.filter(function(n) { return n.fireAt <= now; });
+      var future = allItems.filter(function(n) { return n.fireAt > now; });
+      var past   = allItems.filter(function(n) { return n.fireAt <= now; });
 
       // Send full future queue to SW — re-hydrates SW timers after a SW restart
       reg.active.postMessage({ type: "SYNC_ALL", items: future });
@@ -620,9 +621,12 @@ document.addEventListener("DOMContentLoaded", function() {
             });
           } catch(e) {}
         });
-        // Remove past items from queue — React catchUpNotifs will see a clean state
+        // Remove past items from queues — React catchUpNotifs will see a clean state
         if (past.length > 0) {
-          localStorage.setItem("ccj_notif_q", JSON.stringify(future));
+          var futureNotif = q1.filter(function(n) { return n.fireAt > now; });
+          var futureTask  = q2.filter(function(n) { return n.fireAt > now; });
+          localStorage.setItem("ccj_notif_q", JSON.stringify(futureNotif));
+          localStorage.setItem("ccj_task_q",  JSON.stringify(futureTask));
         }
       }
     }).catch(function() {});
@@ -3318,8 +3322,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
 
 
-      // scheduleTaskPush: called when a task is saved — schedules a local notification
-      // 2 minutes BEFORE the task's alertTime.
+      // scheduleTaskPush: called when a task is saved (and on page load).
+      // Schedules a push notification 2 minutes BEFORE the task alertTime.
+      // Uses a SEPARATE queue key (ccj_task_q) so scheduleReminders can never wipe it.
       function scheduleTaskPush(task) {
         if (!task || !task.alertTime || task.alertTime === "NOW") return;
         const dateStr = task.date || new Date().toISOString().split("T")[0];
@@ -3330,14 +3335,57 @@ document.addEventListener("DOMContentLoaded", function() {
         if (m[3].toUpperCase() === "PM" && h !== 12) h += 12;
         if (m[3].toUpperCase() === "AM" && h === 12) h = 0;
         const alarmMs = new Date(dateStr + "T" + String(h).padStart(2,"0") + ":" + String(min).padStart(2,"0") + ":00").getTime();
-        const pushMs = alarmMs - 2 * 60 * 1000; // 2 minutes before
+        const fireAt = alarmMs - 2 * 60 * 1000; // 2 minutes before alarm
         const nowMs = Date.now();
-        if (pushMs <= nowMs) { dbg("scheduleTaskPush: time already past"); return; }
-        const delayMs = pushMs - nowMs;
-        const taskMsg = "\uD83D\uDD14 Your alarm rings in 2 minutes — get ready! \uD83C\uDF6A";
-        dbg("scheduleTaskPush: scheduling local notify in " + Math.round(delayMs/1000) + "s for: " + task.text);
-        localNotify("\uD83D\uDD14 Heads-up — Cookie-Care-Joy", taskMsg, delayMs);
-        dbg("scheduleTaskPush: scheduled OK");
+        if (fireAt <= nowMs) { dbg("scheduleTaskPush: time already past"); return; }
+        const delayMs = fireAt - nowMs;
+        const title = "\uD83D\uDD14 Heads-up \u2014 Cookie-Care-Joy";
+        const body  = "\uD83D\uDD14 Your alarm rings in 2 minutes \u2014 get ready! \uD83C\uDF6A";
+
+        // Save to TASK-SPECIFIC queue — immune to scheduleReminders clearing ccj_notif_q
+        try {
+          const tq = JSON.parse(localStorage.getItem("ccj_task_q") || "[]");
+          if (!tq.find(n => n.fireAt === fireAt)) {
+            tq.push({ fireAt, title, body });
+            localStorage.setItem("ccj_task_q", JSON.stringify(tq));
+          }
+        } catch(e) {}
+
+        // Tell the SW — it fires even when the tab is backgrounded/closed
+        const swMsg = { type: "SCHEDULE", fireAt, title, body };
+        if (navigator.serviceWorker) {
+          if (navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage(swMsg);
+          } else {
+            navigator.serviceWorker.ready
+              .then(reg => { if (reg.active) reg.active.postMessage(swMsg); })
+              .catch(() => {});
+          }
+        }
+
+        // Page-side timer (fires if tab stays open until alarm time)
+        if (!window._ccjTaskTimers) window._ccjTaskTimers = new Map();
+        if (!window._ccjTaskTimers.has(fireAt)) {
+          window._ccjTaskTimers.set(fireAt, setTimeout(async () => {
+            window._ccjTaskTimers.delete(fireAt);
+            try {
+              const tq = JSON.parse(localStorage.getItem("ccj_task_q") || "[]");
+              localStorage.setItem("ccj_task_q", JSON.stringify(tq.filter(n => n.fireAt !== fireAt)));
+            } catch(e) {}
+            await showNotifNow(title, body, fireAt);
+          }, delayMs));
+        }
+        dbg("scheduleTaskPush: scheduled OK in " + Math.round(delayMs/1000) + "s for: " + task.text);
+      }
+
+      // restoreTaskAlarms: re-schedules 2-min pre-alarm notifications for all future tasks.
+      // Called on every page load so reloads/SW restarts never lose task alarms.
+      function restoreTaskAlarms() {
+        try {
+          const tasks = JSON.parse(localStorage.getItem("ccj_tasks") || "[]");
+          for (const task of tasks) scheduleTaskPush(task);
+          dbg("restoreTaskAlarms: processed " + tasks.length + " tasks");
+        } catch(e) { dbg("restoreTaskAlarms error: " + e); }
       }
 
       async function scheduleReminders() {
@@ -3411,10 +3459,12 @@ document.addEventListener("DOMContentLoaded", function() {
         try {
           const reg = await navigator.serviceWorker.ready;
           if (!reg.active) return;
-          const q = JSON.parse(localStorage.getItem("ccj_notif_q") || "[]");
-          const future = q.filter(n => n.fireAt > Date.now());
+          const now = Date.now();
+          const q1 = JSON.parse(localStorage.getItem("ccj_notif_q") || "[]");
+          const q2 = JSON.parse(localStorage.getItem("ccj_task_q")  || "[]");
+          const future = [...q1, ...q2].filter(n => n.fireAt > now);
           reg.active.postMessage({ type: "SYNC_ALL", items: future });
-          dbg("syncSwQueue: synced " + future.length + " items to SW");
+          dbg("syncSwQueue: synced " + future.length + " items to SW (reminders=" + q1.filter(n=>n.fireAt>now).length + " tasks=" + q2.filter(n=>n.fireAt>now).length + ")");
         } catch(e) { dbg("syncSwQueue error: " + e); }
       }
 
@@ -3434,6 +3484,10 @@ document.addEventListener("DOMContentLoaded", function() {
                 catchUpNotifs();
                 syncSwQueue();
               }
+              // Re-schedule 2-min pre-alarm for all future tasks — ensures task alarms
+              // survive page reloads and SW restarts regardless of whether tasks were
+              // saved in this session.
+              restoreTaskAlarms();
 
               // Register periodic background sync (PWA / Chrome Android only)
               // This fires the SW even when the app is fully closed
@@ -3501,11 +3555,9 @@ document.addEventListener("DOMContentLoaded", function() {
             if (alarmMs == null) continue;
             const key = task.id + "_" + task.alertTime;
             if (reminderSentRef.current.set.has(key)) continue;
-            if (nowMs >= alarmMs - TWO_MIN_MS && nowMs < alarmMs) {
-              reminderSentRef.current.set.add(key);
-              const taskMsg = "The kitchen smells amazing\u2026 just 2 more minutes! \uD83C\uDF6A";
-              localNotify("Cookie-Care-Joy \uD83C\uDF6A", taskMsg, 0);
-            }
+            // 2-min pre-alarm notification is handled exclusively by scheduleTaskPush
+            // (which writes to ccj_task_q and gives the SW a timer). Firing it here
+            // too would race with the SW timer and produce two notifications.
           }
 
           // 2) Find task whose alarm time is now (and not snoozed, not already fired)
