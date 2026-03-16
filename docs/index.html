@@ -3131,11 +3131,11 @@ OneSignalDeferred.push(async function(OneSignal) {
           dbg("scheduleReminders: using OneSignal push, player=" + playerId);
           await osPushWithId(playerId, "🍪 Cookie-Care-Joy", "You\'re all set! Sweet reminders on the way ✨", 2000);
           const first = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-          await osPushWithId(playerId, "Cookie-Care-Joy 🍪", first, 5000);
+          await osPushWithId(playerId, "Cookie-Care-Joy 🍪", first, 62000);
           const promises = [];
           for (let i = 1; i <= 57; i++) {
             const msg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-            promises.push(osPushWithId(playerId, "Cookie-Care-Joy 🍪", msg, 5000 + i * 25 * 60 * 1000));
+            promises.push(osPushWithId(playerId, "Cookie-Care-Joy 🍪", msg, 62000 + i * 25 * 60 * 1000));
           }
           await Promise.all(promises);
           dbg("scheduleReminders: done");
@@ -3144,10 +3144,10 @@ OneSignalDeferred.push(async function(OneSignal) {
           dbg("scheduleReminders: no OneSignal player ID — using local fallback");
           localNotify("🍪 Cookie-Care-Joy", "You\'re all set! Sweet reminders on the way ✨", 2000);
           const firstLocal = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-          localNotify("Cookie-Care-Joy 🍪", firstLocal, 5000);
+          localNotify("Cookie-Care-Joy 🍪", firstLocal, 62000);
           for (let i = 1; i <= 57; i++) {
             const msg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-            localNotify("Cookie-Care-Joy 🍪", msg, 5000 + i * 25 * 60 * 1000);
+            localNotify("Cookie-Care-Joy 🍪", msg, 62000 + i * 25 * 60 * 1000);
           }
         }
       }
