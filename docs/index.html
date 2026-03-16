@@ -2851,9 +2851,36 @@ document.addEventListener("DOMContentLoaded", function() {
           scheduleReminders();
         };
 
-        // ── Path A-0: Median — request native notification permission ──
+        // ── Path A-0: Median — request native notification permission via OneSignal ──
         if (window.IS_MEDIAN_APP || window.IS_MEDIAN) {
-          await grantSuccess();
+          try {
+            if (window.median && window.median.onesignal) {
+              // Hook median_onesignal_info callback to fire grantSuccess once subscribed
+              window._pendingMedianGrant = true;
+              const _prevInfo = window.median_onesignal_info;
+              window.median_onesignal_info = function(info) {
+                if (typeof _prevInfo === 'function') _prevInfo(info);
+                if (!window._pendingMedianGrant) return;
+                window._pendingMedianGrant = false;
+                window.median_onesignal_info = _prevInfo || null;
+                grantSuccess();
+              };
+              // Fallback: grant after 8 s if the callback never fires
+              setTimeout(function() {
+                if (window._pendingMedianGrant) {
+                  window._pendingMedianGrant = false;
+                  grantSuccess();
+                }
+              }, 8000);
+              // Trigger native Android permission dialog
+              window.median.onesignal.register();
+            } else {
+              // Bridge not ready — grant directly
+              await grantSuccess();
+            }
+          } catch(e) {
+            await grantSuccess();
+          }
           return;
         }
 
@@ -3044,7 +3071,8 @@ document.addEventListener("DOMContentLoaded", function() {
         } catch(e) {}
       }
       async function showNotifNow(title, body) {
-        if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+        const _isMedian = window.IS_MEDIAN_APP || window.IS_MEDIAN;
+        if (!_isMedian && (typeof Notification === "undefined" || Notification.permission !== "granted")) return;
         const ICON = "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png";
         try {
           if (navigator.serviceWorker && navigator.serviceWorker.controller) {
@@ -3059,7 +3087,8 @@ document.addEventListener("DOMContentLoaded", function() {
       // Fires notifications that were missed while tab was closed/hidden,
       // and reschedules future ones via setTimeout so they still fire.
       async function catchUpNotifs() {
-        if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+        const _isMedian = window.IS_MEDIAN_APP || window.IS_MEDIAN;
+        if (!_isMedian && (typeof Notification === "undefined" || Notification.permission !== "granted")) return;
         try {
           const now = Date.now();
           const q = JSON.parse(localStorage.getItem("ccj_notif_q") || "[]");
@@ -3085,22 +3114,9 @@ document.addEventListener("DOMContentLoaded", function() {
       // localNotify: schedules a notification that survives tab switching & browser close
       async function localNotify(title, body, delayMs) {
         const triggerSec = Math.max(1, Math.round((delayMs || 0) / 1000));
-        // ── Median path: native local notifications (work when app is closed) ──
-        if (window.IS_MEDIAN_APP || window.IS_MEDIAN) {
-          try {
-            if (window.median && window.median.notification && window.median.notification.schedule) {
-              window.median.notification.schedule({
-                title: title, body: body,
-                identifier: "ccj-" + Date.now() + "-" + Math.random().toString(36).slice(2),
-                triggerInSeconds: triggerSec
-              });
-              dbg("localNotify (Median): scheduled in " + triggerSec + "s");
-            }
-          } catch(e) { dbg("localNotify Median error: " + e.message); }
-          return;
-        }
-        // ── Browser/PWA path ──────────────────────────────────────────────────
-        if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+        // ── Browser/PWA + Median path ─────────────────────────────────────────
+        const _isMedianNotify = window.IS_MEDIAN_APP || window.IS_MEDIAN;
+        if (!_isMedianNotify && (typeof Notification === "undefined" || Notification.permission !== "granted")) return;
         const ICON = "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png";
         const fireAt = Date.now() + Math.max(0, delayMs || 0);
         // 1) Notification Triggers API (Chrome — fires even when browser is closed)
@@ -3171,24 +3187,7 @@ document.addEventListener("DOMContentLoaded", function() {
         // Clear any stale saved queue before building a fresh one
         localStorage.removeItem("ccj_notif_q");
 
-        // ── Median path: use native local notifications (work when app is closed) ──
-        if (window.IS_MEDIAN_APP || window.IS_MEDIAN) {
-          dbg("scheduleReminders: Median local notifications path");
-          // Welcome push
-          localNotify("🍪 Cookie-Care-Joy", "You\'re all set! Sweet reminders on the way ✨", 2000);
-          // First sweet message at ~1 minute
-          const firstMsg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-          localNotify("Cookie-Care-Joy 🍪", firstMsg, 62000);
-          // Sweet messages every 25 minutes (up to 57 more)
-          for (let i = 1; i <= 57; i++) {
-            const msg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-            localNotify("Cookie-Care-Joy 🍪", msg, 62000 + i * 25 * 60 * 1000);
-          }
-          dbg("scheduleReminders: Median path done — all notifications scheduled");
-          return;
-        }
-
-        // ── Browser/PWA path — local notifications only ──────────────────────
+        // ── Browser/PWA + Median path — local notifications ─────────────────
         dbg("scheduleReminders: browser/PWA local notification path");
         localNotify("🍪 Cookie-Care-Joy", "You\'re all set! Sweet reminders on the way ✨", 2000);
         const firstLocal = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
