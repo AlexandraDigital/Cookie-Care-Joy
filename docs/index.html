@@ -617,7 +617,7 @@ document.addEventListener("DOMContentLoaded", function() {
               body: n.body || "",
               icon: "/Cookie-Care-Joy/icon-192.png",
               badge: "/Cookie-Care-Joy/icon-96.png",
-              tag: "ccj-earlyboot-" + n.fireAt
+              tag: "ccj-" + n.fireAt
             });
           } catch(e) {}
         });
@@ -3193,6 +3193,23 @@ document.addEventListener("DOMContentLoaded", function() {
           localStorage.setItem("ccj_notif_q", JSON.stringify(q.filter(n => n.fireAt !== fireAt)));
         } catch(e) {}
       }
+      // ── Voice / TTS helper ────────────────────────────────────────────────────
+      // Speaks notification and alarm text aloud using the Web Speech API.
+      // Safe to call anywhere — silently skips if API not available.
+      function speakCCJ(text) {
+        if (typeof window.speechSynthesis === 'undefined') return;
+        // Strip emoji for cleaner speech
+        const clean = (text || '').replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{2B50}\u{2B55}\uFE00-\uFE0F\u200D\u20E3]/gu, '').trim();
+        if (!clean) return;
+        window.speechSynthesis.cancel(); // stop anything already speaking
+        const utt = new SpeechSynthesisUtterance(clean);
+        utt.lang = 'en-US';
+        utt.rate = 0.95;
+        utt.pitch = 1.1;
+        utt.volume = 1.0;
+        window.speechSynthesis.speak(utt);
+      }
+
       async function showNotifNow(title, body, fireAt) {
         const _isMedian = window.IS_MEDIAN_APP || window.IS_MEDIAN;
         // ── Median / Android WebView path ──
@@ -3203,6 +3220,10 @@ document.addEventListener("DOMContentLoaded", function() {
           return;
         }
         if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+        // Speak the notification aloud when app is in foreground
+        if (document.visibilityState === 'visible') {
+          speakCCJ(title + (body ? '. ' + body : ''));
+        }
         const ICON = "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png";
         try {
           // Always go through SW registration — never new Notification() directly.
@@ -3576,6 +3597,9 @@ document.addEventListener("DOMContentLoaded", function() {
           firedAlarmsRef.current = [...firedAlarmsRef.current, firing.id + "_" + firing.alertTime];
           setFiredAlarms(prev => [...prev, firing.id + "_" + firing.alertTime]);
           setAlarmTask(firing);
+
+          // Speak the alarm task name aloud
+          speakCCJ("Alarm! " + (firing.text || firing.title || "Your task is due now"));
 
           try {
             getCtx().resume().then(() => {
