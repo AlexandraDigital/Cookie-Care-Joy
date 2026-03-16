@@ -3334,9 +3334,9 @@ document.addEventListener("DOMContentLoaded", function() {
         const nowMs = Date.now();
         if (pushMs <= nowMs) { dbg("scheduleTaskPush: time already past"); return; }
         const delayMs = pushMs - nowMs;
-        const taskMsg = "The kitchen smells amazing\u2026 just 2 more minutes! \uD83C\uDF6A";
+        const taskMsg = "\uD83D\uDD14 Your alarm rings in 2 minutes — get ready! \uD83C\uDF6A";
         dbg("scheduleTaskPush: scheduling local notify in " + Math.round(delayMs/1000) + "s for: " + task.text);
-        localNotify("Cookie-Care-Joy \uD83C\uDF6A", taskMsg, delayMs);
+        localNotify("\uD83D\uDD14 Heads-up — Cookie-Care-Joy", taskMsg, delayMs);
         dbg("scheduleTaskPush: scheduled OK");
       }
 
@@ -3385,12 +3385,15 @@ document.addEventListener("DOMContentLoaded", function() {
         dbg("scheduleReminders: fresh start — browser/PWA local notification path");
         // Clear any stale saved queue before building a fresh one
         localStorage.removeItem("ccj_notif_q");
-        localNotify("🍪 Cookie-Care-Joy", "You\'re all set! Sweet reminders on the way ✨", 2000);
+        // Welcome notification — fires 2 seconds after enabling
+        localNotify("🍪 Welcome to Cookie-Care-Joy!", "Sweet reminders are set — we\'ll check in on you 💕", 2000);
+        // First sweet message — fires after 5 minutes ("after a while")
         const firstLocal = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-        localNotify("Cookie-Care-Joy 🍪", firstLocal, 62000);
+        localNotify("Cookie-Care-Joy 🌸", firstLocal, 5 * 60 * 1000);
+        // Remaining sweet messages — every 25 minutes after the first one
         for (let i = 1; i <= 57; i++) {
           const msg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-          localNotify("Cookie-Care-Joy 🍪", msg, 62000 + i * 25 * 60 * 1000);
+          localNotify("Cookie-Care-Joy 🍪", msg, 5 * 60 * 1000 + i * 25 * 60 * 1000);
         }
         dbg("scheduleReminders: browser/PWA done — all notifications scheduled");
       }
