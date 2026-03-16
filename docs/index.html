@@ -12,96 +12,7 @@ window.IS_MEDIAN_APP = (
 );
 </script>
  
-<script>
-// ── Median Bridge: capture OneSignal ID as early as possible ──
-// Median calls this automatically after each page load (must be non-deferred global)
-function median_onesignal_info(info) {
-  if (!info) return;
-  var pid = (info.subscription && info.subscription.id) || info.oneSignalId || info.oneSignalUserId || null;
-  if (pid) {
-    window._medianOneSignalId = pid;
-    var isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}/.test(pid);
-    window._medianOneSignalIdType = info.subscription ? "onesignal_id" : (isUUID ? "onesignal_id" : "player_id");
-    try { localStorage.setItem("ccj_median_player_id", pid); localStorage.setItem("ccj_median_id_type", window._medianOneSignalIdType); } catch(e) {}
-    // If reminders haven't been scheduled yet, re-run now that we have the ID
-    if (window._pendingReminders) { window._remindersSched = false; window._pendingReminders = false; if (window._scheduleRemindersRef) window._scheduleRemindersRef(); }
-  }
-}
-</script>
-<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 
-<script>
-// Skip OneSignal web SDK in Median — push notifications are handled natively
-if (!window.IS_MEDIAN_APP) {
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  OneSignalDeferred.push(async function(OneSignal) {
-    try {
-      await OneSignal.init({
-        appId: "fc237358-e343-4a93-adfe-b22527bb0aef",
-        serviceWorkerPath: "/Cookie-Care-Joy/OneSignalSDKWorker.js",
-        serviceWorkerParam: { scope: "/Cookie-Care-Joy/" },
-        notifyButton: {
-          enable: true,
-          size: "medium",
-          theme: "default",
-          position: "bottom-right",
-          offset: { bottom: "20px", right: "20px" },
-          showCredit: false,
-          text: {
-            "tip.state.unsubscribed": "🍪 Get cookie reminders!",
-            "tip.state.subscribed": "✅ You're subscribed!",
-            "tip.state.blocked": "🚫 Notifications blocked",
-            "message.prenotify": "Click to subscribe to cookie reminders 🍪",
-            "message.action.subscribed": "Thanks for subscribing! 🍪",
-            "message.action.resubscribed": "You're subscribed to cookie reminders!",
-            "message.action.unsubscribed": "You won't receive notifications anymore.",
-            "dialog.main.title": "Manage Cookie Reminders 🍪",
-            "dialog.main.button.subscribe": "YES, REMIND ME!",
-            "dialog.main.button.unsubscribe": "No thanks",
-            "dialog.blocked.title": "Unblock Notifications",
-            "dialog.blocked.message": "Follow these steps to allow notifications:"
-          },
-          colors: {
-            "circle.background": "#f43f6e",
-            "circle.foreground": "white",
-            "badge.background": "#f59e0b",
-            "badge.foreground": "white",
-            "badge.bordercolor": "white",
-            "pulse.color": "#f9a8d4",
-            "dialog.button.background.hovering": "#e11d48",
-            "dialog.button.background.active": "#be123c",
-            "dialog.button.background": "#f43f6e",
-            "dialog.button.foreground": "white"
-          }
-        },
-        promptOptions: {
-          slidedown: {
-            prompts: [
-              {
-                type: "push",
-                autoPrompt: false,
-                text: {
-                  actionMessage: "🍪 Want daily cookie reminders & care tips? We'll only send what matters!",
-                  acceptButton: "Yes, remind me! 🍪",
-                  cancelButton: "Maybe later"
-                },
-                delay: {
-                  pageViews: 1,
-                  timeDelay: 5
-                }
-              }
-            ]
-          }
-        }
-      });
-      window._oneSignalReady = true;
-    } catch(e) {
-      console.warn("OneSignal init failed (IndexedDB issue?), falling back to local notifications.", e.message || e);
-      window._oneSignalFailed = true;
-    }
-  });
-}
-</script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <!-- PWA manifest (required for Android install + iOS 16.4+ push) -->
   <link rel="manifest" href="/Cookie-Care-Joy/manifest.json" />
@@ -2927,23 +2838,6 @@ document.addEventListener("DOMContentLoaded", function() {
       };
       // #endregion
 
-      const waitForOneSignal = () => new Promise((resolve) => {
-        // Already ready
-        if (window._oneSignalFailed) { resolve(false); return; } // IndexedDB unavailable
-        if (window.OneSignal && window.OneSignal.Notifications) { resolve(true); return; }
-        // Wait up to 5 seconds for OneSignal deferred init to complete
-        let tries = 0;
-        const iv = setInterval(() => {
-          tries++;
-          if (window.OneSignal && window.OneSignal.Notifications) {
-            clearInterval(iv);
-            resolve(true);
-          } else if (tries >= 50) { // 50 x 100ms = 5s
-            clearInterval(iv);
-            resolve(false);
-          }
-        }, 100);
-      });
 
       const requestNotifications = async () => {
         setNotifError("");
@@ -2963,7 +2857,7 @@ document.addEventListener("DOMContentLoaded", function() {
           return;
         }
 
-        // ── Path B: Native Notification API (no OneSignal) ──
+        // ── Path B: Native Notification API ──
         if (!("Notification" in window)) {
           setNotifError("On iPhone: tap Share → \"Add to Home Screen\", then open from there 📲");
           return;
@@ -3135,55 +3029,6 @@ document.addEventListener("DOMContentLoaded", function() {
 
       const reminderSentRef = React.useRef({ day: "", set: new Set() });
 
-      // ── OneSignal server-side push helpers ──
-      const OS_APP_ID = "fc237358-e343-4a93-adfe-b22527bb0aef";
-      const OS_API_KEY = "Key os_v2_app_espqprsuujhfbjpm7ebbwypepraqjwfoyy5ebwe33g2s5po2jsp6ohoesi4mwb77kpevaurzluw6vsarppzyqmu2zx3hwbpejku6yzi";
-
-      async function getPlayerId() {
-        // ── Median native player ID (stored after register + getStatus) ──
-        if (window.IS_MEDIAN_APP) {
-          const stored = window._medianOneSignalId || localStorage.getItem("ccj_median_player_id");
-          if (stored) { dbg("getPlayerId (Median): " + stored); return stored; }
-          // Try fetching live if not stored yet
-          if (window.median && window.median.onesignal) {
-            try { window.median.onesignal.register(); } catch(e) {}
-await new Promise(r => setTimeout(r, 1500));
-            return await new Promise(function(resolve) {
-              window.median.onesignal.getStatus(function(status) {
-                var idType = (status && status.onesignalId) ? "onesignal_id" : ((status && status.subscriptionId) ? "subscription_id" : "player_id");
-                var pid = (status && (status.onesignalId || status.subscriptionId || status.userId || status.pushToken)) || null;
-                if (pid) {
-                  window._medianOneSignalId = pid;
-                  window._medianOneSignalIdType = idType;
-                  localStorage.setItem("ccj_median_player_id", pid);
-                  localStorage.setItem("ccj_median_id_type", idType);
-                }
-                dbg("getPlayerId (Median live): " + pid + " type: " + idType);
-                resolve(pid);
-              });
-            });
-          }
-          return null;
-        }
-        if (window._oneSignalFailed || !window.OneSignal) return null;
-        const getSub = () => {
-          // OneSignal SDK v16: subscription ID is at User.PushSubscription.id
-          const sub = window.OneSignal.User && window.OneSignal.User.PushSubscription;
-          if (sub && sub.id) return sub.id;
-          // Fallback to onesignalId
-          return (window.OneSignal.User && window.OneSignal.User.onesignalId) || null;
-        };
-        let id = getSub();
-        if (id) { dbg("getPlayerId: " + id); return id; }
-        for (let i = 0; i < 20; i++) {
-          await new Promise(r => setTimeout(r, 500));
-          id = getSub();
-          if (id) { dbg("getPlayerId (retry " + (i+1) + "): " + id); return id; }
-        }
-        dbg("getPlayerId: not found after retries");
-        return null;
-      }
-
       // ── Persistent notification queue (survives tab close / reload) ───────
       function savePendingNotif(fireAt, title, body) {
         try {
@@ -3282,57 +3127,7 @@ await new Promise(r => setTimeout(r, 1500));
         else { setTimeout(doFire, delayMs); }
       }
 
-      // osPushWithId: send OneSignal push using already-resolved playerId (no extra polling)
-      async function osPushWithId(playerId, title, body, sendAfterMs) {
-        if (!playerId) return;
-        // Determine correct targeting field based on ID type
-        const idType = window._medianOneSignalIdType || localStorage.getItem("ccj_median_id_type") || "player_id";
-        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(playerId);
-        let targeting = {};
-        if (idType === "onesignal_id") {
-          targeting = { include_aliases: { onesignal_id: [playerId] }, target_channel: "push" };
-        } else if (idType === "subscription_id" || isUUID) {
-          targeting = { include_subscription_ids: [playerId] };
-        } else {
-          targeting = { include_player_ids: [playerId] };
-        }
-        const payload = {
-          app_id: OS_APP_ID,
-          ...targeting,
-          headings: { en: title },
-          contents: { en: body },
-          android_channel_id: "ccj_reminders",
-          android_accent_color: "fff43f6e",
-          android_visibility: 1,
-          priority: 10,
-          ios_sound: "default",
-          android_sound: "default",
-          chrome_web_icon: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png",
-          firefox_icon: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png",
-          chrome_web_badge: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-96.png",
-          web_url: "https://alexandradigital.github.io/Cookie-Care-Joy/",
-          app_url: "https://alexandradigital.github.io/Cookie-Care-Joy/",
-        };
-        if (sendAfterMs && sendAfterMs > 0) {
-          payload.send_after = new Date(Date.now() + sendAfterMs).toISOString();
-        }
-        try {
-          const resp = await fetch("https://onesignal.com/api/v1/notifications", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": OS_API_KEY },
-            body: JSON.stringify(payload),
-          });
-          const data = await resp.json();
-          dbg("osPush " + (resp.ok ? "OK" : "ERR") + " send_after=" + (sendAfterMs||0) + "ms: " + JSON.stringify(data).substring(0, 120));
-        } catch(e) { dbg("osPush error: " + e.message); }
-      }
 
-      // osPush: legacy wrapper — resolves player ID then calls osPushWithId
-      async function osPush(title, body, sendAfterMs) {
-        const playerId = await getPlayerId();
-        if (!playerId) { dbg("osPush: no player ID"); return; }
-        await osPushWithId(playerId, title, body, sendAfterMs);
-      }
 
       // scheduleTaskPush: called when a task is saved — schedules a local notification
       // 2 minutes BEFORE the task's alertTime.
@@ -3789,11 +3584,6 @@ await new Promise(r => setTimeout(r, 1500));
       window.median_ready = function () {
         // Bridge is confirmed active — update flag
         window.IS_MEDIAN_APP = true;
-        // Restore stored OneSignal ID + type
-        var storedPid = localStorage.getItem("ccj_median_player_id");
-        var storedType = localStorage.getItem("ccj_median_id_type");
-        if (storedPid) { window._medianOneSignalId = storedPid; }
-        if (storedType) { window._medianOneSignalIdType = storedType; }
         // Set status bar style (Android: dark icons on light bg)
         if (window.median && window.median.statusbar) {
           window.median.statusbar.set({ style: "default", color: "#fdf6fb" });
@@ -3802,9 +3592,6 @@ await new Promise(r => setTimeout(r, 1500));
         if (window.median && window.median.navigationbar) {
           window.median.navigationbar.hide();
         }
-        // Restore any previously stored Median player ID into memory
-        var storedPid = localStorage.getItem("ccj_median_player_id");
-        if (storedPid) { window._medianOneSignalId = storedPid; }
       };
 
       // Android hardware back button — let Median handle history navigation
