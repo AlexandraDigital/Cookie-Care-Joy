@@ -2907,10 +2907,14 @@ if (!window.IS_MEDIAN_APP) {
                 window.median.onesignal.getStatus(function(status) {
                   dbg("Median onesignal status (attempt " + attempt + "): " + JSON.stringify(status));
                   if (status) {
-                    var pid = status.subscriptionId || status.userId || status.pushToken || null;
+                    // v5+ uses onesignalId; legacy uses subscriptionId/userId
+                    var idType = status.onesignalId ? "onesignal_id" : (status.subscriptionId ? "subscription_id" : "player_id");
+                    var pid = status.onesignalId || status.subscriptionId || status.userId || status.pushToken || null;
                     if (pid) {
                       window._medianOneSignalId = pid;
+                      window._medianOneSignalIdType = idType;
                       localStorage.setItem("ccj_median_player_id", pid);
+                      localStorage.setItem("ccj_median_id_type", idType);
                       dbg("Stored Median player ID: " + pid);
                       // Re-schedule reminders now that we have the ID
                       window._remindersSched = false;
@@ -3127,12 +3131,15 @@ if (!window.IS_MEDIAN_APP) {
           if (window.median && window.median.onesignal) {
             return await new Promise(function(resolve) {
               window.median.onesignal.getStatus(function(status) {
-                var pid = (status && (status.subscriptionId || status.userId || status.pushToken)) || null;
+                var idType = (status && status.onesignalId) ? "onesignal_id" : ((status && status.subscriptionId) ? "subscription_id" : "player_id");
+                var pid = (status && (status.onesignalId || status.subscriptionId || status.userId || status.pushToken)) || null;
                 if (pid) {
                   window._medianOneSignalId = pid;
+                  window._medianOneSignalIdType = idType;
                   localStorage.setItem("ccj_median_player_id", pid);
+                  localStorage.setItem("ccj_median_id_type", idType);
                 }
-                dbg("getPlayerId (Median live): " + pid);
+                dbg("getPlayerId (Median live): " + pid + " type: " + idType);
                 resolve(pid);
               });
             });
@@ -3181,11 +3188,20 @@ if (!window.IS_MEDIAN_APP) {
       // osPushWithId: send OneSignal push using already-resolved playerId (no extra polling)
       async function osPushWithId(playerId, title, body, sendAfterMs) {
         if (!playerId) return;
-        // subscriptionId (new) vs playerId/userId (legacy) — support both
-        const isSubId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(playerId);
+        // Determine correct targeting field based on ID type
+        const idType = window._medianOneSignalIdType || localStorage.getItem("ccj_median_id_type") || "player_id";
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(playerId);
+        let targeting = {};
+        if (idType === "onesignal_id") {
+          targeting = { include_aliases: { onesignal_id: [playerId] }, target_channel: "push" };
+        } else if (idType === "subscription_id" || isUUID) {
+          targeting = { include_subscription_ids: [playerId] };
+        } else {
+          targeting = { include_player_ids: [playerId] };
+        }
         const payload = {
           app_id: OS_APP_ID,
-          ...(isSubId ? { include_subscription_ids: [playerId] } : { include_player_ids: [playerId] }),
+          ...targeting,
           headings: { en: title },
           contents: { en: body },
           android_channel_id: "ccj_reminders",
@@ -3661,6 +3677,11 @@ if (!window.IS_MEDIAN_APP) {
       window.median_ready = function () {
         // Bridge is confirmed active — update flag
         window.IS_MEDIAN_APP = true;
+        // Restore stored OneSignal ID + type
+        var storedPid = localStorage.getItem("ccj_median_player_id");
+        var storedType = localStorage.getItem("ccj_median_id_type");
+        if (storedPid) { window._medianOneSignalId = storedPid; }
+        if (storedType) { window._medianOneSignalIdType = storedType; }
         // Set status bar style (Android: dark icons on light bg)
         if (window.median && window.median.statusbar) {
           window.median.statusbar.set({ style: "default", color: "#fdf6fb" });
