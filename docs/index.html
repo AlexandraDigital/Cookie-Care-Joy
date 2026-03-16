@@ -23,6 +23,59 @@ if (!window.IS_MEDIAN_APP) {
         appId: "fc237358-e343-4a93-adfe-b22527bb0aef",
         serviceWorkerPath: "/Cookie-Care-Joy/OneSignalSDKWorker.js",
         serviceWorkerParam: { scope: "/Cookie-Care-Joy/" },
+        notifyButton: {
+          enable: true,
+          size: "medium",
+          theme: "default",
+          position: "bottom-right",
+          offset: { bottom: "20px", right: "20px" },
+          showCredit: false,
+          text: {
+            "tip.state.unsubscribed": "🍪 Get cookie reminders!",
+            "tip.state.subscribed": "✅ You're subscribed!",
+            "tip.state.blocked": "🚫 Notifications blocked",
+            "message.prenotify": "Click to subscribe to cookie reminders 🍪",
+            "message.action.subscribed": "Thanks for subscribing! 🍪",
+            "message.action.resubscribed": "You're subscribed to cookie reminders!",
+            "message.action.unsubscribed": "You won't receive notifications anymore.",
+            "dialog.main.title": "Manage Cookie Reminders 🍪",
+            "dialog.main.button.subscribe": "YES, REMIND ME!",
+            "dialog.main.button.unsubscribe": "No thanks",
+            "dialog.blocked.title": "Unblock Notifications",
+            "dialog.blocked.message": "Follow these steps to allow notifications:"
+          },
+          colors: {
+            "circle.background": "#f43f6e",
+            "circle.foreground": "white",
+            "badge.background": "#f59e0b",
+            "badge.foreground": "white",
+            "badge.bordercolor": "white",
+            "pulse.color": "#f9a8d4",
+            "dialog.button.background.hovering": "#e11d48",
+            "dialog.button.background.active": "#be123c",
+            "dialog.button.background": "#f43f6e",
+            "dialog.button.foreground": "white"
+          }
+        },
+        promptOptions: {
+          slidedown: {
+            prompts: [
+              {
+                type: "push",
+                autoPrompt: false,
+                text: {
+                  actionMessage: "🍪 Want daily cookie reminders & care tips? We'll only send what matters!",
+                  acceptButton: "Yes, remind me! 🍪",
+                  cancelButton: "Maybe later"
+                },
+                delay: {
+                  pageViews: 1,
+                  timeDelay: 5
+                }
+              }
+            ]
+          }
+        }
       });
       window._oneSignalReady = true;
     } catch(e) {
