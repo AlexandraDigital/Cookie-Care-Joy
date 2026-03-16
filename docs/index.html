@@ -2709,7 +2709,7 @@ OneSignalDeferred.push(async function(OneSignal) {
       const [splashGone, setSplashGone] = useState(false);
       const splashGoneRef = React.useRef(false);
       const [showBanner, setShowBanner] = useState(false);
-      const dismissSplash = () => { setShowSplash(false); setTimeout(() => { setSplashGone(true); splashGoneRef.current = true; setShowBanner(true); setTimeout(() => setShowBanner(false), 4000); }, 500); };
+      const dismissSplash = () => { setShowSplash(false); setTimeout(() => { setSplashGone(true); splashGoneRef.current = true; setShowBanner(true); setTimeout(() => setShowBanner(false), 4000); if (Notification.permission === 'granted') { scheduleReminders(); } }, 500); };
       React.useEffect(() => { const el = document.getElementById("ccj-presplash"); if (el) { el.style.transition = "opacity 0.08s"; el.style.opacity = "0"; setTimeout(() => el && el.remove(), 80); } }, []);
       const [cookies, setCookiesRaw] = useState(() => load("ccj_cookies", 0));
       const [trophies, setTrophies] = useState(() => load("ccj_trophies", 0));
