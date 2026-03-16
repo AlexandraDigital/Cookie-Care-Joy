@@ -3184,16 +3184,68 @@ await new Promise(r => setTimeout(r, 1500));
         return null;
       }
 
-      // localNotify: fires a notification via Service Worker when app is open
+      // ── Persistent notification queue (survives tab close / reload) ───────
+      function savePendingNotif(fireAt, title, body) {
+        try {
+          const q = JSON.parse(localStorage.getItem("ccj_notif_q") || "[]");
+          q.push({ fireAt, title, body });
+          localStorage.setItem("ccj_notif_q", JSON.stringify(q));
+        } catch(e) {}
+      }
+      function removePendingNotif(fireAt) {
+        try {
+          const q = JSON.parse(localStorage.getItem("ccj_notif_q") || "[]");
+          localStorage.setItem("ccj_notif_q", JSON.stringify(q.filter(n => n.fireAt !== fireAt)));
+        } catch(e) {}
+      }
+      async function showNotifNow(title, body) {
+        if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+        const ICON = "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png";
+        try {
+          if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+            const reg = await navigator.serviceWorker.ready;
+            reg.showNotification(title, { body, icon: ICON, badge: ICON, tag: "ccj-" + Date.now(), requireInteraction: false });
+          } else {
+            new Notification(title, { body, icon: ICON });
+          }
+        } catch(e) { dbg("showNotifNow error: " + e); }
+      }
+      // catchUpNotifs: call on startup + visibilitychange.
+      // Fires notifications that were missed while tab was closed/hidden,
+      // and reschedules future ones via setTimeout so they still fire.
+      async function catchUpNotifs() {
+        if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+        try {
+          const now = Date.now();
+          const q = JSON.parse(localStorage.getItem("ccj_notif_q") || "[]");
+          if (!q.length) return;
+          const past   = q.filter(n => n.fireAt <= now);
+          const future = q.filter(n => n.fireAt >  now);
+          // Fire missed notifications immediately (batched to avoid spam — max 3)
+          const toFire = past.slice(-3);
+          for (const n of toFire) await showNotifNow(n.title, n.body);
+          // Persist only future entries; reschedule them as setTimeouts
+          localStorage.setItem("ccj_notif_q", JSON.stringify(future));
+          for (const n of future) {
+            const delay = n.fireAt - now;
+            setTimeout(async () => {
+              removePendingNotif(n.fireAt);
+              await showNotifNow(n.title, n.body);
+            }, delay);
+          }
+          dbg("catchUpNotifs: fired=" + past.length + " rescheduled=" + future.length);
+        } catch(e) { dbg("catchUpNotifs error: " + e); }
+      }
+
+      // localNotify: schedules a notification that survives tab switching & browser close
       async function localNotify(title, body, delayMs) {
         const triggerSec = Math.max(1, Math.round((delayMs || 0) / 1000));
-        // ── Median path: use native local notifications (no delay loop needed) ──
+        // ── Median path: native local notifications (work when app is closed) ──
         if (window.IS_MEDIAN_APP || window.IS_MEDIAN) {
           try {
             if (window.median && window.median.notification && window.median.notification.schedule) {
               window.median.notification.schedule({
-                title: title,
-                body: body,
+                title: title, body: body,
                 identifier: "ccj-" + Date.now() + "-" + Math.random().toString(36).slice(2),
                 triggerInSeconds: triggerSec
               });
@@ -3203,22 +3255,31 @@ await new Promise(r => setTimeout(r, 1500));
           return;
         }
         // ── Browser/PWA path ──────────────────────────────────────────────────
-        if (delayMs > 0) await new Promise(r => setTimeout(r, delayMs));
         if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+        const ICON = "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png";
+        const fireAt = Date.now() + Math.max(0, delayMs || 0);
+        // 1) Notification Triggers API (Chrome — fires even when browser is closed)
         try {
-          if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+          if (typeof TimestampTrigger !== "undefined") {
             const reg = await navigator.serviceWorker.ready;
-            reg.showNotification(title, {
-              body,
-              icon: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png",
-              badge: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png",
-              tag: "ccj-" + Date.now(),
+            await reg.showNotification(title, {
+              body, icon: ICON, badge: ICON,
+              tag: "ccj-" + fireAt,
+              showTrigger: new TimestampTrigger(fireAt),
               requireInteraction: false,
             });
-          } else {
-            new Notification(title, { body, icon: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png" });
+            dbg("localNotify: TimestampTrigger at " + new Date(fireAt).toLocaleTimeString());
+            return;
           }
-        } catch(e) { dbg("localNotify error: " + e.message); }
+        } catch(e) { dbg("TimestampTrigger unavailable: " + e.message); }
+        // 2) Fallback: save to localStorage (survives reload) + setTimeout (fires while tab open/backgrounded)
+        savePendingNotif(fireAt, title, body);
+        const doFire = async () => {
+          removePendingNotif(fireAt);
+          await showNotifNow(title, body);
+        };
+        if ((delayMs || 0) <= 0) { doFire(); }
+        else { setTimeout(doFire, delayMs); }
       }
 
       // osPushWithId: send OneSignal push using already-resolved playerId (no extra polling)
@@ -3297,8 +3358,23 @@ await new Promise(r => setTimeout(r, 1500));
 
       async function scheduleReminders() {
         if (window._remindersSched) { dbg("scheduleReminders: already scheduled, skip"); return; }
-        dbg("scheduleReminders: start");
+        // If a saved queue exists the user already enabled — catchUpNotifs() will restore it.
+        // Don't re-schedule (would pick new random messages and double-fill the queue).
+        if (!window.IS_MEDIAN_APP && !window.IS_MEDIAN) {
+          try {
+            const saved = JSON.parse(localStorage.getItem("ccj_notif_q") || "[]");
+            if (saved.length > 0) {
+              dbg("scheduleReminders: restoring " + saved.length + " saved notifications via catchUpNotifs");
+              window._remindersSched = true;
+              catchUpNotifs();
+              return;
+            }
+          } catch(e) {}
+        }
+        dbg("scheduleReminders: fresh start");
         window._remindersSched = true;
+        // Clear any stale saved queue before building a fresh one
+        localStorage.removeItem("ccj_notif_q");
 
         // ── Median path: use native local notifications (work when app is closed) ──
         if (window.IS_MEDIAN_APP || window.IS_MEDIAN) {
@@ -3331,17 +3407,21 @@ await new Promise(r => setTimeout(r, 1500));
 
       React.useEffect(() => {
         window._ccjShowToast = (msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 6000); };
-        window.OneSignalDeferred = window.OneSignalDeferred || [];
-        window.OneSignalDeferred.push(function(OneSignal) {
-          if (OneSignal.Notifications && OneSignal.Notifications.addEventListener) {
-            OneSignal.Notifications.addEventListener("foregroundWillDisplay", function(event) {
-              event.preventDefault();
-              const notif = event.notification;
-              const msg = (notif && (notif.body || notif.title)) || "";
-              if (msg && window._ccjShowToast) window._ccjShowToast(msg);
-            });
-          }
-        });
+        // Register our service worker (enables background notifications and Notification Triggers API)
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker.register("/Cookie-Care-Joy/sw.js", { scope: "/Cookie-Care-Joy/" })
+            .then(reg => {
+              dbg("SW registered: " + reg.scope);
+              // On page load: catch up on any notifications missed while tab was closed
+              if (Notification && Notification.permission === "granted") {
+                catchUpNotifs();
+              }
+            })
+            .catch(e => dbg("SW register error: " + e));
+        } else if (Notification && Notification.permission === "granted") {
+          // No SW support but notifications granted — still catch up
+          catchUpNotifs();
+        }
       }, []);
 
       useEffect(() => {
@@ -3409,6 +3489,8 @@ await new Promise(r => setTimeout(r, 1500));
         const warm = setTimeout(doCheck, 1000);
         const onVisible = () => {
           if (document.visibilityState === "visible") {
+            // Catch up on any notifications missed while tab was hidden/closed
+            catchUpNotifs();
             doCheck();
             clearInterval(iv);
             iv = setInterval(doCheck, VISIBLE_MS);
@@ -3580,10 +3662,7 @@ await new Promise(r => setTimeout(r, 1500));
   }
   const root = ReactDOM.createRoot(document.getElementById('root'));
   root.render(<AppErrorBoundary><App /></AppErrorBoundary>);
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/Cookie-Care-Joy/OneSignalSDKWorker.js")
-      .then(() => console.log("Service worker registered"));
-  }
+  // Service worker is registered in the React startup useEffect above
   </script>
 
   <!-- ── iOS "Add to Home Screen" Install Prompt ──────────────────────── -->
