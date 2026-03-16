@@ -3077,7 +3077,7 @@ OneSignalDeferred.push(async function(OneSignal) {
             if (reminderSentRef.current.set.has(key)) continue;
             if (nowMs >= alarmMs - TWO_MIN_MS && nowMs < alarmMs) {
               reminderSentRef.current.set.add(key);
-              swNotify("Cookie-Care-Joy 🍪", { body: "In 2 minutes: " + (task.text || "Task"), icon: cookieIcon }).catch(() => {});
+              osPush("Cookie-Care-Joy 🍪", "⏰ In 2 minutes: " + (task.text || "Task"), 0);
             }
           }
 
