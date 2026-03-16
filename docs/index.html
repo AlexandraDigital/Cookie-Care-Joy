@@ -3403,35 +3403,17 @@ await new Promise(r => setTimeout(r, 1500));
           return;
         }
 
-        // ── Browser/PWA path ──────────────────────────────────────────────────
-        // Get player ID ONCE — determines which delivery path to use
-        const playerId = await getPlayerId();
-
-        if (playerId) {
-          // ── OneSignal server push (works closed/background/any device) ──
-          dbg("scheduleReminders: using OneSignal push, player=" + playerId);
-          await osPushWithId(playerId, "🍪 Cookie-Care-Joy", "You\'re all set! Sweet reminders on the way ✨", 2000);
-          const first = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-          await osPushWithId(playerId, "Cookie-Care-Joy 🍪", first, 62000);
-          const promises = [];
-          for (let i = 1; i <= 57; i++) {
-            const msg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-            promises.push(osPushWithId(playerId, "Cookie-Care-Joy 🍪", msg, 62000 + i * 25 * 60 * 1000));
-          }
-          await Promise.all(promises);
-          dbg("scheduleReminders: done");
-        } else {
-          // ── Fallback: local service worker (app must stay open) ──
-          dbg("scheduleReminders: no OneSignal player ID — using local fallback");
-          localNotify("🍪 Cookie-Care-Joy", "You\'re all set! Sweet reminders on the way ✨", 2000);
-          localNotify("Cookie-Care-Joy 🍪", "Your cookies should be ready soon! 🍪⏱️", 2 * 60 * 1000);
-          const firstLocal = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-          localNotify("Cookie-Care-Joy 🍪", firstLocal, 62000);
-          for (let i = 1; i <= 57; i++) {
-            const msg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-            localNotify("Cookie-Care-Joy 🍪", msg, 62000 + i * 25 * 60 * 1000);
-          }
+        // ── Browser/PWA path — local notifications only ──────────────────────
+        dbg("scheduleReminders: browser/PWA local notification path");
+        localNotify("🍪 Cookie-Care-Joy", "You\'re all set! Sweet reminders on the way ✨", 2000);
+        localNotify("Cookie-Care-Joy 🍪", "Your cookies should be ready soon! 🍪⏱️", 2 * 60 * 1000);
+        const firstLocal = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
+        localNotify("Cookie-Care-Joy 🍪", firstLocal, 62000);
+        for (let i = 1; i <= 57; i++) {
+          const msg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
+          localNotify("Cookie-Care-Joy 🍪", msg, 62000 + i * 25 * 60 * 1000);
         }
+        dbg("scheduleReminders: browser/PWA done — all notifications scheduled");
       }
 
       React.useEffect(() => {
