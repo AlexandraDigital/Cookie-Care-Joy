@@ -573,6 +573,65 @@ document.addEventListener("DOMContentLoaded", function() {
   }, 3000);
 });
 </script>
+
+<script>
+// ── CCJ EARLY BOOT: runs BEFORE React mounts ─────────────────────────────────
+// Goal: zero-gap notification delivery at startup.
+// Problem: SW registration + catchUpNotifs live inside React useEffect which
+//          fires 1-3 seconds after page load. Any notification due in that
+//          window is silently dropped.
+// Fix:  1. Register SW immediately (browser deduplicates if already registered)
+//       2. SYNC_ALL: send full future queue to SW the instant it's active
+//       3. Fire any past-due notifications NOW via new Notification() before React
+// ─────────────────────────────────────────────────────────────────────────────
+(function() {
+  try {
+    if (!("serviceWorker" in navigator)) return;
+
+    // Step 1 — register SW now (not waiting for React)
+    var swPromise = navigator.serviceWorker.register("/Cookie-Care-Joy/sw.js", { scope: "/Cookie-Care-Joy/" });
+
+    // Step 2 — as soon as SW is active, send SYNC_ALL + fire overdue items
+    navigator.serviceWorker.ready.then(function(reg) {
+      if (!reg.active) return;
+
+      var raw = localStorage.getItem("ccj_notif_q");
+      if (!raw) return;
+      var q;
+      try { q = JSON.parse(raw); } catch(e) { return; }
+      if (!Array.isArray(q) || q.length === 0) return;
+
+      var now = Date.now();
+      var future = q.filter(function(n) { return n.fireAt > now; });
+      var past   = q.filter(function(n) { return n.fireAt <= now; });
+
+      // Send full future queue to SW — re-hydrates SW timers after a SW restart
+      reg.active.postMessage({ type: "SYNC_ALL", items: future });
+
+      // Fire past-due notifications immediately if permission granted
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+        past.forEach(function(n) {
+          try {
+            reg.showNotification(n.title || "Cookie Care Joy", {
+              body: n.body || "",
+              icon: "/Cookie-Care-Joy/icon-192.png",
+              badge: "/Cookie-Care-Joy/icon-96.png",
+              tag: "ccj-earlyboot-" + n.fireAt
+            });
+          } catch(e) {}
+        });
+        // Remove past items from queue — React catchUpNotifs will see a clean state
+        if (past.length > 0) {
+          localStorage.setItem("ccj_notif_q", JSON.stringify(future));
+        }
+      }
+    }).catch(function() {});
+
+  } catch(e) {}
+})();
+// ── End CCJ early boot ───────────────────────────────────────────────────────
+</script>
+
 <div id="ccj-presplash" style="position:fixed;inset:0;background:linear-gradient(145deg,#fce7ef 0%,#fff0f6 45%,#fdf6fb 100%);z-index:10000;display:flex;align-items:center;justify-content:center;transition:opacity 0.35s ease"><span style="font-size:clamp(100px,18vw,148px);line-height:1;filter:drop-shadow(0 16px 32px rgba(244,63,110,0.3))">🍪</span></div>
   <div id="root"></div>
   <script type="text/babel">
@@ -917,8 +976,16 @@ document.addEventListener("DOMContentLoaded", function() {
     // ── Shared AudioContext — resumed on first user gesture ───────────
     let _audioCtx = null;
     function getCtx() {
-      if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (_audioCtx.state === "suspended") _audioCtx.resume();
+      if (!_audioCtx) {
+        _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        // Auto-resume if browser suspends us (tab hidden, other tab plays, power-save, etc.)
+        _audioCtx.addEventListener("statechange", function() {
+          if (_audioCtx.state === "suspended" && _audioReady) {
+            _audioCtx.resume().catch(function() {});
+          }
+        });
+      }
+      if (_audioCtx.state === "suspended") _audioCtx.resume().catch(function() {});
       return _audioCtx;
     }
     // Call on any user gesture to fully unlock AudioContext for the session
@@ -935,8 +1002,59 @@ document.addEventListener("DOMContentLoaded", function() {
       } catch (e) { }
     }
 
+    // ── Audio focus guard — call before playing any sound ─────────────
+    // Prevents other browser tabs or Android apps from interrupting playback.
+    let _wakeLockSentinel = null;
+    function claimAudioFocus(durationMs) {
+      // 1. Ensure AudioContext is running
+      try { getCtx(); } catch(e) {}
+
+      // 2. MediaSession API — tells the browser/OS this page owns the audio session.
+      //    Without this, any other tab playing audio can silently steal focus.
+      if (navigator.mediaSession) {
+        try {
+          navigator.mediaSession.metadata = new MediaMetadata({
+            title: "Cookie Care Joy",
+            artist: "Zen Alarm",
+            album: "Cookie Care Joy"
+          });
+          // Claim "playing" state — prevents other tabs from auto-pausing us
+          navigator.mediaSession.playbackState = "playing";
+          // Register action handlers so OS media controls don't stop us unexpectedly
+          ["play", "pause", "stop"].forEach(function(action) {
+            try {
+              navigator.mediaSession.setActionHandler(action, function() {
+                // Resume AudioContext if OS tried to pause it
+                if (_audioCtx && _audioCtx.state === "suspended") _audioCtx.resume().catch(function(){});
+                navigator.mediaSession.playbackState = "playing";
+              });
+            } catch(e) {}
+          });
+        } catch(e) {}
+      }
+
+      // 3. Screen Wake Lock — prevents device sleep from cutting off alarm audio
+      if (navigator.wakeLock && durationMs) {
+        navigator.wakeLock.request("screen").then(function(sentinel) {
+          _wakeLockSentinel = sentinel;
+          // Release after sound finishes + 2s grace
+          setTimeout(function() {
+            if (_wakeLockSentinel) { _wakeLockSentinel.release(); _wakeLockSentinel = null; }
+            // Mark MediaSession as paused once sound is done
+            if (navigator.mediaSession) navigator.mediaSession.playbackState = "paused";
+          }, durationMs + 2000);
+        }).catch(function() {});
+      }
+
+      // 4. Median Android — request audio focus via native bridge if available
+      if (window.median && window.median.call) {
+        try { window.median.call("audioFocusRequest", {}); } catch(e) {}
+      }
+    }
+
     // ── Aggressive alarm ──────────────────────────────────────────────
     function playAggressiveAlarm() {
+      claimAudioFocus(3000); // ~3s alarm sound — hold focus + wake lock for 5s
       try {
         const ctx = getCtx();
         // Sharp two-tone beep: high then low, repeated with rising urgency
@@ -976,6 +1094,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // ── Zen audio engine ──────────────────────────────────────────────
     function playZenSound(i) {
+      claimAudioFocus(4000); // zen sounds are ~2-4s — hold focus + wake lock for 6s
       try {
         const ctx = getCtx();
         const tone = (freq, type, start, dur, vol = 0.3) => {
@@ -2857,24 +2976,16 @@ document.addEventListener("DOMContentLoaded", function() {
         if (_isMedian) {
           try {
             if (window.median && window.median.onesignal) {
-              // Hook median_onesignal_info callback to fire grantSuccess once subscribed
-              window._pendingMedianGrant = true;
-              const _prevInfo = window.median_onesignal_info;
-              window.median_onesignal_info = function(info) {
-                if (typeof _prevInfo === 'function') _prevInfo(info);
-                if (!window._pendingMedianGrant) return;
-                window._pendingMedianGrant = false;
-                window.median_onesignal_info = _prevInfo || null;
-                grantSuccess();
-              };
-              // Fallback: grant after 8 s if the callback never fires
+              // Set the pending grant callback — permanent median_onesignal_info will call it
+              window._ccjMedianGrantCb = grantSuccess;
+              // Fallback: grant after 5 s if the callback never fires (e.g. already subscribed)
               setTimeout(function() {
-                if (window._pendingMedianGrant) {
-                  window._pendingMedianGrant = false;
+                if (typeof window._ccjMedianGrantCb === 'function') {
+                  window._ccjMedianGrantCb = null;
                   grantSuccess();
                 }
-              }, 3000);
-              // Trigger native Android permission dialog
+              }, 5000);
+              // Trigger native Android FCM/OneSignal permission dialog
               window.median.onesignal.register();
             } else {
               // Bridge not ready — grant directly
@@ -2915,8 +3026,13 @@ document.addEventListener("DOMContentLoaded", function() {
 
             const disableNotifications = () => {
         localStorage.setItem("ccj_notif_off", "true");
+        localStorage.removeItem("ccj_notif_q");
         setNotifPerm("off");
         setShowBanner(false);
+        // Cancel all service-worker-scheduled notifications
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({ type: 'CANCEL_ALL' });
+        }
       };
 
       const resetNotifications = () => {
@@ -3059,10 +3175,11 @@ document.addEventListener("DOMContentLoaded", function() {
       const reminderSentRef = React.useRef({ day: "", set: new Set() });
 
       // ── Persistent notification queue (survives tab close / reload) ───────
-      function savePendingNotif(fireAt, title, body) {
+      function savePendingNotif(fireAt, title, body, hasOsTrigger = false) {
         try {
           const q = JSON.parse(localStorage.getItem("ccj_notif_q") || "[]");
-          q.push({ fireAt, title, body });
+          if (q.find(n => n.fireAt === fireAt)) return; // already queued — no duplicates
+          q.push({ fireAt, title, body, ...(hasOsTrigger ? { hasOsTrigger: true } : {}) });
           localStorage.setItem("ccj_notif_q", JSON.stringify(q));
         } catch(e) {}
       }
@@ -3074,16 +3191,31 @@ document.addEventListener("DOMContentLoaded", function() {
       }
       async function showNotifNow(title, body) {
         const _isMedian = window.IS_MEDIAN_APP || window.IS_MEDIAN;
-        if (!_isMedian && (typeof Notification === "undefined" || Notification.permission !== "granted")) return;
+        // ── Median / Android WebView path ──
+        if (_isMedian) {
+          if (typeof window._ccjShowToast === 'function') {
+            window._ccjShowToast(title + (body ? ': ' + body : ''));
+          }
+          return;
+        }
+        if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
         const ICON = "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png";
         try {
-          if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+          // Always go through SW registration — never new Notification() directly.
+          // new Notification() is deprecated in Chrome when a SW is present and
+          // can silently fail. navigator.serviceWorker.ready is safe on first load,
+          // after hard-reload, and when controller hasn't been claimed yet.
+          if ("serviceWorker" in navigator) {
             const reg = await navigator.serviceWorker.ready;
-            reg.showNotification(title, { body, icon: ICON, badge: ICON, tag: "ccj-" + Date.now(), requireInteraction: false });
+            await reg.showNotification(title, { body, icon: ICON, badge: ICON, tag: "ccj-" + Date.now(), requireInteraction: false });
           } else {
             new Notification(title, { body, icon: ICON });
           }
-        } catch(e) { dbg("showNotifNow error: " + e); }
+        } catch(e) {
+          dbg("showNotifNow error: " + e);
+          // Last-resort fallback
+          try { new Notification(title, { body, icon: ICON }); } catch(_) {}
+        }
       }
       // catchUpNotifs: call on startup + visibilitychange.
       // Fires notifications that were missed while tab was closed/hidden,
@@ -3103,7 +3235,9 @@ document.addEventListener("DOMContentLoaded", function() {
           const past   = q.filter(n => n.fireAt <= now);
           const future = q.filter(n => n.fireAt >  now);
           // Fire missed notifications immediately (batched to avoid spam — max 3)
-          const toFire = past.slice(-3);
+          // Skip items that were registered with the Notification Triggers API —
+          // the OS already fired them; calling showNotifNow would duplicate them.
+          const toFire = past.filter(n => !n.hasOsTrigger).slice(-3);
           for (const n of toFire) await showNotifNow(n.title, n.body);
           // Persist only future entries; reschedule as setTimeouts — skip any already scheduled
           localStorage.setItem("ccj_notif_q", JSON.stringify(future));
@@ -3118,6 +3252,15 @@ document.addEventListener("DOMContentLoaded", function() {
               removePendingNotif(n.fireAt);
               await showNotifNow(n.title, n.body);
             }, delay);
+            // Also re-delegate to the service worker for background delivery
+            const swMsg = { type: 'SCHEDULE', fireAt: n.fireAt, title: n.title, body: n.body };
+            if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+              navigator.serviceWorker.controller.postMessage(swMsg);
+            } else if (navigator.serviceWorker) {
+              navigator.serviceWorker.ready
+                .then(reg => { if (reg.active) reg.active.postMessage(swMsg); })
+                .catch(() => {});
+            }
           }
           dbg("catchUpNotifs: fired=" + past.length + " rescheduled=" + newScheduled + " skipped=" + (future.length - newScheduled));
         } catch(e) { dbg("catchUpNotifs error: " + e); }
@@ -3141,6 +3284,10 @@ document.addEventListener("DOMContentLoaded", function() {
               showTrigger: new TimestampTrigger(fireAt),
               requireInteraction: false,
             });
+            // Save to localStorage with hasOsTrigger flag so:
+            // (a) SYNC_ALL doesn't clear it, (b) scheduleReminders sees the queue
+            //     as non-empty and won't schedule duplicates on next page load.
+            savePendingNotif(fireAt, title, body, true);
             dbg("localNotify: TimestampTrigger at " + new Date(fireAt).toLocaleTimeString());
             return;
           }
@@ -3152,7 +3299,21 @@ document.addEventListener("DOMContentLoaded", function() {
           await showNotifNow(title, body);
         };
         if ((delayMs || 0) <= 0) { doFire(); }
-        else { setTimeout(doFire, delayMs); }
+        else {
+          setTimeout(doFire, delayMs);
+          // Also delegate to the service worker — it can fire the notification
+          // even when this page tab is not in focus or is briefly closed.
+          if ('serviceWorker' in navigator) {
+            const swMsg = { type: 'SCHEDULE', fireAt, title, body };
+            if (navigator.serviceWorker.controller) {
+              navigator.serviceWorker.controller.postMessage(swMsg);
+            } else {
+              navigator.serviceWorker.ready
+                .then(reg => { if (reg.active) reg.active.postMessage(swMsg); })
+                .catch(() => {});
+            }
+          }
+        }
       }
 
 
@@ -3181,26 +3342,49 @@ document.addEventListener("DOMContentLoaded", function() {
 
       async function scheduleReminders() {
         if (window._remindersSched) { dbg("scheduleReminders: already scheduled, skip"); return; }
+        window._remindersSched = true;
+
+        // ── Median / Android WebView path ────────────────────────────────────
+        // Android kills page-side setTimeout timers when the app is backgrounded,
+        // so browser-style local notifications are unreliable here.
+        // Instead: enable OneSignal foreground notifications (shows FCM push even
+        // while app is open) and refresh the push token. Background push delivery
+        // is handled server-side via OneSignal + Firebase Cloud Messaging.
+        if (window.IS_MEDIAN_APP || window.IS_MEDIAN) {
+          dbg("scheduleReminders: Median mode — configuring OneSignal/FCM foreground notifications");
+          if (window.median && window.median.onesignal) {
+            // Show FCM push notifications even while the app is in the foreground
+            window.median.onesignal.enableForegroundNotifications(true);
+            // Refresh and store the FCM push token via the permanent median_onesignal_info callback
+            window.median.onesignal.info({ callback: 'median_onesignal_info' });
+          }
+          // Show immediate in-app confirmation toast
+          setTimeout(function() {
+            if (typeof window._ccjShowToast === 'function') {
+              window._ccjShowToast("🍪 You're all set! Sweet cookie reminders on the way ✨");
+            }
+          }, 1500);
+          return;
+        }
+
+        // ── Browser / PWA path ───────────────────────────────────────────────
         // If a saved queue exists the user already enabled — catchUpNotifs() will restore it.
         // Don't re-schedule (would pick new random messages and double-fill the queue).
-        if (!window.IS_MEDIAN_APP && !window.IS_MEDIAN) {
-          try {
-            const saved = JSON.parse(localStorage.getItem("ccj_notif_q") || "[]");
-            if (saved.length > 0) {
-              dbg("scheduleReminders: restoring " + saved.length + " saved notifications via catchUpNotifs");
-              window._remindersSched = true;
-              catchUpNotifs();
-              return;
-            }
-          } catch(e) {}
-        }
-        dbg("scheduleReminders: fresh start");
-        window._remindersSched = true;
+        try {
+          const saved = JSON.parse(localStorage.getItem("ccj_notif_q") || "[]");
+          // Only restore if there are FUTURE items — past-only queue means all
+          // notifications have fired and we need a fresh batch.
+          const futureItems = saved.filter(n => n.fireAt > Date.now());
+          if (futureItems.length > 0) {
+            dbg("scheduleReminders: restoring " + futureItems.length + " future notifications via catchUpNotifs");
+            catchUpNotifs();
+            return;
+          }
+        } catch(e) {}
+
+        dbg("scheduleReminders: fresh start — browser/PWA local notification path");
         // Clear any stale saved queue before building a fresh one
         localStorage.removeItem("ccj_notif_q");
-
-        // ── Browser/PWA + Median path — local notifications ─────────────────
-        dbg("scheduleReminders: browser/PWA local notification path");
         localNotify("🍪 Cookie-Care-Joy", "You\'re all set! Sweet reminders on the way ✨", 2000);
         const firstLocal = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
         localNotify("Cookie-Care-Joy 🍪", firstLocal, 62000);
@@ -3211,19 +3395,75 @@ document.addEventListener("DOMContentLoaded", function() {
         dbg("scheduleReminders: browser/PWA done — all notifications scheduled");
       }
 
+
+      // syncSwQueue: sends the full future notification queue to the SW via SYNC_ALL.
+      // Called on page load (after SW ready), on visibilitychange, and on REQUEST_SYNC.
+      // This re-populates SW timers after a SW restart (browsers kill idle SWs after ~30 s).
+      async function syncSwQueue() {
+        if (!("serviceWorker" in navigator)) return;
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          if (!reg.active) return;
+          const q = JSON.parse(localStorage.getItem("ccj_notif_q") || "[]");
+          const future = q.filter(n => n.fireAt > Date.now());
+          reg.active.postMessage({ type: "SYNC_ALL", items: future });
+          dbg("syncSwQueue: synced " + future.length + " items to SW");
+        } catch(e) { dbg("syncSwQueue error: " + e); }
+      }
+
       React.useEffect(() => {
         window._ccjShowToast = (msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 6000); };
-        // Register our service worker (enables background notifications and Notification Triggers API)
+
         if ("serviceWorker" in navigator) {
+          // Register our service worker (enables background notifications and Notification Triggers API)
           navigator.serviceWorker.register("/Cookie-Care-Joy/sw.js", { scope: "/Cookie-Care-Joy/" })
             .then(reg => {
               dbg("SW registered: " + reg.scope);
-              // On page load: catch up on any notifications missed while tab was closed
+              return navigator.serviceWorker.ready;
+            })
+            .then(reg => {
+              // On page load: catch up on missed notifications AND sync full queue to SW
               if (Notification && Notification.permission === "granted") {
                 catchUpNotifs();
+                syncSwQueue();
+              }
+
+              // Register periodic background sync (PWA / Chrome Android only)
+              // This fires the SW even when the app is fully closed
+              if (reg.periodicSync) {
+                reg.periodicSync.register("ccj-notif-sync", { minInterval: 15 * 60 * 1000 })
+                  .then(() => dbg("Periodic sync registered"))
+                  .catch(e => dbg("Periodic sync not available: " + e));
               }
             })
             .catch(e => dbg("SW register error: " + e));
+
+          // Listen for REQUEST_SYNC from the SW (fired by periodicsync when app is closed)
+          navigator.serviceWorker.addEventListener("message", e => {
+            if (e.data && e.data.type === "REQUEST_SYNC") {
+              syncSwQueue();
+            }
+          });
+
+          // Keepalive ping: prevents browser from killing the SW while tab is open.
+          // Sent every 20 s when visible, every 25 s when hidden.
+          // Also re-syncs the queue every 10 pings (~3 min visible, ~4 min hidden).
+          let _pingCount = 0;
+          const _sendPing = async () => {
+            try {
+              const reg = await navigator.serviceWorker.ready;
+              if (reg.active) reg.active.postMessage({ type: "PING" });
+              _pingCount++;
+              if (_pingCount % 10 === 0) syncSwQueue(); // full re-sync every 10 pings
+            } catch(e) {}
+          };
+          const _pingMs = () => document.visibilityState === "visible" ? 20000 : 25000;
+          let _pingTimer = setTimeout(function _ping() {
+            _sendPing();
+            _pingTimer = setTimeout(_ping, _pingMs());
+          }, _pingMs());
+          window._ccjPingTimer = _pingTimer; // store for cleanup if needed
+
         } else if (Notification && Notification.permission === "granted") {
           // No SW support but notifications granted — still catch up
           catchUpNotifs();
@@ -3295,8 +3535,24 @@ document.addEventListener("DOMContentLoaded", function() {
         const warm = setTimeout(doCheck, 1000);
         const onVisible = () => {
           if (document.visibilityState === "visible") {
+            // Resume AudioContext if browser suspended it while tab was hidden
+            if (_audioCtx && _audioCtx.state === "suspended") {
+              _audioCtx.resume().catch(function() {});
+            }
             // Catch up on any notifications missed while tab was hidden/closed
             catchUpNotifs();
+            // Re-sync SW queue — SW may have been killed while tab was hidden
+            syncSwQueue();
+            // Detect permission revocation: if user turned off notifications in browser settings
+            // while the tab was hidden, update UI state to match reality
+            if (typeof Notification !== "undefined" && Notification.permission !== "granted") {
+              if (localStorage.getItem("ccj_notif_on") === "true") {
+                dbg("onVisible: notification permission revoked externally — resetting state");
+                localStorage.removeItem("ccj_notif_on");
+                localStorage.removeItem("ccj_notif_q");
+                setNotifEnabled(false);
+              }
+            }
             doCheck();
             clearInterval(iv);
             iv = setInterval(doCheck, VISIBLE_MS);
@@ -3591,6 +3847,47 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // ── Median JS Bridge init ────────────────────────────────────────────────
     if (IS_MEDIAN) {
+
+      // ── OneSignal / FCM info callback (permanent — called by Median on every page load) ──
+      // Must be defined here (synchronously, before React) so it's available at load time.
+      // Stores the FCM push token and OneSignal ID in localStorage for later use.
+      window.median_onesignal_info = function(info) {
+        try {
+          // Supports OneSignal SDK v5 (info.subscription.token) and legacy v4 (info.oneSignalPushToken)
+          var token = (info && info.subscription && info.subscription.token)
+                        ? info.subscription.token
+                        : (info && info.oneSignalPushToken) || null;
+          var osId  = (info && info.oneSignalId)
+                        ? info.oneSignalId
+                        : (info && info.oneSignalUserId) || null;
+          var opted = (info && info.subscription && info.subscription.optedIn !== undefined)
+                        ? !!info.subscription.optedIn
+                        : !!(info && info.oneSignalSubscribed);
+          if (token) localStorage.setItem('ccj_onesignal_token', token);
+          if (osId)  localStorage.setItem('ccj_onesignal_id',    osId);
+          localStorage.setItem('ccj_onesignal_subscribed', opted ? '1' : '0');
+          // Fire any pending grant callback (set by requestNotifications)
+          if (typeof window._ccjMedianGrantCb === 'function') {
+            var cb = window._ccjMedianGrantCb;
+            window._ccjMedianGrantCb = null;
+            cb();
+          }
+        } catch(e) {}
+      };
+
+      // ── Push notification tap handler ────────────────────────────────────
+      // Called by Median when user taps a push notification (even from background).
+      window.median_onesignal_push_opened = function(data) {
+        try {
+          localStorage.setItem('ccj_notif_last_opened', JSON.stringify({ at: Date.now(), data: data }));
+          // Show toast if app is in foreground
+          var body = data && data.notification && (data.notification.body || data.notification.alert);
+          if (body && typeof window._ccjShowToast === 'function') {
+            window._ccjShowToast('🍪 ' + body);
+          }
+        } catch(e) {}
+      };
+
       // Called by Median once the native bridge is ready
       window.median_ready = function () {
         // Bridge is confirmed active — update flag
