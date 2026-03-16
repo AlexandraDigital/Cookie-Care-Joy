@@ -3126,26 +3126,33 @@ OneSignalDeferred.push(async function(OneSignal) {
       async function scheduleReminders() {
         dbg("scheduleReminders: start");
 
-        // ── Local notifications (fires while app is open, immediate) ──
-        localNotify("🍪 Cookie-Care-Joy", "You\'re all set! Sweet reminders on the way ✨", 2000);
-        const firstLocal = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-        localNotify("Cookie-Care-Joy 🍪", firstLocal, 5000);
-
-        // ── OneSignal push (background/closed delivery) ──
-        // Get player ID ONCE to avoid 59 separate 10s polling loops
+        // Get player ID ONCE — determines which delivery path to use
         const playerId = await getPlayerId();
-        if (!playerId) { dbg("scheduleReminders: no OneSignal player ID — local-only"); return; }
 
-        await osPushWithId(playerId, "🍪 Cookie-Care-Joy", "You\'re all set! Sweet reminders on the way ✨", 2000);
-        const first = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-        await osPushWithId(playerId, "Cookie-Care-Joy 🍪", first, 5000);
-        const promises = [];
-        for (let i = 1; i <= 57; i++) {
-          const msg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-          promises.push(osPushWithId(playerId, "Cookie-Care-Joy 🍪", msg, 5000 + i * 25 * 60 * 1000));
+        if (playerId) {
+          // ── OneSignal server push (works closed/background/any device) ──
+          dbg("scheduleReminders: using OneSignal push, player=" + playerId);
+          await osPushWithId(playerId, "🍪 Cookie-Care-Joy", "You\'re all set! Sweet reminders on the way ✨", 2000);
+          const first = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
+          await osPushWithId(playerId, "Cookie-Care-Joy 🍪", first, 5000);
+          const promises = [];
+          for (let i = 1; i <= 57; i++) {
+            const msg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
+            promises.push(osPushWithId(playerId, "Cookie-Care-Joy 🍪", msg, 5000 + i * 25 * 60 * 1000));
+          }
+          await Promise.all(promises);
+          dbg("scheduleReminders: done");
+        } else {
+          // ── Fallback: local service worker (app must stay open) ──
+          dbg("scheduleReminders: no OneSignal player ID — using local fallback");
+          localNotify("🍪 Cookie-Care-Joy", "You\'re all set! Sweet reminders on the way ✨", 2000);
+          const firstLocal = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
+          localNotify("Cookie-Care-Joy 🍪", firstLocal, 5000);
+          for (let i = 1; i <= 57; i++) {
+            const msg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
+            localNotify("Cookie-Care-Joy 🍪", msg, 5000 + i * 25 * 60 * 1000);
+          }
         }
-        await Promise.all(promises);
-        dbg("scheduleReminders: done, player=" + playerId);
       }
 
       React.useEffect(() => {
