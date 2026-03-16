@@ -3278,7 +3278,7 @@ await new Promise(r => setTimeout(r, 1500));
       }
 
       // localNotify: fires a notification via Service Worker when app is open
-      async async function localNotify(title, body, delayMs) {
+      async function localNotify(title, body, delayMs) {
         const triggerSec = Math.max(1, Math.round((delayMs || 0) / 1000));
         // ── Median path: use native local notifications (no delay loop needed) ──
         if (window.IS_MEDIAN_APP || window.IS_MEDIAN) {
@@ -3315,7 +3315,7 @@ await new Promise(r => setTimeout(r, 1500));
       }
 
       // osPushWithId: send OneSignal push using already-resolved playerId (no extra polling)
-      async async function osPushWithId(playerId, title, body, sendAfterMs) {
+      async function osPushWithId(playerId, title, body, sendAfterMs) {
         if (!playerId) return;
         // Determine correct targeting field based on ID type
         const idType = window._medianOneSignalIdType || localStorage.getItem("ccj_median_id_type") || "player_id";
@@ -3390,7 +3390,7 @@ await new Promise(r => setTimeout(r, 1500));
         dbg("scheduleTaskPush: push scheduled OK");
       }
 
-      async async function scheduleReminders() {
+      async function scheduleReminders() {
         if (window._remindersSched) { dbg("scheduleReminders: already scheduled, skip"); return; }
         dbg("scheduleReminders: start");
         window._remindersSched = true;
