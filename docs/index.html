@@ -976,8 +976,16 @@ document.addEventListener("DOMContentLoaded", function() {
     // ── Shared AudioContext — resumed on first user gesture ───────────
     let _audioCtx = null;
     function getCtx() {
-      if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (_audioCtx.state === "suspended") _audioCtx.resume();
+      if (!_audioCtx) {
+        _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        // Auto-resume if browser suspends us (tab hidden, other tab plays, power-save, etc.)
+        _audioCtx.addEventListener("statechange", function() {
+          if (_audioCtx.state === "suspended" && _audioReady) {
+            _audioCtx.resume().catch(function() {});
+          }
+        });
+      }
+      if (_audioCtx.state === "suspended") _audioCtx.resume().catch(function() {});
       return _audioCtx;
     }
     // Call on any user gesture to fully unlock AudioContext for the session
@@ -994,8 +1002,59 @@ document.addEventListener("DOMContentLoaded", function() {
       } catch (e) { }
     }
 
+    // ── Audio focus guard — call before playing any sound ─────────────
+    // Prevents other browser tabs or Android apps from interrupting playback.
+    let _wakeLockSentinel = null;
+    function claimAudioFocus(durationMs) {
+      // 1. Ensure AudioContext is running
+      try { getCtx(); } catch(e) {}
+
+      // 2. MediaSession API — tells the browser/OS this page owns the audio session.
+      //    Without this, any other tab playing audio can silently steal focus.
+      if (navigator.mediaSession) {
+        try {
+          navigator.mediaSession.metadata = new MediaMetadata({
+            title: "Cookie Care Joy",
+            artist: "Zen Alarm",
+            album: "Cookie Care Joy"
+          });
+          // Claim "playing" state — prevents other tabs from auto-pausing us
+          navigator.mediaSession.playbackState = "playing";
+          // Register action handlers so OS media controls don't stop us unexpectedly
+          ["play", "pause", "stop"].forEach(function(action) {
+            try {
+              navigator.mediaSession.setActionHandler(action, function() {
+                // Resume AudioContext if OS tried to pause it
+                if (_audioCtx && _audioCtx.state === "suspended") _audioCtx.resume().catch(function(){});
+                navigator.mediaSession.playbackState = "playing";
+              });
+            } catch(e) {}
+          });
+        } catch(e) {}
+      }
+
+      // 3. Screen Wake Lock — prevents device sleep from cutting off alarm audio
+      if (navigator.wakeLock && durationMs) {
+        navigator.wakeLock.request("screen").then(function(sentinel) {
+          _wakeLockSentinel = sentinel;
+          // Release after sound finishes + 2s grace
+          setTimeout(function() {
+            if (_wakeLockSentinel) { _wakeLockSentinel.release(); _wakeLockSentinel = null; }
+            // Mark MediaSession as paused once sound is done
+            if (navigator.mediaSession) navigator.mediaSession.playbackState = "paused";
+          }, durationMs + 2000);
+        }).catch(function() {});
+      }
+
+      // 4. Median Android — request audio focus via native bridge if available
+      if (window.median && window.median.call) {
+        try { window.median.call("audioFocusRequest", {}); } catch(e) {}
+      }
+    }
+
     // ── Aggressive alarm ──────────────────────────────────────────────
     function playAggressiveAlarm() {
+      claimAudioFocus(3000); // ~3s alarm sound — hold focus + wake lock for 5s
       try {
         const ctx = getCtx();
         // Sharp two-tone beep: high then low, repeated with rising urgency
@@ -1035,6 +1094,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // ── Zen audio engine ──────────────────────────────────────────────
     function playZenSound(i) {
+      claimAudioFocus(4000); // zen sounds are ~2-4s — hold focus + wake lock for 6s
       try {
         const ctx = getCtx();
         const tone = (freq, type, start, dur, vol = 0.3) => {
@@ -3461,6 +3521,10 @@ document.addEventListener("DOMContentLoaded", function() {
         const warm = setTimeout(doCheck, 1000);
         const onVisible = () => {
           if (document.visibilityState === "visible") {
+            // Resume AudioContext if browser suspended it while tab was hidden
+            if (_audioCtx && _audioCtx.state === "suspended") {
+              _audioCtx.resume().catch(function() {});
+            }
             // Catch up on any notifications missed while tab was hidden/closed
             catchUpNotifs();
             // Re-sync SW queue — SW may have been killed while tab was hidden
