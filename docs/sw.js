@@ -1,3 +1,5 @@
+importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
+
 // Cookie-Care-Joy Service Worker
 // Handles push events, SW-side scheduled notifications, and app focus on click.
 
