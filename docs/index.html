@@ -3787,7 +3787,8 @@ if (!window.IS_MEDIAN_APP) {
       display: none;
       position: fixed;
       bottom: max(80px, calc(env(safe-area-inset-bottom) + 80px));
-      left: 50%; transform: translateX(-50%);
+      left: 0; right: 0;
+      margin-left: auto; margin-right: auto;
       z-index: 99000;
       background: #ffffff;
       border: 1.5px solid #fce7f3;
@@ -3797,9 +3798,7 @@ if (!window.IS_MEDIAN_APP) {
       font-family: system-ui, -apple-system, sans-serif;
       animation: slideUpInstall 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards;
       flex-direction: column;
-      min-width: 292px;
-      max-width: 340px;
-      width: calc(100vw - 48px);
+      width: min(340px, calc(100vw - 48px));
       overflow: hidden;
     }
     #ccj-install-chip.visible { display: flex !important; }
