@@ -3382,8 +3382,9 @@ document.addEventListener("DOMContentLoaded", function() {
         const nowMs = Date.now();
         if (fireAt <= nowMs) { dbg("scheduleTaskPush: time already past"); return; }
         const delayMs = fireAt - nowMs;
-        const title = "\uD83D\uDD14 Heads-up \u2014 Cookie-Care-Joy";
-        const body  = "\uD83D\uDD14 Your alarm rings in 2 minutes \u2014 get ready! \uD83C\uDF6A";
+        const taskLabel = task.text ? ("\u201C" + task.text + "\u201D") : "Your task";
+        const title = "\u23F0 " + taskLabel + " in 2 minutes!";
+        const body  = "\uD83C\uDF6A Get ready \u2014 your alarm rings soon!";
 
         // Save to TASK-SPECIFIC queue — immune to scheduleReminders clearing ccj_notif_q
         try {
@@ -3608,6 +3609,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 catchUpNotifs();
                 syncSwQueue();
               }
+              // Also re-sync task alarms so they survive Median backgrounding
+              syncTaskQueue();
             }
           };
 
