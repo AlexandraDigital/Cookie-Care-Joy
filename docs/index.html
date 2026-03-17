@@ -3226,7 +3226,17 @@ document.addEventListener("DOMContentLoaded", function() {
       async function showNotifNow(title, body, fireAt) {
         const _isMedian = window.IS_MEDIAN_APP || window.IS_MEDIAN;
         // ── Median / Android WebView path ──
+        // Use SW showNotification so notifications appear in the phone's notification shade
         if (_isMedian) {
+          try {
+            if ("serviceWorker" in navigator) {
+              const reg = await navigator.serviceWorker.ready;
+              const ICON = "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png";
+              await reg.showNotification(title, { body: body || '', icon: ICON, badge: ICON, tag: "ccj-" + (fireAt || Date.now()), requireInteraction: false });
+              return;
+            }
+          } catch(e) { dbg("showNotifNow Median SW error: " + e); }
+          // SW unavailable — fall back to in-app toast
           if (typeof window._ccjShowToast === 'function') {
             window._ccjShowToast(title + (body ? ': ' + body : ''));
           }
@@ -3480,10 +3490,10 @@ document.addEventListener("DOMContentLoaded", function() {
               localNotify("🍪 Welcome to Cookie-Care-Joy!", "Sweet reminders are set — we'll check in on you 💕", 100);
             }
           }, 3500);
-          return;
+          // Fall through to browser/PWA path below to schedule sweet messages via SW
         }
 
-        // ── Browser / PWA path ───────────────────────────────────────────────
+        // ── Browser / PWA path (also used by Median for SW-based sweet messages) ────
         // If a saved queue exists the user already enabled — catchUpNotifs() will restore it.
         // Don't re-schedule (would pick new random messages and double-fill the queue).
         try {
@@ -3498,11 +3508,13 @@ document.addEventListener("DOMContentLoaded", function() {
           }
         } catch(e) {}
 
-        dbg("scheduleReminders: fresh start — browser/PWA local notification path");
+        dbg("scheduleReminders: fresh start — scheduling sweet messages via SW");
         // Clear any stale saved queue before building a fresh one
         localStorage.removeItem("ccj_notif_q");
-        // Welcome notification — fires 2 seconds after enabling
-        localNotify("🍪 Welcome to Cookie-Care-Joy!", "Sweet reminders are set — we\'ll check in on you 💕", 5000); // fires after cookie splash animation (3.4s) is fully gone
+        // Welcome notification — only on browser/PWA (Median already handled above)
+        if (!(window.IS_MEDIAN_APP || window.IS_MEDIAN)) {
+          localNotify("🍪 Welcome to Cookie-Care-Joy!", "Sweet reminders are set — we\'ll check in on you 💕", 5000); // fires after cookie splash animation (3.4s) is fully gone
+        }
         // First sweet message — fires after 5 minutes ("after a while")
         const firstLocal = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
         localNotify("Cookie-Care-Joy 🌸", firstLocal, 5 * 60 * 1000);
