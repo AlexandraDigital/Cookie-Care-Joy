@@ -3945,6 +3945,35 @@ document.addEventListener("DOMContentLoaded", function() {
       cursor: pointer; padding: 0; line-height: 1; flex-shrink: 0;
       touch-action: manipulation; margin-left: auto;
     }
+    /* Desktop install banner */
+    #ccj-desktop-install {
+      display: none;
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 99000;
+      background: #fff;
+      border: 1.5px solid #f9a8d4;
+      border-radius: 18px;
+      padding: 16px 18px;
+      box-shadow: 0 4px 24px rgba(244,63,110,0.18);
+      font-family: system-ui, -apple-system, sans-serif;
+      animation: slideUpInstall 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;
+      align-items: center;
+      gap: 14px;
+      max-width: 320px;
+    }
+    #ccj-desktop-install button.ccj-install-btn {
+      background: #f43f6e; color: #fff; border: none;
+      border-radius: 22px; padding: 10px 18px;
+      font-size: 13px; font-weight: 800;
+      cursor: pointer; white-space: nowrap;
+    }
+    #ccj-desktop-install .ccj-install-close {
+      background: none; border: none; font-size: 20px; color: #9ca3af;
+      cursor: pointer; padding: 0; line-height: 1; flex-shrink: 0;
+      margin-left: auto;
+    }
   </style>
 
   <!-- iOS install banner markup -->
@@ -3971,6 +4000,17 @@ document.addEventListener("DOMContentLoaded", function() {
     </div>
     <button class="ccj-install-btn" id="ccj-android-btn">Install</button>
     <button class="ccj-install-close" id="ccj-android-close">✕</button>
+  </div>
+
+  <!-- Desktop install banner markup -->
+  <div id="ccj-desktop-install" style="display:none">
+    <span style="font-size:32px;flex-shrink:0">🍪</span>
+    <div style="flex:1">
+      <p style="margin:0 0 4px;font-size:14px;font-weight:800;color:#111827">Install Cookie Care</p>
+      <p style="margin:0;font-size:12px;color:#6b7280">Install the app for the full experience — offline ready & quick access!</p>
+    </div>
+    <button class="ccj-install-btn" id="ccj-desktop-btn">Install</button>
+    <button class="ccj-install-close" id="ccj-desktop-close">✕</button>
   </div>
 
   <script>
@@ -4052,6 +4092,8 @@ document.addEventListener("DOMContentLoaded", function() {
       var androidBanner = document.getElementById("ccj-android-install");
       if (iosBanner) iosBanner.style.display = "none";
       if (androidBanner) androidBanner.style.display = "none";
+      var desktopBanner = document.getElementById("ccj-desktop-install");
+      if (desktopBanner) desktopBanner.style.display = "none";
 
     } else {
       // ── Browser install banners (non-Median only) ──────────────────────────
@@ -4088,15 +4130,39 @@ document.addEventListener("DOMContentLoaded", function() {
           }
         } else if (!isIOS) {
           // Android / Desktop Chrome — use beforeinstallprompt
+          var isDesktop = !/Mobi|Android/i.test(ua);
           var deferredPrompt = null;
           window.addEventListener("beforeinstallprompt", function (e) {
             e.preventDefault();
             deferredPrompt = e;
             setTimeout(function () {
-              var el = document.getElementById("ccj-android-install");
+              var bannerId = isDesktop ? "ccj-desktop-install" : "ccj-android-install";
+              var el = document.getElementById(bannerId);
               if (el) el.style.display = "flex";
             }, 4000);
           });
+          // Desktop install button
+          var desktopBtn = document.getElementById("ccj-desktop-btn");
+          if (desktopBtn) {
+            desktopBtn.addEventListener("click", function () {
+              if (!deferredPrompt) return;
+              deferredPrompt.prompt();
+              deferredPrompt.userChoice.then(function () {
+                deferredPrompt = null;
+                var el = document.getElementById("ccj-desktop-install");
+                if (el) el.style.display = "none";
+                dismiss();
+              });
+            });
+          }
+          var desktopClose = document.getElementById("ccj-desktop-close");
+          if (desktopClose) {
+            desktopClose.addEventListener("click", function () {
+              var el = document.getElementById("ccj-desktop-install");
+              if (el) el.style.display = "none";
+              dismiss();
+            });
+          }
           var installBtn = document.getElementById("ccj-android-btn");
           if (installBtn) {
             installBtn.addEventListener("click", function () {
