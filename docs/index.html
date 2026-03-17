@@ -3035,8 +3035,9 @@ if (!window.IS_MEDIAN_APP) {
               setNotifError("Notifications blocked. Go to browser Settings → Site permissions to allow, then try again.");
               return;
             }
-            // Dismissed without choosing
+            // Dismissed without choosing — show install banner so they can add to home screen
             setNotifError("Tap Enable again to allow notifications 🔔");
+            showInstallBanner();
             return;
           } catch (e) {
             // OneSignal threw — fall through to native
@@ -3046,9 +3047,7 @@ if (!window.IS_MEDIAN_APP) {
         // ── Path B: Native Notification API (no OneSignal) ──
         if (!("Notification" in window)) {
           setNotifError("On iPhone: tap Share → \"Add to Home Screen\", then open from there 📲");
-          // Show iOS install banner so the user can tap through easily
-          var _iosBnr = document.getElementById("ccj-ios-install");
-          if (_iosBnr) _iosBnr.style.display = "block";
+          showInstallBanner();
           return;
         }
         if (Notification.permission === "denied") {
@@ -3067,6 +3066,7 @@ if (!window.IS_MEDIAN_APP) {
             setNotifError("Notifications blocked. Check browser settings to allow them.");
           } else {
             setNotifError("Tap Enable again, or on iPhone tap Share → \"Add to Home Screen\" first 📲");
+            showInstallBanner();
           }
         } catch (e) {
           setNotifError("Something went wrong. Try again! 😔");
@@ -3077,6 +3077,25 @@ if (!window.IS_MEDIAN_APP) {
         localStorage.setItem("ccj_notif_off", "true");
         setNotifPerm("off");
         setShowBanner(false);
+      };
+
+      // Show the appropriate install banner (iOS or Android/PWA)
+      const showInstallBanner = () => {
+        try {
+          // Already installed as PWA — no banner needed
+          if (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) return;
+          if (window.navigator.standalone) return;
+          var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+          if (isIOS) {
+            var b = document.getElementById("ccj-ios-install");
+            if (b) { b.style.display = "block"; b.style.animation = "ccjSlideUp 0.4s ease"; }
+          } else {
+            // Android / desktop: show Android install banner if deferredPrompt is available,
+            // otherwise show the generic Android banner div if it exists
+            var ab = document.getElementById("ccj-android-install");
+            if (ab) { ab.style.display = "block"; ab.style.animation = "ccjSlideUp 0.4s ease"; }
+          }
+        } catch(e) {}
       };
 
       const resetNotifications = () => {
@@ -3583,7 +3602,7 @@ if (!window.IS_MEDIAN_APP) {
                       <span style={{ fontSize: 20, flexShrink: 0 }}>🔔</span>
                       <span style={{ fontSize: 13, color: "#fff", fontWeight: 600, lineHeight: 1.3, flex: 1, textAlign: "center" }}>{t.notif_prompt}</span>
                       <button onClick={requestNotifications} style={{ background: "#fff", border: "none", borderRadius: 22, padding: "10px 18px", fontSize: 13, fontWeight: 800, color: ROSE, cursor: "pointer", fontFamily: "inherit", flexShrink: 0, whiteSpace: "nowrap", boxShadow: "0 2px 8px rgba(0,0,0,0.18)", minHeight: 44, minWidth: 80 }}>{t.notif_enable_short}</button>
-                      <button onClick={() => setShowBanner(false)} style={{ background: "transparent", border: "none", cursor: "pointer", padding: "0 4px", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.9)", fontSize: 22, minWidth: 44, minHeight: 44, flexShrink: 0 }}>✕</button>
+                      <button onClick={() => { setShowBanner(false); showInstallBanner(); }} style={{ background: "transparent", border: "none", cursor: "pointer", padding: "0 4px", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.9)", fontSize: 22, minWidth: 44, minHeight: 44, flexShrink: 0 }}>✕</button>
                     </div>
                   )}
                 </div>
