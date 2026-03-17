@@ -3111,10 +3111,22 @@ if (!window.IS_MEDIAN_APP) {
             if (btn) {
               btn.style.display = "inline-flex";
               btn.onclick = async () => {
-                if (window._deferredInstallPrompt) {
-                  window._deferredInstallPrompt.prompt();
-                  var res = await window._deferredInstallPrompt.userChoice;
-                  if (res && res.outcome === "accepted") { chip.classList.remove("visible"); }
+                var prompt = window._deferredInstallPrompt;
+                if (prompt) {
+                  try {
+                    prompt.prompt();
+                    var res = await prompt.userChoice;
+                    window._deferredInstallPrompt = null; // can only use once
+                    if (res && res.outcome === "accepted") { chip.classList.remove("visible"); }
+                  } catch(e) {
+                    // prompt already used — hide button, show hint
+                    btn.style.display = "none";
+                    if (hint) { hint.style.display = "inline"; hint.textContent = "Use browser menu → Install"; }
+                  }
+                } else {
+                  // No prompt available — show browser install hint
+                  btn.style.display = "none";
+                  if (hint) { hint.style.display = "inline"; hint.textContent = "Browser menu → Install App"; }
                 }
               };
             }
@@ -4175,6 +4187,19 @@ if (!window.IS_MEDIAN_APP) {
 
     } else {
       // ── Browser install banners (non-Median only) ──────────────────────────
+      // IMPORTANT: always capture beforeinstallprompt regardless of dismiss state
+      // so the chip install button always works even if user previously dismissed a banner.
+      (function () {
+        const ua = navigator.userAgent;
+        const isIOS_early = /iP(hone|od|ad)/.test(ua) && !window.MSStream;
+        if (!isIOS_early) {
+          window.addEventListener("beforeinstallprompt", function (e) {
+            e.preventDefault();
+            window._deferredInstallPrompt = e;
+          });
+        }
+      })();
+
       (function () {
         const DISMISS_KEY = "ccj_install_dismissed";
         if (localStorage.getItem(DISMISS_KEY)) return;
@@ -4213,10 +4238,13 @@ if (!window.IS_MEDIAN_APP) {
             e.preventDefault();
             deferredPrompt = e;
             window._deferredInstallPrompt = e; // used by install chip
-            setTimeout(function () {
-              var el = document.getElementById("ccj-android-install");
-              if (el) el.style.display = "flex";
-            }, 4000);
+            // Auto-show big banner only if user hasn't dismissed before
+            if (!localStorage.getItem(DISMISS_KEY)) {
+              setTimeout(function () {
+                var el = document.getElementById("ccj-android-install");
+                if (el) el.style.display = "flex";
+              }, 4000);
+            }
           });
           var installBtn = document.getElementById("ccj-android-btn");
           if (installBtn) {
