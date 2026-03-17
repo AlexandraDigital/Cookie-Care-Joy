@@ -3593,6 +3593,10 @@ document.addEventListener("DOMContentLoaded", function() {
           window.median_app_resumed = function() {
             dbg("median_app_resumed: re-syncing SW queue");
             if (Notification && Notification.permission === "granted") {
+              // Let the user know their reminders are still active
+              if (window.MJSInterface && MJSInterface.toast) {
+                MJSInterface.toast("🍪 Sweet reminders are on!");
+              }
               const _q = JSON.parse(localStorage.getItem("ccj_notif_q") || "[]");
               const _future = _q.filter(function(n) { return n.fireAt > Date.now(); });
               if (_future.length === 0) {
