@@ -2873,6 +2873,18 @@ if (!window.IS_MEDIAN_APP) {
         // Only show banner if not already registered
         const alreadyRegistered = localStorage.getItem('ccj_notif_registered') === '1';
         if (!alreadyRegistered) setShowBanner(true);
+
+        // ── Show install banner after splash (first visit, if not already installed) ──
+        setTimeout(function() {
+          // Skip if already installed as PWA
+          var isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone;
+          if (isStandalone) return;
+          // Only show once
+          var _iKey = 'ccj_install_prompted';
+          if (localStorage.getItem(_iKey)) return;
+          localStorage.setItem(_iKey, '1');
+          if (typeof showInstallBanner === 'function') showInstallBanner();
+        }, 2800); // after welcome toast + notification banner settle
         // No auto-dismiss — banner stays until user taps Enable or X
         if (Notification.permission === 'granted') {
           // Ensure OneSignal subscription is active, wait for ID, then schedule
