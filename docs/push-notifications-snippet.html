@@ -1,0 +1,44 @@
+<!-- ✅ OneSignal Push Notifications -->
+<!-- Add this in the <head> of your index.html -->
+
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.init({
+      appId: "fc237358-e343-4a93-adfe-b22527bb0aef",
+      notifyButton: {
+        enable: true, // Shows a bell icon on your site
+      },
+      allowLocalhostAsSecureOrigin: true, // For testing locally
+    });
+  });
+</script>
+
+<!-- ✅ Optional: Add a custom subscribe button anywhere in your <body> -->
+<!-- When clicked, asks the user for notification permission -->
+
+<button onclick="subscribeToNotifications()" style="
+  background: #ff6b6b;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+">
+  🔔 Get Notified
+</button>
+
+<script>
+  async function subscribeToNotifications() {
+    OneSignalDeferred.push(async function(OneSignal) {
+      const permission = await OneSignal.Notifications.requestPermission();
+      if (permission) {
+        alert("You're subscribed! 🎉");
+      } else {
+        alert("Notifications blocked. You can enable them in browser settings.");
+      }
+    });
+  }
+</script>
