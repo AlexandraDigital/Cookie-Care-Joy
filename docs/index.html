@@ -2855,6 +2855,21 @@ if (!window.IS_MEDIAN_APP) {
       const splashGoneRef = React.useRef(false);
       const [showBanner, setShowBanner] = useState(false);
       const dismissSplash = () => { setShowSplash(false); setTimeout(() => { setSplashGone(true); splashGoneRef.current = true;
+
+        // ── Welcome notification: fires on very first visit, no permission needed ──
+        const _wKey = 'ccj_welcome_shown';
+        if (!localStorage.getItem(_wKey)) {
+          localStorage.setItem(_wKey, '1');
+          // In-app toast always fires (no permission required)
+          setTimeout(() => {
+            if (window._ccjShowToast) window._ccjShowToast("Welcome to Cookie-Care-Joy! 🍪 Ready to take sweet care of you 🌸");
+          }, 700);
+          // System notification fires too if permission already granted
+          if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+            setTimeout(() => localNotify("Welcome to Cookie-Care-Joy! 🍪", "Your sweet self-care companion is here 🌸", 0), 1200);
+          }
+        }
+
         // Only show banner if not already registered
         const alreadyRegistered = localStorage.getItem('ccj_notif_registered') === '1';
         if (!alreadyRegistered) setShowBanner(true);
@@ -2939,6 +2954,11 @@ if (!window.IS_MEDIAN_APP) {
           localStorage.setItem("ccj_notif_registered", "1"); // don't show banner again
           setNotifPerm("granted");
           setShowBanner(false);
+          // Fire welcome system notification immediately on first-time grant
+          if (!localStorage.getItem('ccj_welcome_push_sent')) {
+            localStorage.setItem('ccj_welcome_push_sent', '1');
+            setTimeout(() => localNotify("Welcome to Cookie-Care-Joy! 🍪", "Notifications on! Sweet reminders coming your way 🌸", 0), 500);
+          }
           // Ensure OneSignal subscription is active and wait for subscription ID to populate
           try {
             if (window.OneSignal && window.OneSignal.User && window.OneSignal.User.PushSubscription) {
@@ -3230,11 +3250,13 @@ if (!window.IS_MEDIAN_APP) {
         try {
           if (navigator.serviceWorker && navigator.serviceWorker.controller) {
             const reg = await navigator.serviceWorker.ready;
+            // Dedup: same title+body within 10s shares the same tag to prevent duplicates
+            const _dedupTag = 'ccj-' + btoa(title.substring(0,20) + body.substring(0,20)).replace(/[^a-z0-9]/gi,'').substring(0,16);
             reg.showNotification(title, {
               body,
               icon: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png",
               badge: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png",
-              tag: "ccj-" + Date.now(),
+              tag: _dedupTag,
               requireInteraction: false,
             });
           } else {
@@ -3332,11 +3354,11 @@ if (!window.IS_MEDIAN_APP) {
           dbg("scheduleReminders: using OneSignal push, player=" + playerId);
           await osPushWithId(playerId, "🍪 Cookie-Care-Joy", "You\'re all set! Sweet reminders on the way ✨", 2000);
           const first = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-          await osPushWithId(playerId, "Cookie-Care-Joy 🍪", first, 62000);
+          await osPushWithId(playerId, "Cookie-Care-Joy 🍪", first, 5 * 60 * 1000); // 5 min after welcome
           const promises = [];
           for (let i = 1; i <= 57; i++) {
             const msg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-            promises.push(osPushWithId(playerId, "Cookie-Care-Joy 🍪", msg, 62000 + i * 25 * 60 * 1000));
+            promises.push(osPushWithId(playerId, "Cookie-Care-Joy 🍪", msg, 5 * 60 * 1000 + i * 25 * 60 * 1000)); // 5min + i*25min
           }
           await Promise.all(promises);
           dbg("scheduleReminders: done");
@@ -3345,10 +3367,10 @@ if (!window.IS_MEDIAN_APP) {
           dbg("scheduleReminders: no OneSignal player ID — using local fallback");
           localNotify("🍪 Cookie-Care-Joy", "You\'re all set! Sweet reminders on the way ✨", 2000);
           const firstLocal = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-          localNotify("Cookie-Care-Joy 🍪", firstLocal, 62000);
+          localNotify("Cookie-Care-Joy 🍪", firstLocal, 5 * 60 * 1000); // 5 min
           for (let i = 1; i <= 57; i++) {
             const msg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-            localNotify("Cookie-Care-Joy 🍪", msg, 62000 + i * 25 * 60 * 1000);
+            localNotify("Cookie-Care-Joy 🍪", msg, 5 * 60 * 1000 + i * 25 * 60 * 1000); // 5min + i*25min
           }
         }
       }
@@ -3613,44 +3635,66 @@ if (!window.IS_MEDIAN_APP) {
 
   <!-- ── iOS "Add to Home Screen" Install Prompt ──────────────────────── -->
   <style>
+    /* ── Pretty Install Banners ── */
+    @keyframes slideUpInstall {
+      from { transform: translateY(110%); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    @keyframes installPulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(244,63,110,0.35); }
+      50%      { box-shadow: 0 0 0 8px rgba(244,63,110,0); }
+    }
+
+    /* iOS install banner */
     #ccj-ios-install {
       display: none;
       position: fixed;
       bottom: 0; left: 0; right: 0;
       z-index: 99000;
-      padding: 16px 20px;
-      padding-bottom: max(20px, env(safe-area-inset-bottom));
-      background: #fff;
-      border-top: 1.5px solid #f9a8d4;
-      box-shadow: 0 -4px 24px rgba(244,63,110,0.13);
-      border-radius: 20px 20px 0 0;
+      padding: 20px 20px;
+      padding-bottom: max(28px, env(safe-area-inset-bottom));
+      background: linear-gradient(160deg, #fff 60%, #fdf2f8 100%);
+      border-top: 2px solid #f9a8d4;
+      box-shadow: 0 -8px 40px rgba(244,63,110,0.18);
+      border-radius: 24px 24px 0 0;
       font-family: system-ui, -apple-system, sans-serif;
-      animation: slideUpInstall 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;
-    }
-    @keyframes slideUpInstall {
-      from { transform: translateY(100%); opacity: 0; }
-      to   { transform: translateY(0);    opacity: 1; }
+      animation: slideUpInstall 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards;
     }
     #ccj-ios-install .ccj-install-row {
-      display: flex; align-items: flex-start; gap: 12px;
+      display: flex; align-items: center; gap: 14px;
     }
     #ccj-ios-install .ccj-install-icon {
-      font-size: 40px; flex-shrink: 0; line-height: 1;
+      width: 56px; height: 56px; border-radius: 16px;
+      background: linear-gradient(135deg, #fce7ef, #fdf6fb);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 30px; flex-shrink: 0; line-height: 1;
+      box-shadow: 0 4px 14px rgba(244,63,110,0.2);
+      border: 1.5px solid #fecdd3;
     }
     #ccj-ios-install .ccj-install-text {
       flex: 1;
     }
     #ccj-ios-install .ccj-install-title {
-      font-size: 15px; font-weight: 800; color: #111827; margin: 0 0 4px;
+      font-size: 15px; font-weight: 800; color: #111827; margin: 0 0 3px;
     }
     #ccj-ios-install .ccj-install-steps {
-      font-size: 13px; color: #6b7280; margin: 0; line-height: 1.6;
+      font-size: 12px; color: #6b7280; margin: 0; line-height: 1.6;
     }
-    #ccj-ios-install .ccj-install-steps strong { color: #111827; }
+    #ccj-ios-install .ccj-install-steps strong { color: #f43f6e; font-weight: 700; }
     #ccj-ios-install .ccj-install-close {
-      background: none; border: none; font-size: 22px; color: #9ca3af;
+      background: #f3f4f6; border: none; font-size: 14px; color: #9ca3af;
       cursor: pointer; padding: 0; line-height: 1; flex-shrink: 0;
-      touch-action: manipulation;
+      touch-action: manipulation; width: 28px; height: 28px;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-weight: 700;
+    }
+    #ccj-ios-install .ccj-install-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: linear-gradient(90deg, #f43f6e, #fb7185);
+      color: #fff; border-radius: 20px; padding: 6px 14px;
+      font-size: 12px; font-weight: 800; margin-top: 8px;
+      box-shadow: 0 3px 10px rgba(244,63,110,0.3);
+      letter-spacing: 0.2px;
     }
     /* Arrow pointing down toward Safari toolbar */
     #ccj-ios-install::after {
@@ -3663,59 +3707,76 @@ if (!window.IS_MEDIAN_APP) {
       border-right: 10px solid transparent;
       border-top: 10px solid #f9a8d4;
     }
-    /* Android install banner */
+
+    /* Android / Desktop install banner */
     #ccj-android-install {
       display: none;
       position: fixed;
-      bottom: max(80px, calc(env(safe-area-inset-bottom) + 80px));
+      bottom: max(88px, calc(env(safe-area-inset-bottom) + 88px));
       left: 16px; right: 16px;
       z-index: 99000;
-      background: #fff;
-      border: 1.5px solid #f9a8d4;
-      border-radius: 18px;
+      background: linear-gradient(160deg, #fff 60%, #fdf2f8 100%);
+      border: 2px solid #fecdd3;
+      border-radius: 22px;
       padding: 14px 16px;
-      box-shadow: 0 4px 24px rgba(244,63,110,0.18);
+      box-shadow: 0 8px 32px rgba(244,63,110,0.2);
       font-family: system-ui, -apple-system, sans-serif;
-      animation: slideUpInstall 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;
-      display: flex; align-items: center; gap: 12px;
+      animation: slideUpInstall 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards;
+      align-items: center; gap: 12px;
+    }
+    #ccj-android-install .ccj-install-app-icon {
+      width: 52px; height: 52px; border-radius: 14px;
+      background: linear-gradient(135deg, #fce7ef, #fdf6fb);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; flex-shrink: 0; line-height: 1;
+      box-shadow: 0 3px 10px rgba(244,63,110,0.18);
+      border: 1.5px solid #fecdd3;
     }
     #ccj-android-install button.ccj-install-btn {
-      background: #f43f6e; color: #fff; border: none;
-      border-radius: 22px; padding: 10px 18px;
+      background: linear-gradient(135deg, #f43f6e, #fb7185);
+      color: #fff; border: none;
+      border-radius: 22px; padding: 11px 20px;
       font-size: 13px; font-weight: 800;
       cursor: pointer; white-space: nowrap;
-      touch-action: manipulation;
+      touch-action: manipulation; flex-shrink: 0;
+      box-shadow: 0 4px 16px rgba(244,63,110,0.35);
+      animation: installPulse 2.5s ease-in-out infinite;
+      letter-spacing: 0.2px;
     }
     #ccj-android-install .ccj-install-close {
-      background: none; border: none; font-size: 20px; color: #9ca3af;
+      background: #f3f4f6; border: none; font-size: 13px; color: #9ca3af;
       cursor: pointer; padding: 0; line-height: 1; flex-shrink: 0;
-      touch-action: manipulation; margin-left: auto;
+      touch-action: manipulation; width: 26px; height: 26px;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-weight: 700;
     }
   </style>
 
-  <!-- iOS install banner markup -->
+  <!-- iOS install banner markup — pretty redesign -->
   <div id="ccj-ios-install">
     <div class="ccj-install-row">
       <div class="ccj-install-icon">🍪</div>
       <div class="ccj-install-text">
-        <p class="ccj-install-title">Add Cookie Care to your Home Screen!</p>
+        <p class="ccj-install-title">Add Cookie Care to your Home Screen 🌸</p>
         <p class="ccj-install-steps">
-          Tap <strong>Share ⎋</strong> at the bottom of Safari, then tap<br>
-          <strong>"Add to Home Screen" ＋</strong> for the full app experience.
+          Tap <strong>Share ⎋</strong> in Safari's toolbar, then<br>
+          tap <strong>Add to Home Screen ＋</strong>
         </p>
+        <span class="ccj-install-pill">✨ Free forever · Works offline</span>
       </div>
       <button class="ccj-install-close" id="ccj-ios-close" aria-label="Dismiss">✕</button>
     </div>
   </div>
 
-  <!-- Android install banner markup -->
+  <!-- Android / Desktop install banner — pretty redesign -->
   <div id="ccj-android-install" style="display:none">
-    <span style="font-size:32px;flex-shrink:0">🍪</span>
-    <div style="flex:1">
-      <p style="margin:0 0 2px;font-size:14px;font-weight:800;color:#111827">Install Cookie Care</p>
-      <p style="margin:0;font-size:12px;color:#6b7280">Add to your home screen for the best experience!</p>
+    <div class="ccj-install-app-icon">🍪</div>
+    <div style="flex:1;min-width:0">
+      <p style="margin:0 0 2px;font-size:14px;font-weight:800;color:#111827">Cookie-Care-Joy</p>
+      <p style="margin:0 0 1px;font-size:11px;color:#6b7280">Add to home screen · Free forever</p>
+      <p style="margin:0;font-size:11px;color:#f43f6e;font-weight:600">✨ Works offline · Instant access</p>
     </div>
-    <button class="ccj-install-btn" id="ccj-android-btn">Install</button>
+    <button class="ccj-install-btn" id="ccj-android-btn">🍪 Install</button>
     <button class="ccj-install-close" id="ccj-android-close">✕</button>
   </div>
 
