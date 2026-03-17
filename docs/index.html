@@ -3582,6 +3582,25 @@ document.addEventListener("DOMContentLoaded", function() {
             }
           });
 
+          // ── Median: re-sync SW queue when app comes back to foreground ──
+          // Android can kill the SW while app is backgrounded; this restores timers.
+          window.median_app_resumed = function() {
+            dbg("median_app_resumed: re-syncing SW queue");
+            if (Notification && Notification.permission === "granted") {
+              catchUpNotifs();
+              syncSwQueue();
+            }
+          };
+
+          // ── iOS Safari PWA + all browsers: re-sync on pageshow (back-nav cache restore) ──
+          window.addEventListener("pageshow", function(e) {
+            if (e.persisted && Notification && Notification.permission === "granted") {
+              dbg("pageshow (BFcache restore): re-syncing SW queue");
+              catchUpNotifs();
+              syncSwQueue();
+            }
+          });
+
           // Keepalive ping: prevents browser from killing the SW while tab is open.
           // Sent every 20 s when visible, every 25 s when hidden.
           // Also re-syncs the queue every 10 pings (~3 min visible, ~4 min hidden).
@@ -3591,7 +3610,7 @@ document.addEventListener("DOMContentLoaded", function() {
               const reg = await navigator.serviceWorker.ready;
               if (reg.active) reg.active.postMessage({ type: "PING" });
               _pingCount++;
-              if (_pingCount % 10 === 0) syncSwQueue(); // full re-sync every 10 pings
+              if (_pingCount % 5 === 0) syncSwQueue(); // full re-sync every 5 pings (~1.5-2 min)
             } catch(e) {}
           };
           const _pingMs = () => document.visibilityState === "visible" ? 20000 : 25000;
@@ -4026,7 +4045,14 @@ document.addEventListener("DOMContentLoaded", function() {
   </div>
 
   <script>
-    // ── Median.co (GoNative) detection ──────────────────────────────────────
+    // ── Early install prompt capture (must run before React IIFE) ──────────
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      window._ccjDeferredPrompt = e;
+      // If the install IIFE has already registered its handler, notify it
+      if (typeof window._ccjOnInstallPrompt === 'function') window._ccjOnInstallPrompt(e);
+    });
+        // ── Median.co (GoNative) detection ──────────────────────────────────────
     // Median injects "median" or "gonative" into the user agent string
     // and exposes a window.median bridge object when running as a native app.
     var IS_MEDIAN = (
@@ -4131,7 +4157,7 @@ document.addEventListener("DOMContentLoaded", function() {
           setTimeout(function () {
             var el = document.getElementById("ccj-ios-install");
             if (el) el.style.display = "block";
-          }, 4000);
+          }, 2000);
           var closeBtn = document.getElementById("ccj-ios-close");
           if (closeBtn) {
             closeBtn.addEventListener("click", function () {
@@ -4143,16 +4169,25 @@ document.addEventListener("DOMContentLoaded", function() {
         } else if (!isIOS) {
           // Android / Desktop Chrome — use beforeinstallprompt
           var isDesktop = !/Mobi|Android/i.test(ua);
-          var deferredPrompt = null;
-          window.addEventListener("beforeinstallprompt", function (e) {
-            e.preventDefault();
+          var deferredPrompt = window._ccjDeferredPrompt || null;
+          var _showInstallBanner = function(e) {
             deferredPrompt = e;
             setTimeout(function () {
               var bannerId = isDesktop ? "ccj-desktop-install" : "ccj-android-install";
               var el = document.getElementById(bannerId);
               if (el) el.style.display = "flex";
-            }, 4000);
-          });
+            }, 1500);
+          };
+          // If event already captured before this IIFE ran, show immediately
+          if (deferredPrompt) {
+            setTimeout(function() {
+              var bannerId = isDesktop ? "ccj-desktop-install" : "ccj-android-install";
+              var el = document.getElementById(bannerId);
+              if (el) el.style.display = "flex";
+            }, 1500);
+          }
+          // Hook for future events (in case browser fires it again)
+          window._ccjOnInstallPrompt = _showInstallBanner;
           // Desktop install button
           var desktopBtn = document.getElementById("ccj-desktop-btn");
           if (desktopBtn) {
