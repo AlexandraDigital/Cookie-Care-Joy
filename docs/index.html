@@ -2995,6 +2995,33 @@ document.addEventListener("DOMContentLoaded", function() {
           scheduleReminders();
         };
 
+        // ── Path B: Native Notification API (browser / PWA) ──────────────
+        if (!("Notification" in window)) {
+          setNotifError("On iPhone: tap Share → \"Add to Home Screen\", then open from there 📲");
+          return;
+        }
+        if (Notification.permission === "denied") {
+          setNotifError("Notifications blocked. Open browser Settings → Site permissions to allow.");
+          return;
+        }
+        if (Notification.permission === "granted") {
+          grantSuccess();
+          return;
+        }
+        try {
+          const result = await Promise.resolve(Notification.requestPermission());
+          if (result === "granted" || Notification.permission === "granted") {
+            grantSuccess();
+          } else if (result === "denied") {
+            setNotifError("Notifications blocked. Check browser settings to allow them.");
+          } else {
+            setNotifError("Tap Enable again, or on iPhone tap Share → \"Add to Home Screen\" first 📲");
+          }
+        } catch (e) {
+          setNotifError("Something went wrong. Try again! 😔");
+        }
+      }; // ── end requestNotifications ──────────────────────────────────
+
 
        const cookieIcon = "data:image/svg+xml," + encodeURIComponent(
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#f43f6e"/><text y="72" x="50" text-anchor="middle" font-size="62">🍪</text></svg>')
