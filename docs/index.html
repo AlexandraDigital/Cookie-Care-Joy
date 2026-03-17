@@ -3017,7 +3017,7 @@ document.addEventListener("DOMContentLoaded", function() {
                   window._ccjMedianGrantCb = null;
                   grantSuccess();
                 }
-              }, 5000);
+              }, 1000);
               // Trigger native Android FCM/OneSignal permission dialog
               window.median.onesignal.register();
             } else {
@@ -3451,12 +3451,7 @@ document.addEventListener("DOMContentLoaded", function() {
             // Refresh and store the FCM push token via the permanent median_onesignal_info callback
             window.median.onesignal.info({ callback: 'median_onesignal_info' });
           }
-          // Show immediate in-app confirmation toast
-          setTimeout(function() {
-            if (typeof window._ccjShowToast === 'function') {
-              window._ccjShowToast("🍪 You're all set! Sweet cookie reminders on the way ✨");
-            }
-          }, 1500);
+
           // ── Median uses OneSignal/FCM for all sweet message delivery ───────
           // Do NOT fall through to the SW local-notify path — that would fire
           // every sweet message twice (once via FCM, once via SW setTimeout).
