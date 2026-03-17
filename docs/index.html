@@ -3462,7 +3462,29 @@ document.addEventListener("DOMContentLoaded", function() {
           // every sweet message twice (once via FCM, once via SW setTimeout).
           // But DO fire the welcome notification locally — the app is always
           // open for 5+ seconds after enabling, so the SW will be alive to deliver it.
-          localNotify("🍪 Welcome to Cookie-Care-Joy!", "Sweet reminders are set — we'll check in on you 💕", 5000);
+          // ── Welcome notification via OneSignal REST API (shows in phone notification shade) ──
+          // Waits 3.5s for the cookie splash animation to finish, then calls the
+          // Cloudflare Worker proxy which securely sends the push via OneSignal REST API.
+          setTimeout(function() {
+            try {
+              var osId = localStorage.getItem('ccj_onesignal_id');
+              if (osId) {
+                fetch('https://cookie-care-joy.futuresuccess105.workers.dev', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ playerId: osId })
+                }).catch(function() {
+                  // Network error — fall back to local SW notification
+                  localNotify("🍪 Welcome to Cookie-Care-Joy!", "Sweet reminders are set — we'll check in on you 💕", 100);
+                });
+              } else {
+                // No OneSignal ID yet — fall back to local SW notification
+                localNotify("🍪 Welcome to Cookie-Care-Joy!", "Sweet reminders are set — we'll check in on you 💕", 100);
+              }
+            } catch(e) {
+              localNotify("🍪 Welcome to Cookie-Care-Joy!", "Sweet reminders are set — we'll check in on you 💕", 100);
+            }
+          }, 3500);
           return;
         }
 
