@@ -2996,16 +2996,6 @@ document.addEventListener("DOMContentLoaded", function() {
         };
 
 
-          new Notification(title, opts);
-        }
-      } catch (e) {
-        dbg("swNotify err: " + (e && e.message));
-        try {
-          new Notification(title, opts);
-        } catch (_) {}
-      }
-    }
-
        const cookieIcon = "data:image/svg+xml," + encodeURIComponent(
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#f43f6e"/><text y="72" x="50" text-anchor="middle" font-size="62">🍪</text></svg>')
 
@@ -3944,7 +3934,6 @@ document.addEventListener("DOMContentLoaded", function() {
           }
         }
       })();
-    }
   </script>
 </body>
 
