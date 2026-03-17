@@ -36,8 +36,15 @@ function _scheduleOne(fireAt, title, body, tag) {
   const dedup = tag || ('ccj-' + (title + body).replace(/[^a-z0-9]/gi,'').substring(0,24).toLowerCase());
   if (_swTimers.has(dedup)) clearTimeout(_swTimers.get(dedup));
   const delay = Math.max(0, fireAt - Date.now());
-  const tid = setTimeout(() => {
+  const tid = setTimeout(async () => {
     _swTimers.delete(dedup);
+    // Tell any open page clients to show the in-app toast as well
+    try {
+      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const client of clients) {
+        client.postMessage({ type: 'CCJ_NOTIFY', title, body });
+      }
+    } catch(e) {}
     self.registration.showNotification(title, {
       body: body || '',
       icon: ICON,

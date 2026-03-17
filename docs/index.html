@@ -3004,7 +3004,7 @@ if (!window.IS_MEDIAN_APP) {
                       localStorage.setItem("ccj_median_id_type", idType);
                       dbg("Stored Median player ID: " + pid);
                       // Re-schedule reminders now that we have the ID
-                      window._remindersSched = false;
+                      localStorage.removeItem('ccj_reminders_sched_at');
                       scheduleReminders();
                     } else if (attempt < 5) {
                       setTimeout(() => tryGetId(attempt + 1), 2000);
@@ -3444,8 +3444,14 @@ if (!window.IS_MEDIAN_APP) {
       }
 
       async function scheduleReminders() {
-        if (window._remindersSched) { dbg("scheduleReminders: already scheduled, skip"); return; }
-        window._remindersSched = true;
+        // Persist across page loads — skip if we already scheduled within the last 23 hours
+        const _schedKey = 'ccj_reminders_sched_at';
+        const _lastSched = parseInt(localStorage.getItem(_schedKey) || '0', 10);
+        if (_lastSched > 0 && (Date.now() - _lastSched) < 23 * 60 * 60 * 1000) {
+          dbg("scheduleReminders: already scheduled within 23h, skip");
+          return;
+        }
+        localStorage.setItem(_schedKey, Date.now().toString());
         dbg("scheduleReminders: start");
 
         // Get player ID ONCE — determines which delivery path to use
@@ -3760,11 +3766,17 @@ if (!window.IS_MEDIAN_APP) {
       if (ctrl) ctrl.postMessage({ type: "PING" });
     }, 20000);
 
-    // Listen for REQUEST_SYNC from SW (fired by periodicsync event)
+    // Listen for messages from SW: REQUEST_SYNC and CCJ_NOTIFY (in-app toast trigger)
     navigator.serviceWorker.addEventListener("message", function (e) {
-      if (e.data && e.data.type === "REQUEST_SYNC" && typeof _swSyncAll === "function") {
+      if (!e.data) return;
+      if (e.data.type === "REQUEST_SYNC" && typeof _swSyncAll === "function") {
         _lsQueuePrune();
         _swSyncAll();
+      }
+      // SW fires this right before showing a local notification — show in-app toast too
+      if (e.data.type === "CCJ_NOTIFY" && window._ccjShowToast) {
+        var toastText = e.data.body || e.data.title || "";
+        if (toastText) window._ccjShowToast(toastText);
       }
     });
   }
