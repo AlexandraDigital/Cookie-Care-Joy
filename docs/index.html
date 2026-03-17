@@ -3428,7 +3428,9 @@ if (!window.IS_MEDIAN_APP) {
           });
           const data = await resp.json();
           dbg("osPush " + (resp.ok ? "OK" : "ERR") + " send_after=" + (sendAfterMs||0) + "ms: " + JSON.stringify(data).substring(0, 120));
-        } catch(e) { dbg("osPush error: " + e.message); }
+          if (!resp.ok) throw new Error("osPush HTTP " + resp.status + ": " + JSON.stringify(data).substring(0, 120));
+          return true;
+        } catch(e) { dbg("osPush error: " + e.message); throw e; }
       }
 
       // osPush: legacy wrapper — resolves player ID then calls osPushWithId
@@ -3474,15 +3476,26 @@ if (!window.IS_MEDIAN_APP) {
         const osDone    = _lastOS    > 0 && (Date.now() - _lastOS)    < 23 * 60 * 60 * 1000;
         const localDone = _lastLocal > 0 && (Date.now() - _lastLocal) <  1 * 60 * 60 * 1000;
 
+        // Self-heal: if the 23h OS key is set but ccj_sweet_schedule is empty,
+        // the previous schedule silently failed (OneSignal API error). Reset so we retry.
         if (osDone) {
-          dbg("scheduleReminders: OneSignal already scheduled within 23h, skip");
-          return;
+          const sweetQueue = (() => { try { return JSON.parse(localStorage.getItem(_sweetSchedKey) || '[]'); } catch { return []; } })();
+          const hasFuture = sweetQueue.some(x => x.fireAt > Date.now() + 60000);
+          if (!hasFuture) {
+            dbg("scheduleReminders: 23h key set but no future schedule found — clearing stale key and retrying");
+            localStorage.removeItem(_schedKey);
+            // fall through to reschedule
+          } else {
+            dbg("scheduleReminders: OneSignal already scheduled within 23h and queue OK, skip");
+            return;
+          }
         }
         dbg("scheduleReminders: start");
 
         // Get player ID ONCE — determines which delivery path to use
         const playerId = await getPlayerId();
 
+        let osSuccess = false;
         if (playerId) {
           // ── OneSignal server push (works closed/background/any device) ──
           dbg("scheduleReminders: using OneSignal push, player=" + playerId);
@@ -3499,20 +3512,26 @@ if (!window.IS_MEDIAN_APP) {
             // ✅ Only stamp the 23h key after confirmed delivery
             localStorage.setItem(_schedKey, Date.now().toString());
             dbg("scheduleReminders: OneSignal done, key stamped");
+            osSuccess = true;
           } catch(osErr) {
             dbg("scheduleReminders: OneSignal error, falling to local: " + osErr.message);
             // Fall through to local fallback below
           }
         }
 
-        // ── Local fallback ───────────────────────────────────────────────────
-        // Runs when: no player ID, or OneSignal threw an error.
-        // Uses TWO mechanisms so tab-switching still works:
-        //   A) SW SCHEDULE messages (survives SW restart via SYNC_ALL)
-        //   B) Page-side schedule stored in localStorage (checked every 30s by _pageNotifCheck)
-        if (!playerId) {
-          if (localDone) { dbg("scheduleReminders: local fallback already scheduled within 1h, skip"); return; }
-          dbg("scheduleReminders: no OneSignal player ID — using local fallback");
+        // ── Local fallback / SW backup ───────────────────────────────────────
+        // Runs when: no player ID, OR OneSignal threw an error.
+        // ALSO runs as a SW backup even when OneSignal succeeded:
+        //   - Stores the near-term (≤30 min) notifications in the SW queue + ccj_sweet_schedule
+        //   - Means the SW timer fires even if OneSignal fails to deliver
+        //   - Page-side checker (_pageNotifCheck) fires on tab return regardless
+        {
+          if (!osSuccess) {
+            if (localDone && !playerId) { dbg("scheduleReminders: local fallback already scheduled within 1h, skip"); return; }
+            dbg("scheduleReminders: " + (playerId ? "OneSignal failed" : "no player ID") + " — using local fallback");
+          } else {
+            dbg("scheduleReminders: OneSignal OK — also scheduling SW backup for near-term reminders");
+          }
           localStorage.setItem(_localFbKey, Date.now().toString());
 
           const now = Date.now();
@@ -3525,12 +3544,19 @@ if (!window.IS_MEDIAN_APP) {
           }
           // Save to localStorage for page-side checker
           try { localStorage.setItem(_sweetSchedKey, JSON.stringify(schedule)); } catch(e) {}
-          // Also post to SW (for when tab stays open)
+          // Post to SW: near-term items (≤ 30 min) go into SW timer queue
+          // Long-term items still stored in ccj_sweet_schedule so page-checker fires on tab return
           for (const item of schedule) {
             _lsQueueAdd(item.fireAt, item.title, item.body);
-            localNotify(item.title, item.body, item.fireAt - now);
+            // Only send SCHEDULE to SW for items ≤ 30 min (SW timers survive that long with keepalive)
+            const delay = item.fireAt - now;
+            if (delay <= 30 * 60 * 1000) {
+              localNotify(item.title, item.body, delay);
+            }
           }
-          dbg("scheduleReminders: local fallback set, " + schedule.length + " items");
+          // Sync everything to SW so it can rebuild timers after a restart
+          _swSyncAll();
+          dbg("scheduleReminders: local/backup set, " + schedule.length + " items stored");
         }
       }
 
@@ -3572,9 +3598,13 @@ if (!window.IS_MEDIAN_APP) {
         }
       }
       setInterval(_pageNotifCheck, 30000);
-      // Also fire when tab becomes visible again (handles Android tab switching)
+      // Also fire when tab becomes visible again (handles Android tab switching + desktop)
       document.addEventListener("visibilitychange", function() {
-        if (!document.hidden) setTimeout(_pageNotifCheck, 500);
+        if (!document.hidden) {
+          setTimeout(_pageNotifCheck, 500);
+          // Re-sync SW timers on tab return — SW may have died while tab was hidden
+          setTimeout(_swSyncAll, 800);
+        }
       });
 
       React.useEffect(() => {
