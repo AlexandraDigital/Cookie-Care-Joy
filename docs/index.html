@@ -3492,6 +3492,13 @@ if (!window.IS_MEDIAN_APP) {
         }
         dbg("scheduleReminders: start");
 
+        // ── Immediately show pink in-app banner (no SW round-trip needed) ──
+        // This fires right away when the user is looking at the app.
+        // The push notification via OneSignal/SW handles background delivery.
+        if (window._ccjShowToast) {
+          window._ccjShowToast("Sweet reminders on the way! 🍪✨");
+        }
+
         // Get player ID ONCE — determines which delivery path to use
         const playerId = await getPlayerId();
 
@@ -3549,8 +3556,9 @@ if (!window.IS_MEDIAN_APP) {
           for (const item of schedule) {
             _lsQueueAdd(item.fireAt, item.title, item.body);
             // Only send SCHEDULE to SW for items ≤ 30 min (SW timers survive that long with keepalive)
+            // Skip items < 5s — those are shown directly via _ccjShowToast above (no SW round-trip duplicate)
             const delay = item.fireAt - now;
-            if (delay <= 30 * 60 * 1000) {
+            if (delay >= 5000 && delay <= 30 * 60 * 1000) {
               localNotify(item.title, item.body, delay);
             }
           }
