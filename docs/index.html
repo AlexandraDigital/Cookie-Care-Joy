@@ -2874,17 +2874,14 @@ if (!window.IS_MEDIAN_APP) {
         const alreadyRegistered = localStorage.getItem('ccj_notif_registered') === '1';
         if (!alreadyRegistered) setShowBanner(true);
 
-        // ── Show install banner after splash (first visit, if not already installed) ──
+        // ── Show install chip after splash — every browser session ──
         setTimeout(function() {
-          // Skip if already installed as PWA
           var isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone;
           if (isStandalone) return;
-          // Only show once
-          var _iKey = 'ccj_install_prompted';
-          if (localStorage.getItem(_iKey)) return;
-          localStorage.setItem(_iKey, '1');
+          if (sessionStorage.getItem('ccj_install_chip_shown')) return;
+          sessionStorage.setItem('ccj_install_chip_shown', '1');
           if (typeof showInstallBanner === 'function') showInstallBanner();
-        }, 2800); // after welcome toast + notification banner settle
+        }, 2800);
         // No auto-dismiss — banner stays until user taps Enable or X
         if (Notification.permission === 'granted') {
           // Ensure OneSignal subscription is active, wait for ID, then schedule
@@ -3091,17 +3088,46 @@ if (!window.IS_MEDIAN_APP) {
         setShowBanner(false);
       };
 
-      // Show the appropriate install banner (iOS or Android/PWA)
+      // Show compact install chip (every browser session)
       const showInstallBanner = () => {
         try {
-          // Already installed as PWA — no banner needed
           if (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) return;
           if (window.navigator.standalone) return;
+          var chip = document.getElementById("ccj-install-chip");
+          if (!chip) return;
           var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+          var label = document.getElementById("ccj-chip-label");
+          var hint  = document.getElementById("ccj-chip-hint");
+          var btn   = document.getElementById("ccj-chip-install-btn");
+          var closeBtn = document.getElementById("ccj-chip-close");
           if (isIOS) {
-            var b = document.getElementById("ccj-ios-install");
-            if (b) { b.style.display = "block"; b.style.animation = "ccjSlideUp 0.4s ease"; }
+            if (label) label.textContent = "Add to Home Screen";
+            if (hint)  { hint.style.display = "inline"; hint.textContent = "Share → Add"; }
+            if (btn)   btn.style.display = "none";
           } else {
+            if (label) label.textContent = "Install Cookie Care";
+            if (hint)  hint.style.display = "none";
+            if (btn) {
+              btn.style.display = "inline-flex";
+              btn.onclick = async () => {
+                if (window._deferredInstallPrompt) {
+                  window._deferredInstallPrompt.prompt();
+                  var res = await window._deferredInstallPrompt.userChoice;
+                  if (res && res.outcome === "accepted") { chip.classList.remove("visible"); }
+                }
+              };
+            }
+          }
+          if (closeBtn) closeBtn.onclick = () => chip.classList.remove("visible");
+          chip.classList.add("visible");
+        } catch(e) { /* silent */ }
+        // (old big-banner path kept below for reference but no longer called)
+        try {
+          var isIOS2 = /iphone|ipad|ipod/i.test(navigator.userAgent);
+          if (false && isIOS2) {
+            var b = document.getElementById("ccj-ios-install");
+            if (b) { b.style.display = "block"; }
+          } else if (false) {
             // Android / desktop: show Android install banner if deferredPrompt is available,
             // otherwise show the generic Android banner div if it exists
             var ab = document.getElementById("ccj-android-install");
@@ -3735,7 +3761,7 @@ if (!window.IS_MEDIAN_APP) {
 
   <!-- ── iOS "Add to Home Screen" Install Prompt ──────────────────────── -->
   <style>
-    /* ── Pretty Install Banners ── */
+    /* ── Install Chip (compact reminder) ── */
     @keyframes slideUpInstall {
       from { transform: translateY(110%); opacity: 0; }
       to   { transform: translateY(0);    opacity: 1; }
@@ -3743,6 +3769,54 @@ if (!window.IS_MEDIAN_APP) {
     @keyframes installPulse {
       0%,100% { box-shadow: 0 0 0 0 rgba(244,63,110,0.35); }
       50%      { box-shadow: 0 0 0 8px rgba(244,63,110,0); }
+    }
+
+    /* Shared chip wrapper — replaces both big banners */
+    #ccj-install-chip {
+      display: none;
+      position: fixed;
+      bottom: max(76px, calc(env(safe-area-inset-bottom) + 76px));
+      left: 50%; transform: translateX(-50%);
+      z-index: 99000;
+      background: linear-gradient(135deg, #fff0f5, #fff);
+      border: 1.5px solid #fecdd3;
+      border-radius: 40px;
+      padding: 9px 14px 9px 11px;
+      box-shadow: 0 4px 20px rgba(244,63,110,0.2);
+      font-family: system-ui, -apple-system, sans-serif;
+      animation: slideUpInstall 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;
+      white-space: nowrap;
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+    #ccj-install-chip.visible { display: flex !important; }
+    #ccj-install-chip .chip-icon {
+      font-size: 20px; line-height: 1; flex-shrink: 0;
+    }
+    #ccj-install-chip .chip-text {
+      font-size: 13px; font-weight: 700; color: #be185d;
+      flex-shrink: 0;
+    }
+    #ccj-install-chip .chip-ios-hint {
+      font-size: 11px; color: #9ca3af; font-weight: 500;
+    }
+    #ccj-install-chip button.chip-install-btn {
+      background: linear-gradient(135deg, #f43f6e, #fb7185);
+      color: #fff; border: none; border-radius: 20px;
+      padding: 6px 13px; font-size: 12px; font-weight: 800;
+      cursor: pointer; touch-action: manipulation; flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(244,63,110,0.3);
+      animation: installPulse 2.5s ease-in-out infinite;
+      letter-spacing: 0.2px;
+    }
+    #ccj-install-chip button.chip-close {
+      background: #f3f4f6; border: none; color: #9ca3af;
+      width: 22px; height: 22px; border-radius: 50%;
+      font-size: 12px; font-weight: 700; cursor: pointer;
+      touch-action: manipulation; display: flex;
+      align-items: center; justify-content: center;
+      flex-shrink: 0; padding: 0; line-height: 1;
     }
 
     /* iOS install banner */
@@ -3866,6 +3940,15 @@ if (!window.IS_MEDIAN_APP) {
     }
   </style>
 
+  <!-- Compact install chip — shows on every browser session -->
+  <div id="ccj-install-chip">
+    <span class="chip-icon">🍪</span>
+    <span class="chip-text" id="ccj-chip-label">Add to Home Screen</span>
+    <span class="chip-ios-hint" id="ccj-chip-hint" style="display:none">Share → Add</span>
+    <button class="chip-install-btn" id="ccj-chip-install-btn" style="display:none">Install</button>
+    <button class="chip-close" id="ccj-chip-close" aria-label="Dismiss">✕</button>
+  </div>
+
   <!-- iOS install banner markup — pretty redesign -->
   <div id="ccj-ios-install">
     <div class="ccj-install-row">
@@ -3980,6 +4063,7 @@ if (!window.IS_MEDIAN_APP) {
           window.addEventListener("beforeinstallprompt", function (e) {
             e.preventDefault();
             deferredPrompt = e;
+            window._deferredInstallPrompt = e; // used by install chip
             setTimeout(function () {
               var el = document.getElementById("ccj-android-install");
               if (el) el.style.display = "flex";
