@@ -1,4 +1,4 @@
-importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
+// OneSignal SDK is loaded by OneSignalSDKWorker.js
 
 // Cookie-Care-Joy Service Worker
 // Handles push events, SW-side scheduled notifications, and app focus on click.
@@ -30,21 +30,23 @@ self.addEventListener('push', e => {
 // backgrounded. _swTimers holds all live setTimeout handles keyed by fireAt ms.
 const _swTimers = new Map();
 
-function _scheduleOne(fireAt, title, body) {
+function _scheduleOne(fireAt, title, body, tag) {
   if (!fireAt || !title) return;
-  if (_swTimers.has(fireAt)) clearTimeout(_swTimers.get(fireAt));
+  // content-based dedup key — same title+body reuses same SW timer slot
+  const dedup = tag || ('ccj-' + (title + body).replace(/[^a-z0-9]/gi,'').substring(0,24).toLowerCase());
+  if (_swTimers.has(dedup)) clearTimeout(_swTimers.get(dedup));
   const delay = Math.max(0, fireAt - Date.now());
   const tid = setTimeout(() => {
-    _swTimers.delete(fireAt);
+    _swTimers.delete(dedup);
     self.registration.showNotification(title, {
       body: body || '',
       icon: ICON,
       badge: ICON,
-      tag: 'ccj-' + fireAt,
+      tag: dedup,
       requireInteraction: false,
     });
   }, delay);
-  _swTimers.set(fireAt, tid);
+  _swTimers.set(dedup, tid);
 }
 
 self.addEventListener('message', e => {
@@ -54,7 +56,7 @@ self.addEventListener('message', e => {
 
     // Schedule a single notification
     case 'SCHEDULE':
-      _scheduleOne(e.data.fireAt, e.data.title, e.data.body);
+      _scheduleOne(e.data.fireAt, e.data.title, e.data.body, e.data.tag);
       break;
 
     // Full re-sync: clear everything and rebuild from the page's localStorage queue.
@@ -64,8 +66,8 @@ self.addEventListener('message', e => {
       for (const tid of _swTimers.values()) clearTimeout(tid);
       _swTimers.clear();
       const items = e.data.items || [];
-      for (const { fireAt, title, body } of items) {
-        _scheduleOne(fireAt, title, body);
+      for (const { fireAt, title, body, tag } of items) {
+        _scheduleOne(fireAt, title, body, tag);
       }
       break;
     }
