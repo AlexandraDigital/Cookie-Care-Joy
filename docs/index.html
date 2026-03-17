@@ -2973,8 +2973,9 @@ if (!window.IS_MEDIAN_APP) {
             if (window.OneSignal && window.OneSignal.User && window.OneSignal.User.PushSubscription) {
               const sub = window.OneSignal.User.PushSubscription;
               if (!sub.optedIn) await sub.optIn();
-              // Give OneSignal time to register subscription and populate PushSubscription.id
-              await new Promise(r => setTimeout(r, 2000));
+              // Give OneSignal extra time to register subscription and populate PushSubscription.id
+              // 3500ms covers slower mobile registrations
+              await new Promise(r => setTimeout(r, 3500));
               dbg("grantSuccess: subscription id = " + (sub.id || "null"));
             }
           } catch(e) { dbg("grantSuccess optIn error: " + e); }
@@ -3295,13 +3296,19 @@ if (!window.IS_MEDIAN_APP) {
           }
           return null;
         }
-        if (window._oneSignalFailed || !window.OneSignal) return null;
+        // Try SDK even if init had a non-fatal error (IndexedDB hiccup etc.)
+        if (!window.OneSignal) return null;
         const getSub = () => {
           // OneSignal SDK v16: subscription ID is at User.PushSubscription.id
-          const sub = window.OneSignal.User && window.OneSignal.User.PushSubscription;
-          if (sub && sub.id) return sub.id;
-          // Fallback to onesignalId
-          return (window.OneSignal.User && window.OneSignal.User.onesignalId) || null;
+          try {
+            const sub = window.OneSignal.User && window.OneSignal.User.PushSubscription;
+            if (sub && sub.id) return sub.id;
+            // Fallback: onesignalId
+            const oid = window.OneSignal.User && window.OneSignal.User.onesignalId;
+            if (oid) return oid;
+          } catch(e2) {}
+          // Last resort: check native SW push subscription endpoint ID
+          return null;
         };
         let id = getSub();
         if (id) { dbg("getPlayerId: " + id); return id; }
@@ -3444,14 +3451,21 @@ if (!window.IS_MEDIAN_APP) {
       }
 
       async function scheduleReminders() {
-        // Persist across page loads — skip if we already scheduled within the last 23 hours
-        const _schedKey = 'ccj_reminders_sched_at';
-        const _lastSched = parseInt(localStorage.getItem(_schedKey) || '0', 10);
-        if (_lastSched > 0 && (Date.now() - _lastSched) < 23 * 60 * 60 * 1000) {
-          dbg("scheduleReminders: already scheduled within 23h, skip");
+        // Two keys: one for OneSignal-confirmed (23h), one for local-fallback (1h retry)
+        const _schedKey     = 'ccj_reminders_sched_at';      // set only after OneSignal OK
+        const _localFbKey   = 'ccj_local_fb_sched_at';       // local fallback, retry in 1h
+        const _sweetSchedKey = 'ccj_sweet_schedule';          // page-side checker timestamps
+
+        const _lastOS    = parseInt(localStorage.getItem(_schedKey)   || '0', 10);
+        const _lastLocal = parseInt(localStorage.getItem(_localFbKey) || '0', 10);
+
+        const osDone    = _lastOS    > 0 && (Date.now() - _lastOS)    < 23 * 60 * 60 * 1000;
+        const localDone = _lastLocal > 0 && (Date.now() - _lastLocal) <  1 * 60 * 60 * 1000;
+
+        if (osDone) {
+          dbg("scheduleReminders: OneSignal already scheduled within 23h, skip");
           return;
         }
-        localStorage.setItem(_schedKey, Date.now().toString());
         dbg("scheduleReminders: start");
 
         // Get player ID ONCE — determines which delivery path to use
@@ -3460,28 +3474,96 @@ if (!window.IS_MEDIAN_APP) {
         if (playerId) {
           // ── OneSignal server push (works closed/background/any device) ──
           dbg("scheduleReminders: using OneSignal push, player=" + playerId);
-          await osPushWithId(playerId, "🍪 Cookie-Care-Joy", "You\'re all set! Sweet reminders on the way ✨", 2000);
-          const first = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-          await osPushWithId(playerId, "Cookie-Care-Joy 🍪", first, 5 * 60 * 1000); // 5 min after welcome
-          const promises = [];
-          for (let i = 1; i <= 57; i++) {
-            const msg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-            promises.push(osPushWithId(playerId, "Cookie-Care-Joy 🍪", msg, 5 * 60 * 1000 + i * 25 * 60 * 1000)); // 5min + i*25min
+          try {
+            await osPushWithId(playerId, "🍪 Cookie-Care-Joy", "You\'re all set! Sweet reminders on the way ✨", 2000);
+            const first = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
+            await osPushWithId(playerId, "Cookie-Care-Joy 🍪", first, 5 * 60 * 1000);
+            const promises = [];
+            for (let i = 1; i <= 57; i++) {
+              const msg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
+              promises.push(osPushWithId(playerId, "Cookie-Care-Joy 🍪", msg, 5 * 60 * 1000 + i * 25 * 60 * 1000));
+            }
+            await Promise.all(promises);
+            // ✅ Only stamp the 23h key after confirmed delivery
+            localStorage.setItem(_schedKey, Date.now().toString());
+            dbg("scheduleReminders: OneSignal done, key stamped");
+          } catch(osErr) {
+            dbg("scheduleReminders: OneSignal error, falling to local: " + osErr.message);
+            // Fall through to local fallback below
           }
-          await Promise.all(promises);
-          dbg("scheduleReminders: done");
-        } else {
-          // ── Fallback: local service worker (app must stay open) ──
+        }
+
+        // ── Local fallback ───────────────────────────────────────────────────
+        // Runs when: no player ID, or OneSignal threw an error.
+        // Uses TWO mechanisms so tab-switching still works:
+        //   A) SW SCHEDULE messages (survives SW restart via SYNC_ALL)
+        //   B) Page-side schedule stored in localStorage (checked every 30s by _pageNotifCheck)
+        if (!playerId) {
+          if (localDone) { dbg("scheduleReminders: local fallback already scheduled within 1h, skip"); return; }
           dbg("scheduleReminders: no OneSignal player ID — using local fallback");
-          localNotify("🍪 Cookie-Care-Joy", "You\'re all set! Sweet reminders on the way ✨", 2000);
-          const firstLocal = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-          localNotify("Cookie-Care-Joy 🍪", firstLocal, 5 * 60 * 1000); // 5 min
+          localStorage.setItem(_localFbKey, Date.now().toString());
+
+          const now = Date.now();
+          // Build schedule array: welcome + 5min + 57×25min
+          const schedule = [];
+          schedule.push({ fireAt: now + 2000,              title: "🍪 Cookie-Care-Joy", body: "You\'re all set! Sweet reminders on the way ✨" });
+          schedule.push({ fireAt: now + 5*60*1000,         title: "Cookie-Care-Joy 🍪", body: caringMsgs[Math.floor(Math.random()*caringMsgs.length)] });
           for (let i = 1; i <= 57; i++) {
-            const msg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-            localNotify("Cookie-Care-Joy 🍪", msg, 5 * 60 * 1000 + i * 25 * 60 * 1000); // 5min + i*25min
+            schedule.push({ fireAt: now + 5*60*1000 + i*25*60*1000, title: "Cookie-Care-Joy 🍪", body: caringMsgs[Math.floor(Math.random()*caringMsgs.length)] });
+          }
+          // Save to localStorage for page-side checker
+          try { localStorage.setItem(_sweetSchedKey, JSON.stringify(schedule)); } catch(e) {}
+          // Also post to SW (for when tab stays open)
+          for (const item of schedule) {
+            _lsQueueAdd(item.fireAt, item.title, item.body);
+            localNotify(item.title, item.body, item.fireAt - now);
+          }
+          dbg("scheduleReminders: local fallback set, " + schedule.length + " items");
+        }
+      }
+
+      // ── Page-side notification checker ────────────────────────────────────
+      // Fires every 30s while page is open. Catches overdue sweet reminders
+      // when user returns from another tab — handles the "tab switch" case.
+      // Works on desktop Chrome and Android Chrome browser (no PWA needed).
+      function _pageNotifCheck() {
+        if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+        const now = Date.now();
+        let schedule = [];
+        try { schedule = JSON.parse(localStorage.getItem("ccj_sweet_schedule") || "[]"); } catch(e) {}
+        if (!schedule.length) return;
+        const toFire = [];
+        const remaining = [];
+        for (const item of schedule) {
+          // Fire if within 60s past due (catches tab-switch lag)
+          if (item.fireAt <= now + 1000) {
+            if (item.fireAt >= now - 60000) toFire.push(item); // skip if >1min overdue (already shown by SW)
+          } else {
+            remaining.push(item);
+          }
+        }
+        if (toFire.length) {
+          try { localStorage.setItem("ccj_sweet_schedule", JSON.stringify(remaining)); } catch(e) {}
+          for (const item of toFire) {
+            // Show via SW (has dedup tag so no duplicates)
+            const ctrl = navigator.serviceWorker && navigator.serviceWorker.controller;
+            if (ctrl) {
+              const tag = "ccj-" + (item.title + item.body).replace(/[^a-z0-9]/gi,"").substring(0,24).toLowerCase();
+              ctrl.postMessage({ type: "SCHEDULE", fireAt: now + 200, title: item.title, body: item.body, tag });
+            } else if (navigator.serviceWorker) {
+              navigator.serviceWorker.ready.then(reg => {
+                const tag = "ccj-" + (item.title + item.body).replace(/[^a-z0-9]/gi,"").substring(0,24).toLowerCase();
+                reg.showNotification(item.title, { body: item.body, icon: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png", badge: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-96.png", tag, requireInteraction: false });
+              }).catch(()=>{});
+            }
           }
         }
       }
+      setInterval(_pageNotifCheck, 30000);
+      // Also fire when tab becomes visible again (handles Android tab switching)
+      document.addEventListener("visibilitychange", function() {
+        if (!document.hidden) setTimeout(_pageNotifCheck, 500);
+      });
 
       React.useEffect(() => {
         window._ccjShowToast = (msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 6000); };
