@@ -3752,19 +3752,22 @@ if (!window.IS_MEDIAN_APP) {
         }
       });
 
-    // Re-sync SW schedule when tab comes back to foreground (mobile kills SW aggressively)
+    // Keepalive ping every 10 s — resets SW idle timer so it isn't killed mid-schedule.
+    // 10s is safe margin under the ~30s browser SW idle timeout.
+    function _swPing() {
+      var ctrl = navigator.serviceWorker && navigator.serviceWorker.controller;
+      if (ctrl) ctrl.postMessage({ type: "PING" });
+    }
+    setInterval(_swPing, 10000);
+
+    // Extra ping + re-sync when tab goes hidden (SW may die while we're away)
     document.addEventListener("visibilitychange", function () {
+      _swPing();
       if (!document.hidden && typeof _lsQueuePrune === "function") {
         _lsQueuePrune();
         _swSyncAll();
       }
     });
-
-    // Keepalive ping every 20 s — resets SW idle timer so it isn't killed mid-schedule
-    setInterval(function () {
-      var ctrl = navigator.serviceWorker && navigator.serviceWorker.controller;
-      if (ctrl) ctrl.postMessage({ type: "PING" });
-    }, 20000);
 
     // Listen for messages from SW: REQUEST_SYNC and CCJ_NOTIFY (in-app toast trigger)
     navigator.serviceWorker.addEventListener("message", function (e) {

@@ -30,21 +30,55 @@ self.addEventListener('push', e => {
 // backgrounded. _swTimers holds all live setTimeout handles keyed by fireAt ms.
 const _swTimers = new Map();
 
+// Notify all open page clients so in-app toast fires too
+async function _notifyClients(title, body) {
+  try {
+    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of clients) c.postMessage({ type: 'CCJ_NOTIFY', title, body });
+  } catch(e) {}
+}
+
 function _scheduleOne(fireAt, title, body, tag) {
   if (!fireAt || !title) return;
-  // content-based dedup key — same title+body reuses same SW timer slot
-  const dedup = tag || ('ccj-' + (title + body).replace(/[^a-z0-9]/gi,'').substring(0,24).toLowerCase());
-  if (_swTimers.has(dedup)) clearTimeout(_swTimers.get(dedup));
   const delay = Math.max(0, fireAt - Date.now());
+  // content-based dedup key
+  const dedup = tag || ('ccj-' + (title + body).replace(/[^a-z0-9]/gi,'').substring(0,24).toLowerCase());
+
+  // ── Path A: Notification Triggers API (Chrome 80+) ──────────────────────────
+  // Schedules at OS level — survives SW termination, tab switching, device sleep.
+  if (typeof TimestampTrigger !== 'undefined') {
+    // Cancel any existing scheduled notification with same tag first
+    self.registration.getNotifications({ tag: dedup }).then(existing => {
+      existing.forEach(n => n.close());
+    }).catch(() => {});
+    self.registration.showNotification(title, {
+      body: body || '',
+      icon: ICON,
+      badge: ICON,
+      tag: dedup,
+      requireInteraction: false,
+      showTrigger: new TimestampTrigger(fireAt),
+    }).then(() => {
+      // Also schedule in-app toast via setTimeout (page may still be open)
+      if (_swTimers.has(dedup)) clearTimeout(_swTimers.get(dedup));
+      const tid = setTimeout(() => { _swTimers.delete(dedup); _notifyClients(title, body); }, delay);
+      _swTimers.set(dedup, tid);
+    }).catch(() => {
+      // Fallback to setTimeout if trigger API fails
+      _scheduleOneTimeout(dedup, fireAt, title, body, delay);
+    });
+    return;
+  }
+
+  // ── Path B: setTimeout fallback (Firefox, Safari, older Chrome) ─────────────
+  _scheduleOneTimeout(dedup, fireAt, title, body, delay);
+}
+
+function _scheduleOneTimeout(dedup, fireAt, title, body, delay) {
+  if (_swTimers.has(dedup)) clearTimeout(_swTimers.get(dedup));
   const tid = setTimeout(async () => {
     _swTimers.delete(dedup);
-    // Tell any open page clients to show the in-app toast as well
-    try {
-      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-      for (const client of clients) {
-        client.postMessage({ type: 'CCJ_NOTIFY', title, body });
-      }
-    } catch(e) {}
+    await _notifyClients(title, body);
     self.registration.showNotification(title, {
       body: body || '',
       icon: ICON,
@@ -59,45 +93,64 @@ function _scheduleOne(fireAt, title, body, tag) {
 self.addEventListener('message', e => {
   if (!e.data) return;
 
-  switch (e.data.type) {
+  // CRITICAL: e.waitUntil keeps the SW alive for the duration of the promise.
+  // Without this the SW can be terminated immediately after receiving the message,
+  // killing any setTimeout timers we just registered.
+  e.waitUntil((async () => {
+    switch (e.data.type) {
 
-    // Schedule a single notification
-    case 'SCHEDULE':
-      _scheduleOne(e.data.fireAt, e.data.title, e.data.body, e.data.tag);
-      break;
+      // Schedule a single notification
+      case 'SCHEDULE':
+        _scheduleOne(e.data.fireAt, e.data.title, e.data.body, e.data.tag);
+        break;
 
-    // Full re-sync: clear everything and rebuild from the page's localStorage queue.
-    // Called on page load, after SW restart, and on visibilitychange.
-    // This is the main defence against SW timer loss on SW termination.
-    case 'SYNC_ALL': {
-      for (const tid of _swTimers.values()) clearTimeout(tid);
-      _swTimers.clear();
-      const items = e.data.items || [];
-      for (const { fireAt, title, body, tag } of items) {
-        _scheduleOne(fireAt, title, body, tag);
+      // Full re-sync: clear everything and rebuild from the page's localStorage queue.
+      // Called on page load, after SW restart, and on visibilitychange.
+      case 'SYNC_ALL': {
+        // Cancel existing setTimeout timers
+        for (const tid of _swTimers.values()) clearTimeout(tid);
+        _swTimers.clear();
+        // Also cancel any OS-level trigger notifications (TimestampTrigger)
+        try {
+          const pending = await self.registration.getNotifications();
+          for (const n of pending) n.close();
+        } catch(err) {}
+        const items = e.data.items || [];
+        for (const { fireAt, title, body, tag } of items) {
+          _scheduleOne(fireAt, title, body, tag);
+        }
+        break;
       }
-      break;
+
+      // Cancel a single notification by tag
+      case 'CANCEL': {
+        const ctag = e.data.tag;
+        if (ctag) {
+          if (_swTimers.has(ctag)) { clearTimeout(_swTimers.get(ctag)); _swTimers.delete(ctag); }
+          try {
+            const ns = await self.registration.getNotifications({ tag: ctag });
+            ns.forEach(n => n.close());
+          } catch(err) {}
+        }
+        break;
+      }
+
+      // Cancel everything (called when user disables notifications)
+      case 'CANCEL_ALL':
+        for (const tid of _swTimers.values()) clearTimeout(tid);
+        _swTimers.clear();
+        try {
+          const all = await self.registration.getNotifications();
+          all.forEach(n => n.close());
+        } catch(err) {}
+        break;
+
+      // Keepalive ping — just receiving this message resets the SW idle timer.
+      // Page pings every 10s so SW isn't killed between scheduled notifications.
+      case 'PING':
+        break;
     }
-
-    // Cancel a single notification
-    case 'CANCEL':
-      if (_swTimers.has(e.data.fireAt)) {
-        clearTimeout(_swTimers.get(e.data.fireAt));
-        _swTimers.delete(e.data.fireAt);
-      }
-      break;
-
-    // Cancel everything (called when user disables notifications)
-    case 'CANCEL_ALL':
-      for (const tid of _swTimers.values()) clearTimeout(tid);
-      _swTimers.clear();
-      break;
-
-    // Keepalive ping from the page — receiving this resets the SW idle timer.
-    // The page sends this every 20 s while visible, every 25 s while hidden.
-    case 'PING':
-      break;
-  }
+  })());
 });
 
 // ── Periodic Background Sync ─────────────────────────────────────────────────
