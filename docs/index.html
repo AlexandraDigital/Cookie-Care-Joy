@@ -3470,26 +3470,30 @@ document.addEventListener("DOMContentLoaded", function() {
           // ── Welcome notification via OneSignal REST API (shows in phone notification shade) ──
           // Waits 3.5s for the cookie splash animation to finish, then calls the
           // Cloudflare Worker proxy which securely sends the push via OneSignal REST API.
-          setTimeout(function() {
-            try {
-              var osId = localStorage.getItem('ccj_onesignal_id');
-              if (osId) {
-                fetch('https://cookie-care-joy.futuresuccess105.workers.dev', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ playerId: osId })
-                }).catch(function() {
-                  // Network error — fall back to local SW notification
+          // Only send welcome push once — not on every app open
+          if (!localStorage.getItem('ccj_welcome_sent')) {
+            localStorage.setItem('ccj_welcome_sent', '1');
+            setTimeout(function() {
+              try {
+                var osId = localStorage.getItem('ccj_onesignal_id');
+                if (osId) {
+                  fetch('https://cookie-care-joy.futuresuccess105.workers.dev', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ playerId: osId })
+                  }).catch(function() {
+                    // Network error — fall back to local SW notification
+                    localNotify("🍪 Welcome to Cookie-Care-Joy!", "Sweet reminders are set — we'll check in on you 💕", 100);
+                  });
+                } else {
+                  // No OneSignal ID yet — fall back to local SW notification
                   localNotify("🍪 Welcome to Cookie-Care-Joy!", "Sweet reminders are set — we'll check in on you 💕", 100);
-                });
-              } else {
-                // No OneSignal ID yet — fall back to local SW notification
+                }
+              } catch(e) {
                 localNotify("🍪 Welcome to Cookie-Care-Joy!", "Sweet reminders are set — we'll check in on you 💕", 100);
               }
-            } catch(e) {
-              localNotify("🍪 Welcome to Cookie-Care-Joy!", "Sweet reminders are set — we'll check in on you 💕", 100);
-            }
-          }, 3500);
+            }, 3500);
+          }
           // Fall through to browser/PWA path below to schedule sweet messages via SW
         }
 
@@ -3512,7 +3516,9 @@ document.addEventListener("DOMContentLoaded", function() {
         // Clear any stale saved queue before building a fresh one
         localStorage.removeItem("ccj_notif_q");
         // Welcome notification — only on browser/PWA (Median already handled above)
-        if (!(window.IS_MEDIAN_APP || window.IS_MEDIAN)) {
+        // Guard: only fire once, not again when the queue expires and rebuilds after 24h
+        if (!(window.IS_MEDIAN_APP || window.IS_MEDIAN) && !localStorage.getItem('ccj_welcome_sent')) {
+          localStorage.setItem('ccj_welcome_sent', '1');
           localNotify("🍪 Welcome to Cookie-Care-Joy!", "Sweet reminders are set — we\'ll check in on you 💕", 5000); // fires after cookie splash animation (3.4s) is fully gone
         }
         // First sweet message — fires after 5 minutes ("after a while")
@@ -3587,8 +3593,17 @@ document.addEventListener("DOMContentLoaded", function() {
           window.median_app_resumed = function() {
             dbg("median_app_resumed: re-syncing SW queue");
             if (Notification && Notification.permission === "granted") {
-              catchUpNotifs();
-              syncSwQueue();
+              const _q = JSON.parse(localStorage.getItem("ccj_notif_q") || "[]");
+              const _future = _q.filter(function(n) { return n.fireAt > Date.now(); });
+              if (_future.length === 0) {
+                // Queue expired — rebuild sweet messages from scratch
+                dbg("median_app_resumed: queue empty, rebuilding");
+                window._remindersSched = false; // reset guard so scheduleReminders runs fresh
+                scheduleReminders();
+              } else {
+                catchUpNotifs();
+                syncSwQueue();
+              }
             }
           };
 
@@ -3596,6 +3611,12 @@ document.addEventListener("DOMContentLoaded", function() {
           window.addEventListener("pageshow", function(e) {
             if (e.persisted && Notification && Notification.permission === "granted") {
               dbg("pageshow (BFcache restore): re-syncing SW queue");
+              const _qps = JSON.parse(localStorage.getItem("ccj_notif_q") || "[]");
+              const _fps = _qps.filter(function(n) { return n.fireAt > Date.now(); });
+              if (_fps.length === 0) {
+                window._remindersSched = false;
+                scheduleReminders();
+              }
               catchUpNotifs();
               syncSwQueue();
             }
