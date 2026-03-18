@@ -328,6 +328,10 @@ if (!window.IS_MEDIAN_APP) {
       }
     }
 
+    @keyframes micPulse {
+      0%, 100% { box-shadow: 0 0 0 3px rgba(255,110,180,0.3); }
+      50% { box-shadow: 0 0 0 7px rgba(255,110,180,0.1); }
+    }
     @keyframes timerTick {
       0% {
         opacity: 1
@@ -1922,6 +1926,28 @@ if (!window.IS_MEDIAN_APP) {
       const [form, setForm] = useState({ text: "", folder: "", alertTime: "", type: "To-Do", date: defaultDate || new Date().toISOString().split("T")[0] });
       const [showTimePicker, setShowTimePicker] = useState(false);
       const [showDatePicker, setShowDatePicker] = useState(false);
+      const [listening, setListening] = useState(false);
+      const recogRef = React.useRef(null);
+
+      function startVoice() {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) { alert("Voice input isn\u2019t supported in this browser. Try Chrome or Safari."); return; }
+        if (listening) { recogRef.current && recogRef.current.stop(); return; }
+        const r = new SR();
+        recogRef.current = r;
+        r.lang = "en-US";
+        r.interimResults = true;
+        r.continuous = false;
+        setListening(true);
+        r.onresult = e => {
+          const transcript = Array.from(e.results).map(x => x[0].transcript).join("");
+          setForm(f => ({ ...f, text: transcript }));
+        };
+        r.onend = () => setListening(false);
+        r.onerror = () => setListening(false);
+        r.start();
+      }
+
       const dateLabel = new Date(form.date + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
       return (
         <>
@@ -1930,9 +1956,15 @@ if (!window.IS_MEDIAN_APP) {
           <div style={{ background: WHITE, borderRadius: 20, padding: "24px", boxShadow: "0 4px 24px rgba(0,0,0,0.10)", marginBottom: 20, border: `2px solid ${ROSE}` }}>
             <div style={{ height: 4, borderRadius: 999, background: `linear-gradient(90deg,${ROSE},${GOLD})`, marginBottom: 20 }} />
             <p style={{ margin: "0 0 10px", fontWeight: 700, color: ROSE, fontSize: 15 }}>{t.whats_on_mind}</p>
-            <input value={form.text} onChange={e => setForm(f => ({ ...f, text: e.target.value }))} placeholder={t.task_placeholder}
-              style={{ width: "100%", border: `2px solid ${ROSE}`, borderRadius: 10, padding: "14px 16px", fontSize: 15, outline: "none", fontFamily: "inherit", color: DARK, marginBottom: 14, boxSizing: "border-box" }}
-            />
+            <div style={{ position: "relative", marginBottom: 14 }}>
+              <input value={form.text} onChange={e => setForm(f => ({ ...f, text: e.target.value }))} placeholder={t.task_placeholder}
+                style={{ width: "100%", border: `2px solid ${listening ? "#ff6eb4" : ROSE}`, borderRadius: 10, padding: "14px 52px 14px 16px", fontSize: 15, outline: "none", fontFamily: "inherit", color: DARK, boxSizing: "border-box", transition: "border-color 0.2s" }}
+              />
+              <button onClick={startVoice} title={listening ? "Stop listening" : "Speak your task"}
+                style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: listening ? "#ff6eb4" : ROSE_LIGHT, border: "none", borderRadius: 8, width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "background 0.2s", boxShadow: listening ? "0 0 0 3px rgba(255,110,180,0.3)" : "none", animation: listening ? "micPulse 1s infinite" : "none" }}>
+                <span style={{ fontSize: 18 }}>{listening ? "🔴" : "🎤"}</span>
+              </button>
+            </div>
             <div style={{ display: "flex", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
               <input value={form.folder} onChange={e => setForm(f => ({ ...f, folder: e.target.value }))} placeholder={t.folder_placeholder}
                 style={{ flex: 2, minWidth: 140, border: "2px solid #e5e7eb", borderRadius: 10, padding: "12px 14px", fontSize: 14, outline: "none", fontFamily: "inherit" }}
