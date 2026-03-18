@@ -4301,32 +4301,15 @@ if (!window.IS_MEDIAN_APP) {
         }
 
         if (isIOSSafari) {
-          setTimeout(function () {
-            var el = document.getElementById("ccj-ios-install");
-            if (el) el.style.display = "block";
-          }, 4000);
-          var closeBtn = document.getElementById("ccj-ios-close");
-          if (closeBtn) {
-            closeBtn.addEventListener("click", function () {
-              var el = document.getElementById("ccj-ios-install");
-              if (el) el.style.display = "none";
-              dismiss();
-            });
-          }
+          // iOS: chip handles auto-show — no separate banner auto-show needed
         } else if (!isIOS) {
-          // Android / Desktop Chrome — use beforeinstallprompt
+          // Android / Desktop Chrome — capture prompt for chip install button only
           var deferredPrompt = null;
           window.addEventListener("beforeinstallprompt", function (e) {
             e.preventDefault();
             deferredPrompt = e;
             window._deferredInstallPrompt = e; // used by install chip
-            // Auto-show big banner only if user hasn't dismissed before
-            if (!localStorage.getItem(DISMISS_KEY)) {
-              setTimeout(function () {
-                var el = document.getElementById("ccj-android-install");
-                if (el) el.style.display = "flex";
-              }, 4000);
-            }
+            // Do NOT auto-show ccj-android-install — chip handles all install UI
           });
           var installBtn = document.getElementById("ccj-android-btn");
           if (installBtn) {
