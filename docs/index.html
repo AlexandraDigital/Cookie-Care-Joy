@@ -3096,68 +3096,99 @@ if (!window.IS_MEDIAN_APP) {
           if (window.navigator.standalone) return;
           var chip = document.getElementById("ccj-install-chip");
           if (!chip) return;
-          var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-          var label = document.getElementById("ccj-chip-label");
-          var hint  = document.getElementById("ccj-chip-hint");
-          var btn   = document.getElementById("ccj-chip-install-btn");
+
+          var label    = document.getElementById("ccj-chip-label");
+          var sub      = document.getElementById("ccj-chip-sub");
+          var hint     = document.getElementById("ccj-chip-hint");
+          var btn      = document.getElementById("ccj-chip-install-btn");
           var closeBtn = document.getElementById("ccj-chip-close");
-          if (isIOS) {
-            if (label) label.textContent = "Add to Home Screen";
-            if (hint)  { hint.style.display = "inline"; hint.textContent = "Share → Add"; }
-            if (btn)   btn.style.display = "none";
-          } else {
+
+          var ua = navigator.userAgent;
+          // Has native install prompt (Chrome, Edge, Chrome on Android, Chrome/Edge on iPad)
+          var hasPrompt = !!window._deferredInstallPrompt;
+          // iOS/iPadOS Safari — no beforeinstallprompt support
+          var isIOSSafari = /iphone|ipad|ipod/i.test(ua) && !/crios|fxios|edgios|chrome/i.test(ua);
+          // Desktop Safari on Mac (not iOS, not Chrome-based)
+          var isSafariMac = /^((?!chrome|android|crios).)*safari/i.test(ua) && !/iphone|ipad|ipod/i.test(ua);
+
+          if (hasPrompt) {
+            // ── Chrome / Edge on desktop, Android, iPad ──
             if (label) label.textContent = "Install Cookie Care";
+            if (sub)   sub.textContent  = "Your sweetest spot is one tap away 🍪✨";
             if (hint)  hint.style.display = "none";
             if (btn) {
               btn.style.display = "inline-flex";
+              btn.textContent   = "Install";
               btn.onclick = async () => {
-                var prompt = window._deferredInstallPrompt;
-                if (prompt) {
+                var p = window._deferredInstallPrompt;
+                if (p) {
                   try {
-                    prompt.prompt();
-                    var res = await prompt.userChoice;
-                    window._deferredInstallPrompt = null; // can only use once
+                    p.prompt();
+                    var res = await p.userChoice;
+                    window._deferredInstallPrompt = null;
                     if (res && res.outcome === "accepted") { chip.classList.remove("visible"); }
                   } catch(e) {
-                    // prompt already used — hide button, show hint
                     btn.style.display = "none";
-                    if (hint) { hint.style.display = "inline"; hint.textContent = "Use browser menu → Install"; }
+                    if (hint) { hint.style.display = "block"; hint.textContent = "Use browser menu → Install"; }
                   }
                 } else {
-                  // No prompt available — show browser install hint
                   btn.style.display = "none";
-                  if (hint) { hint.style.display = "inline"; hint.textContent = "Browser menu → Install App"; }
+                  if (hint) { hint.style.display = "block"; hint.textContent = "Browser menu → Install App"; }
                 }
               };
             }
+
+          } else if (isIOSSafari) {
+            // ── iPhone & iPad Safari ──
+            if (label) label.textContent = "Add to Home Screen";
+            if (sub)   sub.textContent  = "One tap and we're always with you 🌸";
+            if (btn)   btn.style.display = "none";
+            if (hint) {
+              hint.style.display = "block";
+              hint.innerHTML = "Tap <strong>Share ⬆</strong> then <strong>\"Add to Home Screen\"</strong>";
+            }
+
+          } else if (isSafariMac) {
+            // ── Safari on macOS ──
+            if (label) label.textContent = "Add to Dock";
+            if (sub)   sub.textContent  = "Keep Cookie Care one click away 🍪";
+            if (btn)   btn.style.display = "none";
+            if (hint) {
+              hint.style.display = "block";
+              hint.textContent = "Safari → File → Add to Dock";
+            }
+
+          } else {
+            // ── Firefox, Samsung, other browsers ──
+            if (label) label.textContent = "Install Cookie Care";
+            if (sub)   sub.textContent  = "Your sweetest spot is one tap away ✨";
+            if (btn)   btn.style.display = "none";
+            if (hint) {
+              hint.style.display = "block";
+              hint.textContent = "Browser menu → Add to Home Screen";
+            }
           }
+
           if (closeBtn) closeBtn.onclick = () => chip.classList.remove("visible");
+
+          // Force animation replay on each show (in case chip was shown before)
+          chip.classList.remove("visible");
+          void chip.offsetWidth; // trigger reflow so animation restarts
           chip.classList.add("visible");
 
-          // Start timer bar drain + auto-dismiss after 9s
+          // Reset + start timer bar drain, then auto-dismiss after 9s
           var timerFill = document.getElementById("ccj-chip-timer-fill");
           if (timerFill) {
+            timerFill.style.animation = "none";
+            void timerFill.offsetWidth;
             timerFill.style.animation = "chipTimerDrain 9s linear forwards";
           }
           var autoDismiss = setTimeout(function () {
             chip.classList.remove("visible");
           }, 9000);
-          // cancel auto-dismiss if user interacts
           chip.addEventListener("pointerdown", function () { clearTimeout(autoDismiss); }, { once: true });
+
         } catch(e) { /* silent */ }
-        // (old big-banner path kept below for reference but no longer called)
-        try {
-          var isIOS2 = /iphone|ipad|ipod/i.test(navigator.userAgent);
-          if (false && isIOS2) {
-            var b = document.getElementById("ccj-ios-install");
-            if (b) { b.style.display = "block"; }
-          } else if (false) {
-            // Android / desktop: show Android install banner if deferredPrompt is available,
-            // otherwise show the generic Android banner div if it exists
-            var ab = document.getElementById("ccj-android-install");
-            if (ab) { ab.style.display = "block"; ab.style.animation = "ccjSlideUp 0.4s ease"; }
-          }
-        } catch(e) {}
       };
 
       const resetNotifications = () => {
@@ -3943,12 +3974,16 @@ if (!window.IS_MEDIAN_APP) {
       padding: 16px 18px 0 18px;
       box-shadow: 0 8px 32px rgba(244,63,110,0.18), 0 2px 8px rgba(0,0,0,0.07);
       font-family: system-ui, -apple-system, sans-serif;
-      animation: slideUpInstall 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards;
       flex-direction: column;
       width: min(340px, calc(100vw - 48px));
+      max-width: calc(100vw - 48px);
       overflow: hidden;
+      /* No animation here — it's on .visible so it always replays */
     }
-    #ccj-install-chip.visible { display: flex !important; }
+    #ccj-install-chip.visible {
+      display: flex !important;
+      animation: slideUpInstall 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    }
 
     /* header row */
     #ccj-install-chip .chip-header {
@@ -3978,10 +4013,15 @@ if (!window.IS_MEDIAN_APP) {
     /* actions row */
     #ccj-install-chip .chip-actions {
       margin-top: 10px; display: flex; justify-content: center;
+      align-items: center; min-height: 32px;
     }
     #ccj-install-chip .chip-ios-hint {
-      font-size: 12px; color: #6b7280; font-weight: 500;
-      text-align: center; padding-bottom: 4px;
+      font-size: 12.5px; color: #6b7280; font-weight: 500;
+      text-align: center; padding-bottom: 2px;
+      line-height: 1.5;
+    }
+    #ccj-install-chip .chip-ios-hint strong {
+      color: #be185d;
     }
     #ccj-install-chip button.chip-install-btn {
       background: linear-gradient(135deg, #f43f6e, #fb7185);
