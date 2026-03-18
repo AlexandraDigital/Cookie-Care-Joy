@@ -3113,9 +3113,11 @@ if (!window.IS_MEDIAN_APP) {
               // 3500ms covers slower mobile registrations
               await new Promise(r => setTimeout(r, 3500));
               dbg("grantSuccess: subscription id = " + (sub.id || "null"));
+              if (sub.id) { localStorage.setItem('ccj_onesignal_player_id', sub.id); }
             }
           } catch(e) { dbg("grantSuccess optIn error: " + e); }
           scheduleReminders();
+          _startOSRetry(); // background: if OneSignal ID not ready yet, retry for 2 min
         };
 
         // ── Path A-0: Median native push (OneSignal integrated via Median dashboard) ──
@@ -3490,12 +3492,21 @@ if (!window.IS_MEDIAN_APP) {
           // Last resort: check native SW push subscription endpoint ID
           return null;
         };
+        // Check localStorage cache first (fast path for page reloads)
+        const _cachedId = localStorage.getItem('ccj_onesignal_player_id');
+        if (_cachedId) { dbg("getPlayerId (cache): " + _cachedId); return _cachedId; }
         let id = getSub();
-        if (id) { dbg("getPlayerId: " + id); return id; }
+        if (id) {
+          localStorage.setItem('ccj_onesignal_player_id', id);
+          dbg("getPlayerId: " + id); return id;
+        }
         for (let i = 0; i < 20; i++) {
           await new Promise(r => setTimeout(r, 500));
           id = getSub();
-          if (id) { dbg("getPlayerId (retry " + (i+1) + "): " + id); return id; }
+          if (id) {
+            localStorage.setItem('ccj_onesignal_player_id', id);
+            dbg("getPlayerId (retry " + (i+1) + "): " + id); return id;
+          }
         }
         dbg("getPlayerId: not found after retries");
         return null;
@@ -3633,6 +3644,35 @@ if (!window.IS_MEDIAN_APP) {
         dbg("scheduleTaskPush: push scheduled OK");
       }
 
+      // ── OneSignal background retry ─────────────────────────────────────────────
+      // On Android browser the OneSignal subscription ID is sometimes not ready
+      // when scheduleReminders() first runs (10-second timeout not enough on slow devices).
+      // This poller checks every 5s for up to 2 minutes.  The moment the ID appears,
+      // it clears the 1h local-fallback key and re-runs scheduleReminders() so 59 server
+      // pushes get scheduled — ensuring background / locked-phone delivery via OneSignal.
+      function _startOSRetry() {
+        const _schedKey  = 'ccj_reminders_sched_at';
+        const _localKey  = 'ccj_local_fb_sched_at';
+        let retries = 0;
+        const MAX_RETRIES = 24; // 24 × 5s = 2 minutes
+        const iv = setInterval(async () => {
+          retries++;
+          // Stop if OneSignal already scheduled, or we've exceeded 2 minutes
+          if (retries >= MAX_RETRIES || localStorage.getItem(_schedKey)) {
+            clearInterval(iv);
+            dbg("_startOSRetry: stopping (" + (localStorage.getItem(_schedKey) ? "OS scheduled" : "max retries") + ")");
+            return;
+          }
+          const pid = await getPlayerId();
+          if (!pid) return; // still waiting
+          clearInterval(iv);
+          dbg("_startOSRetry: got player ID " + pid + " on attempt " + retries + " — rescheduling with OneSignal");
+          // Clear local-fallback key so scheduleReminders() re-runs OneSignal path
+          localStorage.removeItem(_localKey);
+          scheduleReminders();
+        }, 5000);
+      }
+
       async function scheduleReminders() {
         // Two keys: one for OneSignal-confirmed (23h), one for local-fallback (1h retry)
         const _schedKey     = 'ccj_reminders_sched_at';      // set only after OneSignal OK
@@ -3741,6 +3781,11 @@ if (!window.IS_MEDIAN_APP) {
           // Sync everything to SW so it can rebuild timers after a restart
           _swSyncAll();
           dbg("scheduleReminders: local/backup set, " + schedule.length + " items stored");
+          // If we had no player ID, start background retry so OneSignal gets scheduled
+          // once the subscription is ready (takes longer on Android browser)
+          if (!osSuccess && !playerId) {
+            _startOSRetry();
+          }
         }
       }
 
