@@ -3500,6 +3500,15 @@ if (!window.IS_MEDIAN_APP) {
         // Two keys: one for OneSignal-confirmed (23h), one for local-fallback (1h retry)
         const _schedKey     = 'ccj_reminders_sched_at';      // set only after OneSignal OK
         const _localFbKey   = 'ccj_local_fb_sched_at';       // local fallback, retry in 1h
+        // Version bump: clear old schedule so new fireAt-keyed queue takes effect
+        const _ccjSchedVer = 'ccj_sched_ver';
+        if (localStorage.getItem(_ccjSchedVer) !== '2') {
+          localStorage.removeItem(_schedKey);
+          localStorage.removeItem(_localFbKey);
+          localStorage.removeItem('ccj_notif_queue');
+          localStorage.removeItem('ccj_sweet_schedule');
+          localStorage.setItem(_ccjSchedVer, '2');
+        }
         const _sweetSchedKey = 'ccj_sweet_schedule';          // page-side checker timestamps
 
         const _lastOS    = parseInt(localStorage.getItem(_schedKey)   || '0', 10);
