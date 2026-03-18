@@ -3009,7 +3009,9 @@ if (!window.IS_MEDIAN_APP) {
 
         // Only show banner if not already registered
         const alreadyRegistered = localStorage.getItem('ccj_notif_registered') === '1';
-        if (!alreadyRegistered) setShowBanner(true);
+        const inAppOnly = localStorage.getItem("ccj_inapp_notif") === "true";
+        if (!alreadyRegistered && !inAppOnly) setShowBanner(true);
+        if (inAppOnly) scheduleReminders(); // re-populate in-app schedule on each page load
 
         // ── Show install chip after splash — every browser session ──
         setTimeout(function() {
@@ -3056,7 +3058,6 @@ if (!window.IS_MEDIAN_APP) {
         if (localStorage.getItem("ccj_notif_on") === "true") return "granted";
         return "default";
       });
-      const [notifEnabled, setNotifEnabled] = useState(false);
       const [toastMsg, setToastMsg] = React.useState(null);
 
       const [notifError, setNotifError] = React.useState("");
@@ -3166,6 +3167,7 @@ if (!window.IS_MEDIAN_APP) {
         // Already denied?
         if (typeof Notification !== "undefined" && Notification.permission === "denied") {
           setNotifError("Notifications blocked. Open browser Settings → Site permissions to allow.");
+          grantLocalOnly(); // still show sweet messages in-app
           return;
         }
 
@@ -3188,6 +3190,7 @@ if (!window.IS_MEDIAN_APP) {
             }
             if (typeof Notification !== "undefined" && Notification.permission === "denied") {
               setNotifError("Notifications blocked. Go to browser Settings → Site permissions to allow, then try again.");
+              grantLocalOnly(); // still show sweet messages in-app
               return;
             }
             setNotifError("Tap Enable again to allow notifications 🔔");
@@ -3213,6 +3216,7 @@ if (!window.IS_MEDIAN_APP) {
             grantSuccess();
           } else if (result === "denied") {
             setNotifError("Notifications blocked. Check browser settings to allow them.");
+            grantLocalOnly(); // still show sweet messages in-app
           } else {
             setNotifError("Tap Enable again, or on iPhone tap Share → \"Add to Home Screen\" first 📲");
             showInstallBanner();
@@ -3227,6 +3231,15 @@ if (!window.IS_MEDIAN_APP) {
         setNotifPerm("off");
         setShowBanner(false);
       };
+
+        // grantLocalOnly: populate in-app sweet-message schedule when push is blocked/denied.
+        // Saves a flag so scheduleReminders() re-runs on next page load too.
+        const grantLocalOnly = () => {
+          localStorage.setItem("ccj_inapp_notif", "true");
+          scheduleReminders(); // falls through to local/SW path automatically (no player ID)
+        };
+
+
 
       // Show compact install chip (every browser session)
       const showInstallBanner = () => {
@@ -3452,7 +3465,8 @@ if (!window.IS_MEDIAN_APP) {
 
       // ── OneSignal server-side push helpers ──
       const OS_APP_ID = "fc237358-e343-4a93-adfe-b22527bb0aef";
-      const OS_API_KEY = "Key os_v2_app_espqprsuujhfbjpm7ebbwypepraqjwfoyy5ebwe33g2s5po2jsp6ohoesi4mwb77kpevaurzluw6vsarppzyqmu2zx3hwbpejku6yzi";
+      // API key removed from frontend — all calls go through the Cloudflare Worker
+      const WORKER_URL = "https://cookie-care-joy.futuresuccess105.workers.dev"; // ← set to your deployed Worker URL
 
       async function getPlayerId() {
         // ── Median native player ID (stored after register + getStatus) ──
@@ -3601,10 +3615,10 @@ if (!window.IS_MEDIAN_APP) {
           payload.send_after = new Date(Date.now() + sendAfterMs).toISOString();
         }
         try {
-          const resp = await fetch("https://onesignal.com/api/v1/notifications", {
+          const resp = await fetch(WORKER_URL + "/push", {
             method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": OS_API_KEY },
-            body: JSON.stringify(payload),
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ playerId, idType, title, body: body, sendAfterMs: sendAfterMs || 0 }),
           });
           const data = await resp.json();
           dbg("osPush " + (resp.ok ? "OK" : "ERR") + " send_after=" + (sendAfterMs||0) + "ms: " + JSON.stringify(data).substring(0, 120));
@@ -3725,14 +3739,22 @@ if (!window.IS_MEDIAN_APP) {
           // ── OneSignal server push (works closed/background/any device) ──
           dbg("scheduleReminders: using OneSignal push, player=" + playerId);
           try {
-            const first = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-            await osPushWithId(playerId, "Cookie-Care-Joy 🍪", first, 5 * 60 * 1000);
-            const promises = [];
-            for (let i = 1; i <= 57; i++) {
+            // Build full batch and send as one throttled request to the Worker
+            // (avoids 57 parallel calls and OneSignal rate-limit failures)
+            const messages = [];
+            for (let i = 0; i <= 57; i++) {
               const msg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-              promises.push(osPushWithId(playerId, "Cookie-Care-Joy 🍪", msg, 5 * 60 * 1000 + i * 25 * 60 * 1000));
+              messages.push({ title: "Cookie-Care-Joy 🍪", body: msg, sendAfterMs: 5 * 60 * 1000 + i * 25 * 60 * 1000 });
             }
-            await Promise.all(promises);
+            const idType = window._medianOneSignalIdType || localStorage.getItem("ccj_median_id_type") || "player_id";
+            const batchResp = await fetch(WORKER_URL + "/schedule", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ playerId, idType, messages }),
+            });
+            const batchData = await batchResp.json();
+            if (!batchResp.ok || batchData.failed === messages.length) throw new Error("Schedule batch failed: " + JSON.stringify(batchData).substring(0, 120));
+            dbg("scheduleReminders: batch scheduled " + batchData.scheduled + " msgs, " + (batchData.failed||0) + " failed");
             // ✅ Only stamp the 23h key after confirmed delivery
             localStorage.setItem(_schedKey, Date.now().toString());
             dbg("scheduleReminders: OneSignal done, key stamped");
@@ -3886,8 +3908,9 @@ if (!window.IS_MEDIAN_APP) {
             if (nowMs >= alarmMs - TWO_MIN_MS && nowMs < alarmMs) {
               reminderSentRef.current.set.add(key);
               const taskMsg = "⏰ In 2 minutes: " + (task.text || "Task");
+              // localNotify for in-app SW alert; osPush removed — scheduleTaskPush
+              // already scheduled a server-side push when the task was saved.
               localNotify("Cookie-Care-Joy 🍪", taskMsg, 0);
-              osPush("Cookie-Care-Joy 🍪", taskMsg, 0);
             }
           }
 
