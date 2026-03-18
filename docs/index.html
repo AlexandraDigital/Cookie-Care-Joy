@@ -3614,7 +3614,9 @@ if (!window.IS_MEDIAN_APP) {
         for (const item of schedule) {
           // Fire if within 60s past due (catches tab-switch lag)
           if (item.fireAt <= now + 1000) {
-            if (item.fireAt >= now - 60000) toFire.push(item); // skip if >1min overdue (already shown by SW)
+            // Fire if overdue by up to 10 minutes — SW timers die within ~30s so this
+            // page checker is the primary fallback. Items >10min past due are truly stale.
+            if (item.fireAt >= now - 10 * 60 * 1000) toFire.push(item);
           } else {
             remaining.push(item);
           }
@@ -3622,14 +3624,18 @@ if (!window.IS_MEDIAN_APP) {
         if (toFire.length) {
           try { localStorage.setItem("ccj_sweet_schedule", JSON.stringify(remaining)); } catch(e) {}
           for (const item of toFire) {
-            // Show via SW (has dedup tag so no duplicates)
+            // Show in-app toast immediately (no SW round-trip needed)
+            if (window._ccjShowToast) {
+              const toastText = item.body || item.title || "";
+              if (toastText) window._ccjShowToast(toastText);
+            }
+            // Also fire system push notification via SW (dedup tag prevents duplicates)
             const ctrl = navigator.serviceWorker && navigator.serviceWorker.controller;
+            const tag = "ccj-" + (item.title + item.body).replace(/[^a-z0-9]/gi,"").substring(0,24).toLowerCase();
             if (ctrl) {
-              const tag = "ccj-" + (item.title + item.body).replace(/[^a-z0-9]/gi,"").substring(0,24).toLowerCase();
               ctrl.postMessage({ type: "SCHEDULE", fireAt: now + 200, title: item.title, body: item.body, tag });
             } else if (navigator.serviceWorker) {
               navigator.serviceWorker.ready.then(reg => {
-                const tag = "ccj-" + (item.title + item.body).replace(/[^a-z0-9]/gi,"").substring(0,24).toLowerCase();
                 reg.showNotification(item.title, { body: item.body, icon: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png", badge: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-96.png", tag, requireInteraction: false });
               }).catch(()=>{});
             }
