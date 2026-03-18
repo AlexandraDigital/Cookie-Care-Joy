@@ -2963,10 +2963,9 @@ if (!window.IS_MEDIAN_APP) {
           localStorage.setItem("ccj_notif_registered", "1"); // don't show banner again
           setNotifPerm("granted");
           setShowBanner(false);
-          // Fire welcome system notification immediately on first-time grant
-          if (!localStorage.getItem('ccj_welcome_push_sent')) {
-            localStorage.setItem('ccj_welcome_push_sent', '1');
-            setTimeout(() => localNotify("Welcome to Cookie-Care-Joy! 🍪", "Notifications on! Sweet reminders coming your way 🌸", 0), 500);
+          // Show "enabled" pink toast immediately — before "sweet reminders" toast from scheduleReminders
+          if (window._ccjShowToast) {
+            window._ccjShowToast("Notifications enabled! 🍪✨");
           }
           // Ensure OneSignal subscription is active and wait for subscription ID to populate
           try {
@@ -3523,12 +3522,12 @@ if (!window.IS_MEDIAN_APP) {
         }
         dbg("scheduleReminders: start");
 
-        // ── Immediately show pink in-app banner (no SW round-trip needed) ──
-        // This fires right away when the user is looking at the app.
-        // The push notification via OneSignal/SW handles background delivery.
-        if (window._ccjShowToast) {
-          window._ccjShowToast("Sweet reminders on the way! 🍪✨");
-        }
+        // ── Show "sweet reminders" pink toast after a 2s gap ──
+        // The "Notifications enabled!" toast fires first (from grantSuccess).
+        // This one shows next so they read as a sequence, not overlapping.
+        setTimeout(() => {
+          if (window._ccjShowToast) window._ccjShowToast("Sweet reminders on the way! 🍪✨");
+        }, 2200);
 
         // Get player ID ONCE — determines which delivery path to use
         const playerId = await getPlayerId();
@@ -3538,7 +3537,7 @@ if (!window.IS_MEDIAN_APP) {
           // ── OneSignal server push (works closed/background/any device) ──
           dbg("scheduleReminders: using OneSignal push, player=" + playerId);
           try {
-            await osPushWithId(playerId, "🍪 Cookie-Care-Joy", "You\'re all set! Sweet reminders on the way ✨", 2000);
+            await osPushWithId(playerId, "Cookie-Care-Joy 🍪", "Sweet reminders are on the way! 🌸", 4000);
             const first = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
             await osPushWithId(playerId, "Cookie-Care-Joy 🍪", first, 5 * 60 * 1000);
             const promises = [];
@@ -3575,7 +3574,7 @@ if (!window.IS_MEDIAN_APP) {
           const now = Date.now();
           // Build schedule array: welcome + 5min + 57×25min
           const schedule = [];
-          schedule.push({ fireAt: now + 2000,              title: "🍪 Cookie-Care-Joy", body: "You\'re all set! Sweet reminders on the way ✨" });
+          schedule.push({ fireAt: now + 4000,              title: "Cookie-Care-Joy 🍪", body: "Sweet reminders are on the way! 🌸" });
           schedule.push({ fireAt: now + 5*60*1000,         title: "Cookie-Care-Joy 🍪", body: caringMsgs[Math.floor(Math.random()*caringMsgs.length)] });
           for (let i = 1; i <= 57; i++) {
             schedule.push({ fireAt: now + 5*60*1000 + i*25*60*1000, title: "Cookie-Care-Joy 🍪", body: caringMsgs[Math.floor(Math.random()*caringMsgs.length)] });
