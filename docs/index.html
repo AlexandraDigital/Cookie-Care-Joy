@@ -1921,6 +1921,44 @@ if (!window.IS_MEDIAN_APP) {
     }
 
     // ── Add Task Form ─────────────────────────────────────────────────
+    function parseVoice(transcript, defaultDate) {
+      let remaining = transcript;
+      let folder = '', alertTime = '', date = defaultDate, type = 'To-Do';
+      // time: "at 3pm", "at 3:30pm", "at 15:00"
+      const timeRx = /\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i;
+      const tm = remaining.match(timeRx);
+      if (tm) {
+        let h = parseInt(tm[1]), m = tm[2] || '00';
+        const p = (tm[3] || '').toLowerCase();
+        if (p === 'pm' && h < 12) h += 12;
+        if (p === 'am' && h === 12) h = 0;
+        if (!p && h >= 1 && h <= 6) h += 12; // assume PM for ambiguous 1–6
+        alertTime = String(h).padStart(2,'0') + ':' + m;
+        remaining = remaining.replace(tm[0], ' ');
+      }
+      // folder: "in health folder"
+      const folderRx = /\bin\s+([\w]+(?:\s[\w]+)?)\s+folder\b|\bfolder\s+([\w]+)\b/i;
+      const fm = remaining.match(folderRx);
+      if (fm) { folder = (fm[1] || fm[2]).trim(); remaining = remaining.replace(fm[0], ' '); }
+      // date
+      if (/\btomorrow\b/i.test(remaining)) {
+        const d = new Date(); d.setDate(d.getDate() + 1); date = d.toISOString().split('T')[0];
+        remaining = remaining.replace(/\btomorrow\b/i, ' ');
+      }
+      const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+      for (let i = 0; i < dayNames.length; i++) {
+        if (new RegExp('\\b' + dayNames[i] + '\\b', 'i').test(remaining)) {
+          const now = new Date(); let diff = i - now.getDay(); if (diff <= 0) diff += 7;
+          const d = new Date(); d.setDate(now.getDate() + diff); date = d.toISOString().split('T')[0];
+          remaining = remaining.replace(new RegExp('\\b' + dayNames[i] + '\\b', 'i'), ' '); break;
+        }
+      }
+      remaining = remaining.replace(/\btoday\b/i, ' ');
+      if (/\bself.?care\b/i.test(remaining)) { type = 'Self Care'; remaining = remaining.replace(/\bself.?care\b/i, ' '); }
+      remaining = remaining.replace(/\bremind me to\b/gi, '').replace(/\badd\s+a?\s*/gi, '').replace(/\s+/g, ' ').trim().replace(/^to\s+/i, '').trim();
+      return { text: remaining || transcript.trim(), folder, alertTime, type, date };
+    }
+
     function AddTaskForm({ onAdd, onCancel, defaultDate, onSelfCare }) {
       const t = React.useContext(LangContext);
       const [form, setForm] = useState({ text: "", folder: "", alertTime: "", type: "To-Do", date: defaultDate || new Date().toISOString().split("T")[0] });
@@ -1939,11 +1977,33 @@ if (!window.IS_MEDIAN_APP) {
         r.interimResults = true;
         r.continuous = false;
         setListening(true);
+        let finalTranscript = "";
         r.onresult = e => {
-          const transcript = Array.from(e.results).map(x => x[0].transcript).join("");
-          setForm(f => ({ ...f, text: transcript }));
+          let interim = "";
+          finalTranscript = "";
+          for (let i = 0; i < e.results.length; i++) {
+            if (e.results[i].isFinal) finalTranscript += e.results[i][0].transcript;
+            else interim += e.results[i][0].transcript;
+          }
+          // Show live preview in text field while speaking
+          setForm(f => ({ ...f, text: finalTranscript || interim }));
         };
-        r.onend = () => setListening(false);
+        r.onend = () => {
+          setListening(false);
+          // On finish, parse full transcript into ALL fields at once
+          const raw = finalTranscript.trim();
+          if (raw) {
+            const parsed = parseVoice(raw, form.date);
+            setForm(f => ({
+              ...f,
+              text: parsed.text || raw,
+              folder: parsed.folder || f.folder,
+              alertTime: parsed.alertTime || f.alertTime,
+              type: parsed.type || f.type,
+              date: parsed.date || f.date,
+            }));
+          }
+        };
         r.onerror = () => setListening(false);
         r.start();
       }
@@ -2267,9 +2327,37 @@ if (!window.IS_MEDIAN_APP) {
       const t = React.useContext(LangContext);
       const [qIdx, setQIdx] = useState(0);
       const [showPicker, setShowPicker] = useState(false);
+      const [customText, setCustomText] = useState("");
+      const [scListening, setScListening] = useState(false);
+      const scRecogRef = React.useRef(null);
       const today = new Date().toISOString().split("T")[0];
       const scTasks = tasks.filter(t => t.type === "Self Care" && t.date === today);
-      const addTask = text => { setTasks(prev => [...prev, { id: Date.now(), text, folder: "", alertTime: "", type: "Self Care", date: today, done: false }]); setShowPicker(false); };
+      const addTask = text => { setTasks(prev => [...prev, { id: Date.now(), text, folder: "", alertTime: "", type: "Self Care", date: today, done: false }]); setShowPicker(false); setCustomText(""); };
+
+      function startScVoice() {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) { alert("Voice input isn\u2019t supported in this browser. Try Chrome or Safari."); return; }
+        if (scListening) { scRecogRef.current && scRecogRef.current.stop(); return; }
+        const r = new SR();
+        scRecogRef.current = r;
+        r.lang = "en-US";
+        r.interimResults = true;
+        r.continuous = false;
+        setScListening(true);
+        let finalT = "";
+        r.onresult = e => {
+          finalT = "";
+          let interim = "";
+          for (let i = 0; i < e.results.length; i++) {
+            if (e.results[i].isFinal) finalT += e.results[i][0].transcript;
+            else interim += e.results[i][0].transcript;
+          }
+          setCustomText(finalT || interim);
+        };
+        r.onend = () => { setScListening(false); if (finalT.trim()) setCustomText(finalT.trim()); };
+        r.onerror = () => setScListening(false);
+        r.start();
+      }
       const toggleTask = id => {
         const t = tasks.find(t => t.id === id);
         if (t && !t.done) setCookies(1); else if (t && t.done) setCookies(-1);
@@ -2283,11 +2371,28 @@ if (!window.IS_MEDIAN_APP) {
           {showPicker && (
             <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
               <div style={{ background: WHITE, borderRadius: 24, padding: "28px", maxWidth: 480, width: "90%", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                   <h3 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: ROSE }}>{t.choose_activity_title}</h3>
                   <button onClick={() => setShowPicker(false)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: GRAY }}>×</button>
                 </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 10, maxHeight: 320, overflowY: "auto" }}>
+                <div style={{ display: "flex", gap: 8, marginBottom: 16, alignItems: "center" }}>
+                  <div style={{ position: "relative", flex: 1 }}>
+                    <input value={customText} onChange={e => setCustomText(e.target.value)}
+                      placeholder="Or speak / type your own…"
+                      style={{ width: "100%", border: `2px solid ${scListening ? "#ff6eb4" : ROSE}`, borderRadius: 10, padding: "12px 48px 12px 14px", fontSize: 14, outline: "none", fontFamily: "inherit", boxSizing: "border-box", transition: "border-color 0.2s" }}
+                      onKeyDown={e => e.key === "Enter" && customText.trim() && addTask(customText.trim())}
+                    />
+                    <button onClick={startScVoice} title={scListening ? "Stop" : "Speak activity"}
+                      style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: scListening ? "#ff6eb4" : ROSE_LIGHT, border: "none", borderRadius: 8, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", animation: scListening ? "micPulse 1s infinite" : "none" }}>
+                      <span style={{ fontSize: 16 }}>{scListening ? "🔴" : "🎤"}</span>
+                    </button>
+                  </div>
+                  <button onClick={() => customText.trim() && addTask(customText.trim())}
+                    style={{ background: ROSE, border: "none", borderRadius: 10, padding: "12px 18px", fontSize: 14, fontWeight: 700, color: WHITE, cursor: "pointer", fontFamily: "inherit", opacity: customText.trim() ? 1 : 0.4, transition: "opacity 0.2s" }}>
+                    Add
+                  </button>
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10, maxHeight: 260, overflowY: "auto" }}>
                   {t.sc_ideas.map(idea => (
                     <button key={idea} onClick={() => addTask(idea)} style={{ background: ROSE_LIGHT, border: `1.5px solid #fecdd3`, borderRadius: 20, padding: "10px 16px", fontSize: 14, fontWeight: 500, color: ROSE, cursor: "pointer", fontFamily: "inherit" }}
                       onMouseEnter={e => { e.currentTarget.style.background = ROSE; e.currentTarget.style.color = WHITE; }}
@@ -3644,7 +3749,6 @@ if (!window.IS_MEDIAN_APP) {
       // when user returns from another tab — handles the "tab switch" case.
       // Works on desktop Chrome and Android Chrome browser (no PWA needed).
       function _pageNotifCheck() {
-        if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
         const now = Date.now();
         let schedule = [];
         try { schedule = JSON.parse(localStorage.getItem("ccj_sweet_schedule") || "[]"); } catch(e) {}
@@ -3664,20 +3768,23 @@ if (!window.IS_MEDIAN_APP) {
         if (toFire.length) {
           try { localStorage.setItem("ccj_sweet_schedule", JSON.stringify(remaining)); } catch(e) {}
           for (const item of toFire) {
-            // Show in-app toast immediately (no SW round-trip needed)
+            // ALWAYS show in-app toast (works in PWA, browser, even if push blocked)
             if (window._ccjShowToast) {
               const toastText = item.body || item.title || "";
               if (toastText) window._ccjShowToast(toastText);
             }
-            // Also fire system push notification via SW (dedup tag prevents duplicates)
-            const ctrl = navigator.serviceWorker && navigator.serviceWorker.controller;
-            const tag = "ccj-" + (item.title + item.body).replace(/[^a-z0-9]/gi,"").substring(0,24).toLowerCase();
-            if (ctrl) {
-              ctrl.postMessage({ type: "SCHEDULE", fireAt: now + 200, title: item.title, body: item.body, tag });
-            } else if (navigator.serviceWorker) {
-              navigator.serviceWorker.ready.then(reg => {
-                reg.showNotification(item.title, { body: item.body, icon: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png", badge: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-96.png", tag, requireInteraction: false });
-              }).catch(()=>{});
+            // Also fire system push notification if permission granted
+            const pushOk = typeof Notification !== "undefined" && Notification.permission === "granted";
+            if (pushOk) {
+              const ctrl = navigator.serviceWorker && navigator.serviceWorker.controller;
+              const tag = "ccj-" + (item.title + item.body).replace(/[^a-z0-9]/gi,"").substring(0,24).toLowerCase();
+              if (ctrl) {
+                ctrl.postMessage({ type: "SCHEDULE", fireAt: now + 200, title: item.title, body: item.body, tag });
+              } else if (navigator.serviceWorker) {
+                navigator.serviceWorker.ready.then(reg => {
+                  reg.showNotification(item.title, { body: item.body, icon: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png", badge: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-96.png", tag, requireInteraction: false });
+                }).catch(()=>{});
+              }
             }
           }
         }
