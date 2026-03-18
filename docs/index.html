@@ -3538,7 +3538,6 @@ if (!window.IS_MEDIAN_APP) {
           // ── OneSignal server push (works closed/background/any device) ──
           dbg("scheduleReminders: using OneSignal push, player=" + playerId);
           try {
-            await osPushWithId(playerId, "Cookie-Care-Joy 🍪", "Sweet reminders on the way! 🍪✨", 4000);
             const first = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
             await osPushWithId(playerId, "Cookie-Care-Joy 🍪", first, 5 * 60 * 1000);
             const promises = [];
@@ -3575,7 +3574,6 @@ if (!window.IS_MEDIAN_APP) {
           const now = Date.now();
           // Build schedule array: welcome + 5min + 57×25min
           const schedule = [];
-          schedule.push({ fireAt: now + 4000,              title: "Cookie-Care-Joy 🍪", body: "Sweet reminders on the way! 🍪✨" });
           schedule.push({ fireAt: now + 5*60*1000,         title: "Cookie-Care-Joy 🍪", body: caringMsgs[Math.floor(Math.random()*caringMsgs.length)] });
           for (let i = 1; i <= 57; i++) {
             schedule.push({ fireAt: now + 5*60*1000 + i*25*60*1000, title: "Cookie-Care-Joy 🍪", body: caringMsgs[Math.floor(Math.random()*caringMsgs.length)] });
