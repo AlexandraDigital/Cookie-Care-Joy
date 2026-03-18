@@ -3009,7 +3009,9 @@ if (!window.IS_MEDIAN_APP) {
 
         // Only show banner if not already registered
         const alreadyRegistered = localStorage.getItem('ccj_notif_registered') === '1';
-        if (!alreadyRegistered) setShowBanner(true);
+        const inAppOnly = localStorage.getItem("ccj_inapp_notif") === "true";
+        if (!alreadyRegistered && !inAppOnly) setShowBanner(true);
+        if (inAppOnly) scheduleReminders(); // re-populate in-app schedule on each page load
 
         // ── Show install chip after splash — every browser session ──
         setTimeout(function() {
@@ -3056,7 +3058,6 @@ if (!window.IS_MEDIAN_APP) {
         if (localStorage.getItem("ccj_notif_on") === "true") return "granted";
         return "default";
       });
-      const [notifEnabled, setNotifEnabled] = useState(false);
       const [toastMsg, setToastMsg] = React.useState(null);
 
       const [notifError, setNotifError] = React.useState("");
@@ -3166,6 +3167,7 @@ if (!window.IS_MEDIAN_APP) {
         // Already denied?
         if (typeof Notification !== "undefined" && Notification.permission === "denied") {
           setNotifError("Notifications blocked. Open browser Settings → Site permissions to allow.");
+          grantLocalOnly(); // still show sweet messages in-app
           return;
         }
 
@@ -3188,6 +3190,7 @@ if (!window.IS_MEDIAN_APP) {
             }
             if (typeof Notification !== "undefined" && Notification.permission === "denied") {
               setNotifError("Notifications blocked. Go to browser Settings → Site permissions to allow, then try again.");
+              grantLocalOnly(); // still show sweet messages in-app
               return;
             }
             setNotifError("Tap Enable again to allow notifications 🔔");
@@ -3213,6 +3216,7 @@ if (!window.IS_MEDIAN_APP) {
             grantSuccess();
           } else if (result === "denied") {
             setNotifError("Notifications blocked. Check browser settings to allow them.");
+            grantLocalOnly(); // still show sweet messages in-app
           } else {
             setNotifError("Tap Enable again, or on iPhone tap Share → \"Add to Home Screen\" first 📲");
             showInstallBanner();
@@ -3227,6 +3231,15 @@ if (!window.IS_MEDIAN_APP) {
         setNotifPerm("off");
         setShowBanner(false);
       };
+
+        // grantLocalOnly: populate in-app sweet-message schedule when push is blocked/denied.
+        // Saves a flag so scheduleReminders() re-runs on next page load too.
+        const grantLocalOnly = () => {
+          localStorage.setItem("ccj_inapp_notif", "true");
+          scheduleReminders(); // falls through to local/SW path automatically (no player ID)
+        };
+
+
 
       // Show compact install chip (every browser session)
       const showInstallBanner = () => {
@@ -3895,8 +3908,9 @@ if (!window.IS_MEDIAN_APP) {
             if (nowMs >= alarmMs - TWO_MIN_MS && nowMs < alarmMs) {
               reminderSentRef.current.set.add(key);
               const taskMsg = "⏰ In 2 minutes: " + (task.text || "Task");
+              // localNotify for in-app SW alert; osPush removed — scheduleTaskPush
+              // already scheduled a server-side push when the task was saved.
               localNotify("Cookie-Care-Joy 🍪", taskMsg, 0);
-              osPush("Cookie-Care-Joy 🍪", taskMsg, 0);
             }
           }
 
