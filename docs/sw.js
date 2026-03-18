@@ -1,10 +1,128 @@
 // OneSignal SDK is loaded by OneSignalSDKWorker.js
 
 // Cookie-Care-Joy Service Worker
-// Handles push events, SW-side scheduled notifications, and app focus on click.
+// Handles push events, SW-side scheduled notifications, app focus on click,
+// and full offline caching so the installed PWA works without internet.
 
-self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+const CACHE_VERSION = 'ccj-v1';
+const BASE = '/Cookie-Care-Joy';
+
+// All local assets to pre-cache on install
+const PRECACHE_URLS = [
+  BASE + '/',
+  BASE + '/index.html',
+  BASE + '/manifest.json',
+  BASE + '/sw.js',
+  BASE + '/OneSignalSDKWorker.js',
+  BASE + '/icon-48.png',
+  BASE + '/icon-96.png',
+  BASE + '/icon-144.png',
+  BASE + '/icon-192.png',
+  BASE + '/icon-512.png',
+  BASE + '/favicon.ico',
+];
+
+// CDN scripts — cache on first fetch so they work offline after first visit
+const CDN_CACHE = 'ccj-cdn-v1';
+const CDN_ORIGINS = [
+  'cdnjs.cloudflare.com',
+  'cdn.onesignal.com',
+];
+
+// ── Install: pre-cache all local assets ──────────────────────────────────────
+self.addEventListener('install', e => {
+  e.waitUntil(
+    caches.open(CACHE_VERSION).then(cache =>
+      cache.addAll(PRECACHE_URLS).catch(err => {
+        console.warn('[SW] Pre-cache partial failure:', err);
+        return Promise.allSettled(
+          PRECACHE_URLS.map(url => cache.add(url).catch(() => {}))
+        );
+      })
+    ).then(() => self.skipWaiting())
+  );
+});
+
+// ── Activate: clean up old caches ────────────────────────────────────────────
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(
+        keys
+          .filter(k => k !== CACHE_VERSION && k !== CDN_CACHE)
+          .map(k => caches.delete(k))
+      )
+    ).then(() => self.clients.claim())
+  );
+});
+
+// ── Fetch: serve from cache when offline ─────────────────────────────────────
+self.addEventListener('fetch', e => {
+  const { request } = e;
+  const url = new URL(request.url);
+
+  // Only handle GET requests
+  if (request.method !== 'GET') return;
+
+  // Skip non-http(s) requests (chrome-extension:// etc.)
+  if (!url.protocol.startsWith('http')) return;
+
+  // ── CDN resources: cache-first ───────────────────────────────────────────
+  if (CDN_ORIGINS.some(origin => url.hostname.includes(origin))) {
+    e.respondWith(
+      caches.open(CDN_CACHE).then(async cache => {
+        const cached = await cache.match(request);
+        if (cached) return cached;
+        try {
+          const response = await fetch(request);
+          if (response.ok) cache.put(request, response.clone());
+          return response;
+        } catch {
+          return cached || new Response('// offline', { headers: { 'Content-Type': 'application/javascript' } });
+        }
+      })
+    );
+    return;
+  }
+
+  // ── OneSignal API calls: network-only (don't cache) ──────────────────────
+  if (url.hostname.includes('onesignal.com') && url.pathname.startsWith('/api/')) {
+    return;
+  }
+
+  // ── App navigation (HTML pages): network-first, fallback to cached index ──
+  if (request.destination === 'document' || (request.headers.get('accept') || '').includes('text/html')) {
+    e.respondWith(
+      fetch(request)
+        .then(response => {
+          if (response.ok) {
+            caches.open(CACHE_VERSION).then(cache => cache.put(request, response.clone()));
+          }
+          return response;
+        })
+        .catch(async () => {
+          const cached = await caches.match(request);
+          return cached || await caches.match(BASE + '/index.html') || await caches.match(BASE + '/');
+        })
+    );
+    return;
+  }
+
+  // ── All other local assets: cache-first, fallback to network ─────────────
+  if (url.origin === self.location.origin) {
+    e.respondWith(
+      caches.match(request).then(cached => {
+        if (cached) return cached;
+        return fetch(request).then(response => {
+          if (response.ok) {
+            caches.open(CACHE_VERSION).then(cache => cache.put(request, response.clone()));
+          }
+          return response;
+        });
+      })
+    );
+  }
+});
 
 const ICON = 'https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png';
 
@@ -26,17 +144,13 @@ self.addEventListener('push', e => {
 });
 
 // ── SW-side notification scheduling ─────────────────────────────────────────
-// The page posts messages here so notifications can fire even when the tab is
-// backgrounded. _swTimers holds all live setTimeout handles keyed by fireAt ms.
 const _swTimers = new Map();
 
 function _scheduleOne(fireAt, title, body, tag) {
   if (!fireAt || !title) return;
-  // Key SW timer by fireAt — prevents multiple reminders with same text collapsing into one
   const schedKey = tag || ('ccj-t' + fireAt);
   if (_swTimers.has(schedKey)) clearTimeout(_swTimers.get(schedKey));
   const delay = Math.max(0, fireAt - Date.now());
-  // Notification tag is content-based to prevent duplicate on-screen toasts for same message
   const notifTag = 'ccj-' + (title + body).replace(/[^a-z0-9]/gi,'').substring(0,24).toLowerCase();
   const tid = setTimeout(() => {
     _swTimers.delete(schedKey);
@@ -55,15 +169,10 @@ self.addEventListener('message', e => {
   if (!e.data) return;
 
   switch (e.data.type) {
-
-    // Schedule a single notification
     case 'SCHEDULE':
       _scheduleOne(e.data.fireAt, e.data.title, e.data.body, e.data.tag);
       break;
 
-    // Full re-sync: clear everything and rebuild from the page's localStorage queue.
-    // Called on page load, after SW restart, and on visibilitychange.
-    // This is the main defence against SW timer loss on SW termination.
     case 'SYNC_ALL': {
       for (const tid of _swTimers.values()) clearTimeout(tid);
       _swTimers.clear();
@@ -74,7 +183,6 @@ self.addEventListener('message', e => {
       break;
     }
 
-    // Cancel a single notification
     case 'CANCEL':
       if (_swTimers.has(e.data.fireAt)) {
         clearTimeout(_swTimers.get(e.data.fireAt));
@@ -82,29 +190,22 @@ self.addEventListener('message', e => {
       }
       break;
 
-    // Cancel everything (called when user disables notifications)
     case 'CANCEL_ALL':
       for (const tid of _swTimers.values()) clearTimeout(tid);
       _swTimers.clear();
       break;
 
-    // Keepalive ping from the page — receiving this resets the SW idle timer.
-    // The page sends this every 20 s while visible, every 25 s while hidden.
     case 'PING':
       break;
   }
 });
 
 // ── Periodic Background Sync ─────────────────────────────────────────────────
-// Fires even when the PWA is fully closed (Chrome Android, installed PWA only).
-// Asks any open window clients to re-sync the queue. If no clients are open,
-// broadcasts a 'REQUEST_SYNC' to all windows on next open via postMessage.
 self.addEventListener('periodicsync', e => {
   if (e.tag === 'ccj-notif-sync') {
     e.waitUntil(
       self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
         for (const client of clients) {
-          // Ask the page to send us SYNC_ALL with its localStorage queue
           client.postMessage({ type: 'REQUEST_SYNC' });
         }
       })
