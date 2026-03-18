@@ -1,4 +1,4 @@
-name = "ccj-welcome"
-main = "worker.js"
+name = "cookie-care-joy"
+main = "docs/worker.js"
 compatibility_date = "2024-01-01"
 account_id = "b9eec925b4d11e786ff81a930c797ddc"
