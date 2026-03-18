@@ -32,75 +32,67 @@ const _swTimers = new Map();
 
 function _scheduleOne(fireAt, title, body, tag) {
   if (!fireAt || !title) return;
-  // content-based dedup key — same title+body reuses same SW timer slot
-  const dedup = tag || ('ccj-' + (title + body).replace(/[^a-z0-9]/gi,'').substring(0,24).toLowerCase());
-  if (_swTimers.has(dedup)) clearTimeout(_swTimers.get(dedup));
+  // Key SW timer by fireAt — prevents multiple reminders with same text collapsing into one
+  const schedKey = tag || ('ccj-t' + fireAt);
+  if (_swTimers.has(schedKey)) clearTimeout(_swTimers.get(schedKey));
   const delay = Math.max(0, fireAt - Date.now());
-  const tid = setTimeout(async () => {
-    _swTimers.delete(dedup);
-    // Tell any open page clients to show the in-app toast as well
-    try {
-      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-      for (const client of clients) {
-        client.postMessage({ type: 'CCJ_NOTIFY', title, body });
-      }
-    } catch(e) {}
+  // Notification tag is content-based to prevent duplicate on-screen toasts for same message
+  const notifTag = 'ccj-' + (title + body).replace(/[^a-z0-9]/gi,'').substring(0,24).toLowerCase();
+  const tid = setTimeout(() => {
+    _swTimers.delete(schedKey);
     self.registration.showNotification(title, {
       body: body || '',
       icon: ICON,
       badge: ICON,
-      tag: dedup,
+      tag: notifTag,
       requireInteraction: false,
     });
   }, delay);
-  _swTimers.set(dedup, tid);
+  _swTimers.set(schedKey, tid);
 }
 
 self.addEventListener('message', e => {
   if (!e.data) return;
 
-  // e.waitUntil prevents Chrome from terminating the SW before timers are registered.
-  // Without this, Chrome can kill the SW immediately after receiving the message.
-  e.waitUntil((async () => {
-    switch (e.data.type) {
+  switch (e.data.type) {
 
-      // Schedule a single notification
-      case 'SCHEDULE':
-        _scheduleOne(e.data.fireAt, e.data.title, e.data.body, e.data.tag);
-        break;
+    // Schedule a single notification
+    case 'SCHEDULE':
+      _scheduleOne(e.data.fireAt, e.data.title, e.data.body, e.data.tag);
+      break;
 
-      // Full re-sync: clear everything and rebuild from the page's localStorage queue.
-      // Called on page load, after SW restart, and on visibilitychange.
-      // This is the main defence against SW timer loss on SW termination.
-      case 'SYNC_ALL': {
-        for (const tid of _swTimers.values()) clearTimeout(tid);
-        _swTimers.clear();
-        const items = e.data.items || [];
-        for (const { fireAt, title, body, tag } of items) {
-          _scheduleOne(fireAt, title, body, tag);
-        }
-        break;
+    // Full re-sync: clear everything and rebuild from the page's localStorage queue.
+    // Called on page load, after SW restart, and on visibilitychange.
+    // This is the main defence against SW timer loss on SW termination.
+    case 'SYNC_ALL': {
+      for (const tid of _swTimers.values()) clearTimeout(tid);
+      _swTimers.clear();
+      const items = e.data.items || [];
+      for (const { fireAt, title, body, tag } of items) {
+        _scheduleOne(fireAt, title, body, tag);
       }
-
-      // Cancel a single notification
-      case 'CANCEL':
-        if (_swTimers.has(e.data.fireAt)) {
-          clearTimeout(_swTimers.get(e.data.fireAt));
-          _swTimers.delete(e.data.fireAt);
-        }
-        break;
-
-      // Cancel everything (called when user disables notifications)
-      case 'CANCEL_ALL':
-        for (const tid of _swTimers.values()) clearTimeout(tid);
-        _swTimers.clear();
-        break;
-
-      // Keepalive ping from the page — receiving this extends the SW idle deadline.
-      case 'PING':
-        break;
+      break;
     }
-  })());
+
+    // Cancel a single notification
+    case 'CANCEL':
+      if (_swTimers.has(e.data.fireAt)) {
+        clearTimeout(_swTimers.get(e.data.fireAt));
+        _swTimers.delete(e.data.fireAt);
+      }
+      break;
+
+    // Cancel everything (called when user disables notifications)
+    case 'CANCEL_ALL':
+      for (const tid of _swTimers.values()) clearTimeout(tid);
+      _swTimers.clear();
+      break;
+
+    // Keepalive ping from the page — receiving this resets the SW idle timer.
+    // The page sends this every 20 s while visible, every 25 s while hidden.
+    case 'PING':
+      break;
+  }
 });
 
 // ── Periodic Background Sync ─────────────────────────────────────────────────

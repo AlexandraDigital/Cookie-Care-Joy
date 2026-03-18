@@ -3374,8 +3374,9 @@ if (!window.IS_MEDIAN_APP) {
         try { localStorage.setItem("ccj_notif_queue", JSON.stringify(arr)); } catch {}
       }
       function _lsQueueAdd(fireAt, title, body) {
-        const tag = "ccj-" + (title + body).replace(/[^a-z0-9]/gi, "").substring(0, 24).toLowerCase();
-        const q = _lsQueueGet().filter(x => x.fireAt > Date.now() && x.tag !== tag);
+        // Key by fireAt so multiple reminders with identical text don't collapse into one
+        const tag = "ccj-t" + fireAt;
+        const q = _lsQueueGet().filter(x => x.fireAt > Date.now() && x.fireAt !== fireAt);
         q.push({ fireAt, title, body, tag });
         _lsQueueSet(q);
       }
@@ -3395,7 +3396,7 @@ if (!window.IS_MEDIAN_APP) {
       async function localNotify(title, body, delayMs) {
         if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
         const fireAt = Date.now() + (delayMs || 0);
-        const tag = "ccj-" + (title + body).replace(/[^a-z0-9]/gi, "").substring(0, 24).toLowerCase();
+        const tag = "ccj-t" + fireAt; // unique per fire time — prevents SW timer collapse
         _lsQueueAdd(fireAt, title, body);
         try {
           if (navigator.serviceWorker && navigator.serviceWorker.controller) {
