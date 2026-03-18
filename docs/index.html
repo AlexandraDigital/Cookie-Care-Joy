@@ -3018,25 +3018,32 @@ if (!window.IS_MEDIAN_APP) {
           return;
         }
 
-        // ── Path A: OneSignal (web browser) ──
-        const osReady = await waitForOneSignal();
-        if (osReady) {
+        // ── Path A: Permission prompt — MUST fire synchronously within user gesture ──
+        // Android Chrome drops the prompt if there's any async gap (await) before requestPermission().
+        // So: check OneSignal synchronously first. If ready, use it immediately.
+        // If not ready yet, fall straight to native Notification API (no await).
+        // OneSignal opt-in happens AFTER permission is granted so the gesture chain is never broken.
+
+        // Already denied?
+        if (typeof Notification !== "undefined" && Notification.permission === "denied") {
+          setNotifError("Notifications blocked. Open browser Settings → Site permissions to allow.");
+          return;
+        }
+
+        // Already granted (page reload, return visit)?
+        if ((window.OneSignal && window.OneSignal.Notifications && window.OneSignal.Notifications.permission === true) ||
+            (typeof Notification !== "undefined" && Notification.permission === "granted")) {
+          grantSuccess();
+          return;
+        }
+
+        // OneSignal ready synchronously — call its prompt immediately (no await before this)
+        if (window.OneSignal && window.OneSignal.Notifications) {
           try {
-            // Already granted?
-            if (window.OneSignal.Notifications.permission === true) {
-              grantSuccess();
-              return;
-            }
-            // OneSignal v16: requestPermission() returns void — check .permission AFTER
             await window.OneSignal.Notifications.requestPermission();
-            // Give OneSignal a moment to update its internal state
             await new Promise(r => setTimeout(r, 300));
-            if (window.OneSignal.Notifications.permission === true) {
-              grantSuccess();
-              return;
-            }
-            // Also check native browser permission as fallback
-            if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+            if (window.OneSignal.Notifications.permission === true ||
+                (typeof Notification !== "undefined" && Notification.permission === "granted")) {
               grantSuccess();
               return;
             }
@@ -3044,32 +3051,26 @@ if (!window.IS_MEDIAN_APP) {
               setNotifError("Notifications blocked. Go to browser Settings → Site permissions to allow, then try again.");
               return;
             }
-            // Dismissed without choosing — show install banner so they can add to home screen
             setNotifError("Tap Enable again to allow notifications 🔔");
             showInstallBanner();
             return;
-          } catch (e) {
-            // OneSignal threw — fall through to native
+          } catch(e) {
+            // OneSignal threw — fall through to native below
           }
         }
 
-        // ── Path B: Native Notification API (no OneSignal) ──
+        // ── Path B: Native Notification API ──
+        // OneSignal not loaded yet OR threw. Use native API — also fires synchronously within gesture.
         if (!("Notification" in window)) {
           setNotifError("On iPhone: tap Share → \"Add to Home Screen\", then open from there 📲");
           showInstallBanner();
           return;
         }
-        if (Notification.permission === "denied") {
-          setNotifError("Notifications blocked. Open browser Settings → Site permissions to allow.");
-          return;
-        }
-        if (Notification.permission === "granted") {
-          grantSuccess();
-          return;
-        }
         try {
           const result = await Promise.resolve(Notification.requestPermission());
           if (result === "granted" || Notification.permission === "granted") {
+            // Now wait for OneSignal to finish loading so opt-in/subscription works
+            await waitForOneSignal();
             grantSuccess();
           } else if (result === "denied") {
             setNotifError("Notifications blocked. Check browser settings to allow them.");
