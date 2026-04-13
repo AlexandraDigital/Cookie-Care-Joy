@@ -1,90 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
-<script>
-// ── Median.co (GoNative) detection — set as early as possible ──────────────
-window.IS_MEDIAN_APP = (
-  /median|gonative/i.test(navigator.userAgent) ||
-  typeof window.median !== "undefined" ||
-  typeof window.gonative !== "undefined"
-);
-</script>
- <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-
-<script>
-// Skip OneSignal web SDK in Median — push notifications are handled natively
-if (!window.IS_MEDIAN_APP) {
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  OneSignalDeferred.push(async function(OneSignal) {
-    try {
-      await OneSignal.init({
-        appId: "fc237358-e343-4a93-adfe-b22527bb0aef",
-        serviceWorkerPath: "/Cookie-Care-Joy/OneSignalSDKWorker.js",
-        serviceWorkerParam: { scope: "/Cookie-Care-Joy/" },
-        notifyButton: {
-          enable: true,
-          size: "medium",
-          theme: "default",
-          position: "bottom-right",
-          offset: { bottom: "20px", right: "20px" },
-          showCredit: false,
-          text: {
-            "tip.state.unsubscribed": "🍪 Get cookie reminders!",
-            "tip.state.subscribed": "✅ You're subscribed!",
-            "tip.state.blocked": "🚫 Notifications blocked",
-            "message.prenotify": "Click to subscribe to cookie reminders 🍪",
-            "message.action.subscribed": "Thanks for subscribing! 🍪",
-            "message.action.resubscribed": "You're subscribed to cookie reminders!",
-            "message.action.unsubscribed": "You won't receive notifications anymore.",
-            "dialog.main.title": "Manage Cookie Reminders 🍪",
-            "dialog.main.button.subscribe": "YES, REMIND ME!",
-            "dialog.main.button.unsubscribe": "No thanks",
-            "dialog.blocked.title": "Unblock Notifications",
-            "dialog.blocked.message": "Follow these steps to allow notifications:"
-          },
-          colors: {
-            "circle.background": "#f43f6e",
-            "circle.foreground": "white",
-            "badge.background": "#f59e0b",
-            "badge.foreground": "white",
-            "badge.bordercolor": "white",
-            "pulse.color": "#f9a8d4",
-            "dialog.button.background.hovering": "#e11d48",
-            "dialog.button.background.active": "#be123c",
-            "dialog.button.background": "#f43f6e",
-            "dialog.button.foreground": "white"
-          }
-        },
-        promptOptions: {
-          slidedown: {
-            prompts: [
-              {
-                type: "push",
-                autoPrompt: false,
-                text: {
-                  actionMessage: "🍪 Want daily cookie reminders & care tips? We'll only send what matters!",
-                  acceptButton: "Yes, remind me! 🍪",
-                  cancelButton: "Maybe later"
-                },
-                delay: {
-                  pageViews: 1,
-                  timeDelay: 5
-                }
-              }
-            ]
-          }
-        }
-      });
-      window._oneSignalReady = true;
-    } catch(e) {
-      console.warn("OneSignal init failed (IndexedDB issue?), falling back to local notifications.", e.message || e);
-      window._oneSignalFailed = true;
-    }
-  });
-}
-</script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <!-- PWA manifest (required for Android install + iOS 16.4+ push) -->
   <link rel="manifest" href="/Cookie-Care-Joy/manifest.json" />
@@ -124,7 +41,6 @@ if (!window.IS_MEDIAN_APP) {
       /* Remove blue flash on tap (iOS + Android) */
       -webkit-tap-highlight-color: transparent;
     }
-
     html,
     body {
       margin: 0;
@@ -132,7 +48,6 @@ if (!window.IS_MEDIAN_APP) {
       width: 100%;
       height: 100%;
     }
-
     body {
       background: #fdf6fb;
       font-family: system-ui, -apple-system, sans-serif;
@@ -142,39 +57,31 @@ if (!window.IS_MEDIAN_APP) {
       -webkit-text-size-adjust: 100%;
       text-size-adjust: 100%;
     }
-
     body, html {
       background: #fdf6fb;
     }
-
     #root {
       min-height: 100vh;
       min-height: -webkit-fill-available;
     }
-
     button,
     input {
       font-family: inherit;
     }
-
     ::-webkit-scrollbar {
       width: 6px;
       height: 6px;
     }
-
     ::-webkit-scrollbar-track {
       background: transparent;
     }
-
     ::-webkit-scrollbar-thumb {
       background: #f9a8d4;
       border-radius: 999px;
     }
-
     .time-col::-webkit-scrollbar {
       display: none;
     }
-
     .night-overlay {
       position: fixed;
       inset: 0;
@@ -183,11 +90,9 @@ if (!window.IS_MEDIAN_APP) {
       background: linear-gradient(to bottom, rgba(180, 120, 60, 0.08) 0%, rgba(140, 80, 30, 0.13) 100%);
       animation: nightFadeIn 2s ease forwards;
     }
-
     body.night {
       background: #f9f0e6 !important;
     }
-
     .night-badge {
       position: fixed;
       top: max(14px, env(safe-area-inset-top));
@@ -205,129 +110,105 @@ if (!window.IS_MEDIAN_APP) {
       animation: nightFadeIn 3s ease forwards;
       letter-spacing: 0.2px;
     }
-
     .top-nav {
       display: flex;
     }
-
     .bottom-nav {
       display: none;
     }
-
     @keyframes breatheIn {
       0% {
         transform: scale(1);
         opacity: 0.7
       }
-
       100% {
         transform: scale(1.55);
         opacity: 1
       }
     }
-
     @keyframes breatheOut {
       0% {
         transform: scale(1.55);
         opacity: 1
       }
-
       100% {
         transform: scale(1);
         opacity: 0.7
       }
     }
-
     @keyframes breatheHold {
-
       0%,
       100% {
         transform: scale(1.55)
       }
     }
-
     @keyframes ripple1 {
       0% {
         transform: scale(1);
         opacity: 0.4
       }
-
       100% {
         transform: scale(2.2);
         opacity: 0
       }
     }
-
     @keyframes ripple2 {
       0% {
         transform: scale(1);
         opacity: 0.3
       }
-
       100% {
         transform: scale(2.8);
         opacity: 0
       }
     }
-
     @keyframes nightFadeIn {
       from {
         opacity: 0
       }
-
       to {
         opacity: 1
       }
     }
-
     @keyframes slideDown {
       0% {
         transform: translateY(-100%);
         opacity: 0
       }
-
       100% {
         transform: translateY(0);
         opacity: 1
       }
     }
-
     @keyframes btnPulse {
-
       0%,
       100% {
         transform: scale(1);
         box-shadow: 0 2px 12px rgba(244, 63, 110, 0.2)
       }
-
       50% {
         transform: scale(1.06);
         box-shadow: 0 4px 20px rgba(244, 63, 110, 0.45)
       }
     }
-
     @keyframes coolIn {
       0% {
         opacity: 0;
         transform: scale(1.04)
       }
-
       100% {
         opacity: 1;
         transform: scale(1)
       }
     }
-
     @keyframes coolOut {
       0% {
         opacity: 1
       }
-
       100% {
         opacity: 0
       }
     }
-
     @keyframes micPulse {
       0%, 100% { box-shadow: 0 0 0 3px rgba(255,110,180,0.3); }
       50% { box-shadow: 0 0 0 7px rgba(255,110,180,0.1); }
@@ -336,207 +217,169 @@ if (!window.IS_MEDIAN_APP) {
       0% {
         opacity: 1
       }
-
       50% {
         opacity: 0.5
       }
-
       100% {
         opacity: 1
       }
     }
-
     @keyframes cookieDrop {
       0% {
         transform: translateY(-120px) rotate(-20deg) scale(0.4);
         opacity: 0
       }
-
       60% {
         transform: translateY(10px) rotate(6deg) scale(1.1);
         opacity: 1
       }
-
       80% {
         transform: translateY(-6px) rotate(-3deg) scale(0.97)
       }
-
       100% {
         transform: translateY(0) rotate(0deg) scale(1);
         opacity: 1
       }
     }
-
     @keyframes cookiePulse {
-
       0%,
       100% {
         transform: scale(1) rotate(0deg)
       }
-
       25% {
         transform: scale(1.08) rotate(-4deg)
       }
-
       75% {
         transform: scale(1.05) rotate(3deg)
       }
     }
-
     @keyframes crumbFly1 {
       0% {
         transform: translate(0, 0) scale(1);
         opacity: 1
       }
-
       100% {
         transform: translate(-60px, -80px) scale(0.3) rotate(200deg);
         opacity: 0
       }
     }
-
     @keyframes crumbFly2 {
       0% {
         transform: translate(0, 0) scale(1);
         opacity: 1
       }
-
       100% {
         transform: translate(70px, -90px) scale(0.2) rotate(-160deg);
         opacity: 0
       }
     }
-
     @keyframes crumbFly3 {
       0% {
         transform: translate(0, 0) scale(1);
         opacity: 1
       }
-
       100% {
         transform: translate(-40px, 60px) scale(0.4) rotate(120deg);
         opacity: 0
       }
     }
-
     @keyframes crumbFly4 {
       0% {
         transform: translate(0, 0) scale(1);
         opacity: 1
       }
-
       100% {
         transform: translate(50px, 70px) scale(0.3) rotate(-90deg);
         opacity: 0
       }
     }
-
     @keyframes crumbFly5 {
       0% {
         transform: translate(0, 0) scale(1);
         opacity: 1
       }
-
       100% {
         transform: translate(90px, -40px) scale(0.2) rotate(240deg);
         opacity: 0
       }
     }
-
     @keyframes crumbFly6 {
       0% {
         transform: translate(0, 0) scale(1);
         opacity: 1
       }
-
       100% {
         transform: translate(-80px, 30px) scale(0.35) rotate(-180deg);
         opacity: 0
       }
     }
-
     @keyframes splashTextIn {
       0% {
         opacity: 0;
         transform: translateY(24px) scale(0.9)
       }
-
       100% {
         opacity: 1;
         transform: translateY(0) scale(1)
       }
     }
-
     @keyframes splashSubIn {
       0% {
         opacity: 0;
         transform: translateY(12px)
       }
-
       100% {
         opacity: 1;
         transform: translateY(0)
       }
     }
-
     @keyframes splashFadeOut {
       0% {
         opacity: 1;
         transform: scale(1)
       }
-
       80% {
         opacity: 1;
         transform: scale(1)
       }
-
       100% {
         opacity: 0;
         transform: scale(1.04)
       }
     }
-
     @keyframes sparkle {
       0% {
         transform: scale(0) rotate(0deg);
         opacity: 0
       }
-
       40% {
         transform: scale(1.3) rotate(180deg);
         opacity: 1
       }
-
       100% {
         transform: scale(0) rotate(360deg);
         opacity: 0
       }
     }
-
     /* ── Touch & Mobile Optimizations ───────────────────────────── */
-
     /* Eliminate 300ms tap delay on all interactive elements */
     button, a, label, [role="button"], [role="tab"],
     input[type="checkbox"], input[type="radio"] {
       touch-action: manipulation;
     }
-
     /* Prevent callout menu on long-press (iOS) */
     button, a, img, svg {
       -webkit-touch-callout: none;
     }
-
     /* CRITICAL: Prevent iOS from zooming in when an input is focused.
        iOS auto-zooms if font-size < 16px — this stops it. */
     input, select, textarea {
       font-size: max(16px, 1em) !important;
     }
-
     /* Smooth momentum scrolling on iOS for any overflow scroll */
     * {
       -webkit-overflow-scrolling: touch;
     }
-
     /* Full-height fix: use dvh (dynamic viewport height) where supported,
        falling back to -webkit-fill-available for older iOS Safari */
     #root {
@@ -544,25 +387,20 @@ if (!window.IS_MEDIAN_APP) {
       min-height: -webkit-fill-available;
       min-height: 100dvh;
     }
-
     /* ── iOS Home Indicator safe area for bottom nav ─────────────── */
     .bottom-nav {
       padding-bottom: max(12px, env(safe-area-inset-bottom)) !important;
     }
-
     .notif-mobile {
       display: none;
     }
-
     /* legacy */
     .desktop,.mobile,.tablet,.touchscreen {
       display: flex !important;
     }
-
     .float-hide-desktop,.mobile,.tablet,.touchscreen {
       display: none !important;
     }
-
     .desktop,.mobile,.tablet,.touchscreen-save-dropdown {
       position: fixed !important;
       top: 72px !important;
@@ -570,7 +408,6 @@ if (!window.IS_MEDIAN_APP) {
       bottom: auto !important;
       left: auto !important;
     }
-
     .nav-inner {
       max-width: 1100px;
       margin: 0 auto;
@@ -580,53 +417,41 @@ if (!window.IS_MEDIAN_APP) {
       align-items: center;
       gap: 16px;
     }
-
     .notif-desktop,.notif-mobile,.notif-tablet,.notif-touchscreen{
       display: block;
     }
-
     @media (max-width: 600px) {
       .top-nav {
         display: none !important;
       }
-
       .bottom-nav {
         display: flex !important;
       }
-
       .page-content {
         padding-bottom: 80px !important;
       }
-
       .cookie-earn-bar {
         padding: 8px 12px !important;
         border-radius: 12px !important;
       }
-
       .cookie-earn-bar span:first-child {
         font-size: 16px !important;
       }
-
       .cookie-earn-bar span:last-child {
         font-size: 12px !important;
       }
-
       .notif-mobile {
         display: flex !important;
       }
-
       .notif-desktop,.notif-mobile,.notif-tablet,.notif-touchscreen {
         display: none !important;
       }
-
       .desktop,.mobile,.tablet,.touchscreen {
         display: none !important;
       }
-
       .float-hide-desktop {
         display: flex !important;
       }
-
       .desktop,.mobile,.tablet,.touchscreen-save-dropdown {
         position: absolute !important;
         top: auto !important;
@@ -636,17 +461,12 @@ if (!window.IS_MEDIAN_APP) {
       }
     }
   </style>
-
 </head>
-
 <body>
   <div id="ccj-presplash" style="position:fixed;inset:0;background:#fdf6fb;z-index:9999;display:flex;align-items:center;justify-content:center"><span style="font-size:72px;line-height:1">🍪</span></div>
   <div id="root"></div>
   <script type="text/babel">
     const { useState, useEffect } = React;
-
-
-
     // ── Cookie Jar SVG Icon ───────────────────────────────────────────
     const CookieJarIcon = ({ size = 24 }) => (
       <svg width={size} height={size} viewBox="0 0 64 72" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -667,7 +487,6 @@ if (!window.IS_MEDIAN_APP) {
         <circle cx="24" cy="52" r="1.5" fill="#92400e" opacity="0.5" />
       </svg>
     );
-
     const ROSE = "#f43f6e";
     const ROSE_LIGHT = "#fce7ef";
     const GOLD = "#f59e0b";
@@ -676,7 +495,6 @@ if (!window.IS_MEDIAN_APP) {
     const GRAY = "#6b7280";
     const WHITE = "#ffffff";
     const TASK_TYPES = ["To-Do", "Self Care"];
-
     const JAR_THEMES = [
       { name: "Rose Garden", bg: "#fce7f3", border: "#f9a8d4", cookie: "🌸" },
       { name: "Golden Hour", bg: "#fffbeb", border: "#fde68a", cookie: "⭐" },
@@ -686,7 +504,6 @@ if (!window.IS_MEDIAN_APP) {
       { name: "Sunset", bg: "#fff7ed", border: "#fdba74", cookie: "🌅" },
     ];
     const ZEN_SOUNDS = ["🎵 Soft Chime", "🎶 Rain Drops", "🎼 Forest Birds", "🔔 Crystal Bell", "🌊 Ocean Waves"];
-
     // ── Language System ───────────────────────────────────────────────
     const LangContext = React.createContext({});
     const TRANSLATIONS = {
@@ -979,8 +796,6 @@ if (!window.IS_MEDIAN_APP) {
         intention_title: "每日意图",
       },
     };
-
-
     // ── Shared AudioContext — resumed on first user gesture ───────────
     let _audioCtx = null;
     function getCtx() {
@@ -1001,7 +816,6 @@ if (!window.IS_MEDIAN_APP) {
         _audioReady = true;
       } catch (e) { }
     }
-
     // ── Aggressive alarm ──────────────────────────────────────────────
     function playAggressiveAlarm() {
       try {
@@ -1040,7 +854,6 @@ if (!window.IS_MEDIAN_APP) {
         beep(2.50, 0.30, 700, 0.4);
       } catch (e) { }
     }
-
     // ── Zen audio engine ──────────────────────────────────────────────
     function playZenSound(i) {
       try {
@@ -1091,14 +904,11 @@ if (!window.IS_MEDIAN_APP) {
         }
       } catch (e) { }
     }
-
-
     // ── Splash Screen ─────────────────────────────────────────────────
     function SplashScreen({ onDone }) {
       const [phase, setPhase] = React.useState("drop");
       const [showCrumbs, setShowCrumbs] = React.useState(false);
       const tSplash = (TRANSLATIONS[localStorage.getItem("ccj_lang") || "en"] || TRANSLATIONS.en);
-
       React.useEffect(() => {
         const t1 = setTimeout(() => { setPhase("crumble"); setShowCrumbs(true); }, 750);
         const t2 = setTimeout(() => setPhase("text"), 1000);
@@ -1106,10 +916,8 @@ if (!window.IS_MEDIAN_APP) {
         const t4 = setTimeout(onDone, 3400);
         return () => [t1, t2, t3, t4].forEach(clearTimeout);
       }, []);
-
       const sparkles = ["✨", "🌸", "⭐", "💕", "🌟", "✨", "💫", "🍭", "🎀", "🌷", "⭐", "💖"];
       const crumbs = ["🍪", "🟤", "🔶", "🍫", "🟠", "🔸", "🟫", "🍂"];
-
       return (
         <div
           onClick={onDone}
@@ -1131,7 +939,6 @@ if (!window.IS_MEDIAN_APP) {
               pointerEvents: "none",
             }} />
           )}
-
           {/* Sparkles — more of them, spread wider */}
           {phase !== "drop" && sparkles.map((s, i) => (
             <div key={i} style={{
@@ -1143,7 +950,6 @@ if (!window.IS_MEDIAN_APP) {
               pointerEvents: "none",
             }}>{s}</div>
           ))}
-
           {/* Cookie + crumbs */}
           <div style={{ position: "relative", marginBottom: 28 }}>
             {showCrumbs && crumbs.map((c, i) => (
@@ -1166,7 +972,6 @@ if (!window.IS_MEDIAN_APP) {
               filter: "drop-shadow(0 16px 32px rgba(244,63,110,0.3))",
             }}>🍪</div>
           </div>
-
           {/* Title + subtitle */}
           {(phase === "text" || phase === "out") && (
             <>
@@ -1183,7 +988,6 @@ if (!window.IS_MEDIAN_APP) {
               }}>{tSplash.splash_sub}</p>
             </>
           )}
-
           <p style={{
             position: "absolute", bottom: 36,
             margin: 0, fontSize: 13, color: "#f9a8d4", fontWeight: 500,
@@ -1192,8 +996,6 @@ if (!window.IS_MEDIAN_APP) {
         </div>
       );
     }
-
-
     // ── Wind Down ────────────────────────────────────────────────
     const BREATH_PATTERNS = [
       { name: "4-7-8 Calm", desc: "Classic sleep & stress relief", in: 4, hold: 7, out: 8, emoji: "🌙" },
@@ -1201,7 +1003,6 @@ if (!window.IS_MEDIAN_APP) {
       { name: "Quick Reset", desc: "Fast 2-minute refresh", in: 3, hold: 2, out: 5, emoji: "🌸" },
       { name: "Deep Calm", desc: "Slow and deeply relaxing", in: 5, hold: 5, out: 7, emoji: "🌊" },
     ];
-
     function CoolDownMode({ onClose, purchased, selectedSound }) {
       const { useRef } = React;
       const t = React.useContext(LangContext);
@@ -1217,16 +1018,13 @@ if (!window.IS_MEDIAN_APP) {
       const phaseRef = useRef("in");
       const countRef = useRef(0);
       const pat = { ...BREATH_PATTERNS[pattern], name: t.wd_patterns[pattern].name, desc: t.wd_patterns[pattern].desc, emoji: t.wd_patterns[pattern].emoji };
-
       const fmtTime = s => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
-
       // Total-seconds ticker
       React.useEffect(() => {
         if (!active) return;
         const iv = setInterval(() => setTotalSec(t => t + 1), 1000);
         return () => clearInterval(iv);
       }, [active]);
-
       // Breath engine
       React.useEffect(() => {
         if (!active) return;
@@ -1258,18 +1056,15 @@ if (!window.IS_MEDIAN_APP) {
         } catch (e) { }
         return () => clearInterval(iv);
       }, [phase, active, pattern]);
-
       const start = () => {
         setActive(true); setPhase("in"); setCount(0); setCycle(0); setTotalSec(0);
       };
       const stop = () => { setActive(false); setPhase("in"); setCount(0); };
-
       const handleClose = () => {
         setClosing(true);
         stop();
         setTimeout(onClose, 400);
       };
-
       const phaseLabel = { in: t.breathe_in || "Breathe In", hold: t.hold || "Hold", out: t.breathe_out || "Breathe Out" };
       const phaseDur = { in: pat.in, hold: pat.hold, out: pat.out };
       const progress = active ? (count / phaseDur[phase]) : 0;
@@ -1282,7 +1077,6 @@ if (!window.IS_MEDIAN_APP) {
       const idleBg = isNight
         ? "linear-gradient(145deg,#1a1025,#251535,#1a1030)"
         : "linear-gradient(145deg,#fce7ef,#fdf2f8)";
-
       return (
         <div style={{
           position: "fixed", inset: 0, zIndex: 2500,
@@ -1291,7 +1085,6 @@ if (!window.IS_MEDIAN_APP) {
           animation: closing ? "coolOut 0.4s ease forwards" : "coolIn 0.4s ease forwards",
           transition: "background 2s ease",
         }}>
-
           {/* ── Top bar: pattern picker + close — no overlap ── */}
           <div style={{
             position: "absolute", top: 0, left: 0, right: 0,
@@ -1312,7 +1105,6 @@ if (!window.IS_MEDIAN_APP) {
             {/* Close */}
             <button onClick={handleClose} style={{ background: "rgba(255,255,255,0.7)", border: "none", borderRadius: 50, width: 40, height: 40, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)", flexShrink: 0 }}>✕</button>
           </div>
-
           {showPatterns && (
             <div style={{ position: "absolute", top: "max(80px,calc(env(safe-area-inset-top) + 70px))", left: 16, background: WHITE, borderRadius: 18, boxShadow: "0 8px 32px rgba(0,0,0,0.15)", border: "1px solid #f0e6f0", zIndex: 10, minWidth: 240, overflow: "hidden" }}>
               {BREATH_PATTERNS.map((p, i) => (
@@ -1323,14 +1115,12 @@ if (!window.IS_MEDIAN_APP) {
               ))}
             </div>
           )}
-
           {/* Timer */}
           {active && (
             <div style={{ position: "absolute", top: "max(68px, calc(env(safe-area-inset-top) + 48px))", fontSize: 13, color: GRAY, fontWeight: 600, letterSpacing: 1 }}>
               {fmtTime(totalSec)} · {t.wd_cycle} {cycle + 1}
             </div>
           )}
-
           {/* Breathing circle */}
           <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 40 }}>
             {/* Ripples */}
@@ -1368,7 +1158,6 @@ if (!window.IS_MEDIAN_APP) {
               )}
             </div>
           </div>
-
           {/* Title */}
           <h2 style={{ margin: "0 0 6px", fontSize: 26, fontWeight: 900, color: active ? circleColor : (isNight ? "rgba(220,200,255,0.95)" : ROSE), fontFamily: "Georgia,serif", transition: "color 1.5s", textAlign: "center" }}>
             {active ? phaseLabel[phase] : t.btn_wind_down}
@@ -1376,7 +1165,6 @@ if (!window.IS_MEDIAN_APP) {
           <p style={{ margin: "0 0 32px", fontSize: 14, color: isNight && !active ? "rgba(200,180,255,0.7)" : GRAY, textAlign: "center", maxWidth: 260 }}>
             {active ? `${pat.name} · ${pat.in}-${pat.hold}-${pat.out} ${t.wd_breathing}` : t.wd_take_moment}
           </p>
-
           {/* Buttons */}
           {!active ? (
             <button onClick={start} style={{ background: ROSE, border: "none", borderRadius: 20, padding: "16px 44px", fontSize: 17, fontWeight: 800, color: WHITE, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 6px 24px rgba(244,63,110,0.35)" }}>
@@ -1387,7 +1175,6 @@ if (!window.IS_MEDIAN_APP) {
               {t.wd_pause}
             </button>
           )}
-
           {/* Affirmation */}
           {active && totalSec > 8 && (
             <p style={{ position: "absolute", bottom: "max(40px,env(safe-area-inset-bottom))", margin: 0, fontSize: 13, color: GRAY, fontStyle: "italic", textAlign: "center", padding: "0 32px", animation: "splashSubIn 1s ease forwards" }}>
@@ -1397,7 +1184,6 @@ if (!window.IS_MEDIAN_APP) {
         </div>
       );
     }
-
     // ── NavBar ────────────────────────────────────────────────────────
     function NavBar({ page, setPage, nightMode, lang, setLang, onSave, onWindDown, notifShowing }) {
       const t = React.useContext(LangContext);
@@ -1464,7 +1250,7 @@ if (!window.IS_MEDIAN_APP) {
               {/* Actions — right */}
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                 {/* Save Progress — Desktop */}
-                <button onClick={onSave} className="desktop,mobile,tablet,touchscreen" style={{
+                <button onClick={onSave} className="desktop mobile tablet touchscreen" style={{
                   alignItems: "center", gap: 7,
                   background: ROSE_LIGHT,
                   border: `2px solid #fecdd3`,
@@ -1483,7 +1269,7 @@ if (!window.IS_MEDIAN_APP) {
                   {t.btn_save}
                 </button>
                 {/* Wind Down — Desktop */}
-                <button onClick={onWindDown} className="desktop,mobile,tablet,touchscreen" style={{
+                <button onClick={onWindDown} className="desktop mobile tablet touchscreen" style={{
                   display: "inline-flex", alignItems: "center", gap: 7,
                   background: "#fef9c3",
                   border: "2px solid #fcd34d",
@@ -1543,7 +1329,6 @@ if (!window.IS_MEDIAN_APP) {
               </div>
             </div>
           </nav>
-
           {/* ── Mobile bottom nav ── */}
           <nav className="bottom-nav" style={{
             position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 300,
@@ -1606,7 +1391,6 @@ if (!window.IS_MEDIAN_APP) {
         </>
       );
     }
-
     // ── Time Picker ───────────────────────────────────────────────────
     function TimePickerWheel({ value, onChange, onClose }) {
       const { useRef, useEffect } = React;
@@ -1617,21 +1401,17 @@ if (!window.IS_MEDIAN_APP) {
       const hours = Array.from({ length: 12 }, (_, i) => i + 1);
       const minutes = Array.from({ length: 60 }, (_, i) => i);
       const ITEM_H = 44;
-
       const confirm = () => { onChange(`${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")} ${ampm}`); onClose(); };
-
       // Scroll column that syncs selection from scroll position
       const Col = ({ items, selected, onSelect, fmt = (x) => String(x).padStart(2, "0") }) => {
         const ref = useRef(null);
         const scrollTimer = useRef(null);
-
         // Scroll to selected item on mount
         useEffect(() => {
           if (!ref.current) return;
           const idx = items.indexOf(selected);
           if (idx >= 0) ref.current.scrollTop = idx * ITEM_H;
         }, []);
-
         const handleScroll = () => {
           clearTimeout(scrollTimer.current);
           scrollTimer.current = setTimeout(() => {
@@ -1643,7 +1423,6 @@ if (!window.IS_MEDIAN_APP) {
             onSelect(items[clamped]);
           }, 80);
         };
-
         return (
           <div style={{ position: "relative", width: 64 }}>
             {/* Selection highlight band */}
@@ -1673,7 +1452,6 @@ if (!window.IS_MEDIAN_APP) {
           </div>
         );
       };
-
       return (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
           <div onClick={e => e.stopPropagation()} style={{ background: WHITE, borderRadius: 20, padding: "20px 24px", boxShadow: "0 20px 60px rgba(0,0,0,0.25)", width: 320 }}>
@@ -1695,7 +1473,6 @@ if (!window.IS_MEDIAN_APP) {
         </div>
       );
     }
-
     // ── Date Picker ───────────────────────────────────────────────────
     function DatePickerPopup({ value, onChange, onClose }) {
       const init = new Date(value + "T12:00:00");
@@ -1737,7 +1514,6 @@ if (!window.IS_MEDIAN_APP) {
         </div>
       );
     }
-
     // ── Type Dropdown ─────────────────────────────────────────────────
     function TypeDropdown({ value, onChange }) {
       const t = React.useContext(LangContext);
@@ -1767,7 +1543,6 @@ if (!window.IS_MEDIAN_APP) {
         </div>
       );
     }
-
     // ── Task Row ──────────────────────────────────────────────────────
     function TaskRow({ task, onToggle, onRemove, onEdit }) {
       const tLang = React.useContext(LangContext);
@@ -1776,14 +1551,12 @@ if (!window.IS_MEDIAN_APP) {
       const [editFolder, setEditFolder] = useState(task.folder || "");
       const [editTime, setEditTime] = useState(task.alertTime === "NOW" ? "" : (task.alertTime || ""));
       const [showTimePicker, setShowTimePicker] = useState(false);
-
       const save = () => {
         if (editText.trim()) {
           onEdit(task.id, { text: editText.trim(), folder: editFolder.trim(), alertTime: editTime });
           setEditing(false);
         }
       };
-
       if (editing) return (
         <>
           {showTimePicker && <TimePickerWheel value={editTime} onChange={t => setEditTime(t)} onClose={() => setShowTimePicker(false)} />}
@@ -1808,7 +1581,6 @@ if (!window.IS_MEDIAN_APP) {
           </div>
         </>
       );
-
       return (
         <div style={{ background: WHITE, borderRadius: 14, padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, boxShadow: "0 1px 8px rgba(0,0,0,0.06)", border: task.done ? "1px solid #d1fae5" : "1px solid #f0e6f0" }}>
           <button onClick={() => onToggle(task.id)} style={{ width: 26, height: 26, borderRadius: "50%", border: `2px solid ${task.done ? "#22c55e" : "#d1d5db"}`, background: task.done ? "#22c55e" : WHITE, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -1828,17 +1600,14 @@ if (!window.IS_MEDIAN_APP) {
         </div>
       );
     }
-
     // ── Alarm Modal ───────────────────────────────────────────────────
     function AlarmModal({ task, onSnooze, onDone, purchased, selectedSound }) {
       const t = React.useContext(LangContext);
       const [stage, setStage] = React.useState("announce");
-
       // Use refs so the interval always reads the latest purchased/selectedSound
       const purchasedRef = React.useRef(purchased);
       const soundRef = React.useRef(selectedSound);
       useEffect(() => { purchasedRef.current = purchased; soundRef.current = selectedSound; }, [purchased, selectedSound]);
-
       const doPlay = () => {
         try {
           getCtx().resume().then(() => {
@@ -1847,7 +1616,6 @@ if (!window.IS_MEDIAN_APP) {
           });
         } catch (e) { }
       };
-
       // Sound fires immediately on mount — audio is already unlocked since user was using the app.
       // Repeats every 4s so it keeps ringing until snoozed or done.
       useEffect(() => {
@@ -1855,7 +1623,6 @@ if (!window.IS_MEDIAN_APP) {
         const iv = setInterval(doPlay, 4000);
         return () => clearInterval(iv);
       }, []);
-
       // ── Stage 1: full-screen announcement (sound already playing) ─────
       if (stage === "announce") {
         return (
@@ -1891,7 +1658,6 @@ if (!window.IS_MEDIAN_APP) {
           </div>
         );
       }
-
       // ── Stage 2: alarm detail modal ───────────────────────────────────
       return (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
@@ -1919,7 +1685,6 @@ if (!window.IS_MEDIAN_APP) {
         </div>
       );
     }
-
     // ── Add Task Form ─────────────────────────────────────────────────
     function parseVoice(transcript, defaultDate) {
       let remaining = transcript;
@@ -1958,7 +1723,6 @@ if (!window.IS_MEDIAN_APP) {
       remaining = remaining.replace(/\bremind me to\b/gi, '').replace(/\badd\s+a?\s*/gi, '').replace(/\s+/g, ' ').trim().replace(/^to\s+/i, '').trim();
       return { text: remaining || transcript.trim(), folder, alertTime, type, date };
     }
-
     function AddTaskForm({ onAdd, onCancel, defaultDate, onSelfCare }) {
       const t = React.useContext(LangContext);
       const [form, setForm] = useState({ text: "", folder: "", alertTime: "", type: "To-Do", date: defaultDate || new Date().toISOString().split("T")[0] });
@@ -1966,7 +1730,6 @@ if (!window.IS_MEDIAN_APP) {
       const [showDatePicker, setShowDatePicker] = useState(false);
       const [listening, setListening] = useState(false);
       const recogRef = React.useRef(null);
-
       function startVoice() {
         const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SR) { alert("Voice input isn\u2019t supported in this browser. Try Chrome or Safari."); return; }
@@ -2007,7 +1770,6 @@ if (!window.IS_MEDIAN_APP) {
         r.onerror = () => setListening(false);
         r.start();
       }
-
       const dateLabel = new Date(form.date + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
       return (
         <>
@@ -2050,7 +1812,6 @@ if (!window.IS_MEDIAN_APP) {
         </>
       );
     }
-
     // ── TODAY PAGE ────────────────────────────────────────────────────
     function TodayPage({ tasks, setTasks, cookies, setCookies, setPage, purchased, selectedSound }) {
       const [isFiring, setIsFiring] = useState(false);
@@ -2060,7 +1821,6 @@ if (!window.IS_MEDIAN_APP) {
       const today = new Date();
       const todayStr = today.toISOString().split("T")[0];
       const todayTasks = tasks.filter(t => t.date === todayStr);
-
       const addTask = form => {
         const newId = Date.now();
         const newTask = { id: newId, ...form, done: false };
@@ -2081,7 +1841,6 @@ if (!window.IS_MEDIAN_APP) {
         const existing = tasks.find(t => t.id === id);
         if (existing) scheduleTaskPush({ ...existing, ...changes });
       };
-
       return (
         <div className="page-content" style={{ padding: "32px 28px", maxWidth: 1100, margin: "0 auto" }}>
           {showPanda && (
@@ -2097,7 +1856,6 @@ if (!window.IS_MEDIAN_APP) {
               </div>
             </div>
           )}
-
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28, gap: 16 }}>
             <div>
               <h1 style={{ margin: 0, fontSize: "clamp(26px,6vw,38px)", fontWeight: 900, color: DARK, fontFamily: "Georgia,serif" }}>{t.happy} {t.days[today.getDay()]} ✨</h1>
@@ -2108,14 +1866,12 @@ if (!window.IS_MEDIAN_APP) {
               <span style={{ fontWeight: 800, color: "#92400e", fontSize: 15 }}>{cookies} {t.cookies_earned}</span>
             </div>
           </div>
-
           {!showForm && (
             <button onClick={() => setShowForm(true)} style={{ background: ROSE, border: "none", borderRadius: 16, padding: "16px 28px", fontSize: 17, fontWeight: 700, color: WHITE, cursor: "pointer", display: "flex", alignItems: "center", gap: 10, fontFamily: "inherit", marginBottom: 28, boxShadow: "0 4px 20px rgba(244,63,110,0.35)" }}>
               <span style={{ fontSize: 20 }}>+</span> {t.add_task}
             </button>
           )}
           {showForm && <AddTaskForm defaultDate={todayStr} onAdd={addTask} onCancel={() => setShowForm(false)} onSelfCare={() => setShowPanda(true)} />}
-
           {todayTasks.length === 0 && !showForm && (
             <div style={{ border: "2px dashed #e5e7eb", borderRadius: 20, padding: "64px 24px", textAlign: "center", background: "#fafafa" }}>
               <div style={{ fontSize: 48, marginBottom: 16 }}>🌱</div>
@@ -2123,11 +1879,9 @@ if (!window.IS_MEDIAN_APP) {
               <p style={{ margin: 0, color: GRAY, fontSize: 16 }}>{t.take_breath}</p>
             </div>
           )}
-
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {todayTasks.map(task => <TaskRow key={task.id} task={task} onToggle={toggleTask} onRemove={removeTask} onEdit={editTask} />)}
           </div>
-
           {purchased && (
             <div style={{ marginTop: 28, background: GOLD_LIGHT, border: `1.5px solid ${GOLD}`, borderRadius: 16, padding: "14px 20px", display: "flex", alignItems: "center", gap: 12 }}>
               <span style={{ fontSize: 22 }}>👑</span>
@@ -2140,7 +1894,6 @@ if (!window.IS_MEDIAN_APP) {
         </div>
       );
     }
-
     // ── CALENDAR PAGE ─────────────────────────────────────────────────
     function CalendarPage({ tasks, setTasks, setCookies, setPage }) {
       const t = React.useContext(LangContext);
@@ -2192,10 +1945,8 @@ if (!window.IS_MEDIAN_APP) {
         const existing = tasks.find(t => t.id === id);
         if (existing) scheduleTaskPush({ ...existing, ...changes });
       };
-
       return (
         <div className="page-content" style={{ padding: "32px 28px", maxWidth: 1100, margin: "0 auto" }}>
-
           {showFox && (
             <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999 }}>
               <div style={{ background: WHITE, borderRadius: 24, padding: "36px 32px", maxWidth: 400, width: "90%", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
@@ -2209,7 +1960,6 @@ if (!window.IS_MEDIAN_APP) {
               </div>
             </div>
           )}
-
           {/* ── Daily Intention Modal ── */}
           {showIntention && (
             <div onClick={() => setShowIntention(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999 }}>
@@ -2233,7 +1983,6 @@ if (!window.IS_MEDIAN_APP) {
               </div>
             </div>
           )}
-
           {/* ── Intention Banner ── */}
           <div onClick={() => { setIntentionDraft(intention); setShowIntention(true); }}
             style={{
@@ -2255,7 +2004,6 @@ if (!window.IS_MEDIAN_APP) {
             </div>
             <span style={{ fontSize: 13, color: GRAY }}>✏️</span>
           </div>
-
           <div style={{ background: WHITE, borderRadius: 20, padding: "24px", boxShadow: "0 2px 16px rgba(0,0,0,0.07)", marginBottom: 28 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <button onClick={() => { if (month === 0) { setMonth(11); setYear(y => y - 1); } else setMonth(m => m - 1); }} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: GRAY }}>‹</button>
@@ -2296,7 +2044,6 @@ if (!window.IS_MEDIAN_APP) {
               })}
             </div>
           </div>
-
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
             <h2 style={{ margin: 0, fontSize: 26, fontWeight: 900, color: DARK, fontFamily: "Georgia,serif" }}>{selLabel}</h2>
             <button onClick={() => setShowForm(!showForm)} style={{ border: `2px solid ${ROSE}`, borderRadius: 20, padding: "8px 18px", background: "transparent", color: ROSE, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>{t.add_task_short}</button>
@@ -2319,10 +2066,8 @@ if (!window.IS_MEDIAN_APP) {
         </div>
       );
     }
-
     // ── SELF CARE PAGE ────────────────────────────────────────────────
     // QUOTES and SC_IDEAS now come from TRANSLATIONS via LangContext
-
     function SelfCarePage({ tasks, setTasks, setCookies }) {
       const t = React.useContext(LangContext);
       const [qIdx, setQIdx] = useState(0);
@@ -2333,7 +2078,6 @@ if (!window.IS_MEDIAN_APP) {
       const today = new Date().toISOString().split("T")[0];
       const scTasks = tasks.filter(t => t.type === "Self Care" && t.date === today);
       const addTask = text => { setTasks(prev => [...prev, { id: Date.now(), text, folder: "", alertTime: "", type: "Self Care", date: today, done: false }]); setShowPicker(false); setCustomText(""); };
-
       function startScVoice() {
         const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SR) { alert("Voice input isn\u2019t supported in this browser. Try Chrome or Safari."); return; }
@@ -2365,7 +2109,6 @@ if (!window.IS_MEDIAN_APP) {
       };
       const removeTask = id => setTasks(prev => prev.filter(t => t.id !== id));
       const editTask = (id, changes) => setTasks(prev => prev.map(t => t.id === id ? { ...t, ...changes } : t));
-
       return (
         <div className="page-content" style={{ padding: "32px 28px", maxWidth: 1100, margin: "0 auto" }}>
           {showPicker && (
@@ -2444,7 +2187,6 @@ if (!window.IS_MEDIAN_APP) {
         </div>
       );
     }
-
     // ── COOKIE JAR PAGE ───────────────────────────────────────────────
     function CookieJarPage({ cookies, tasks, purchased, selectedTheme, trophies }) {
       const t = React.useContext(LangContext);
@@ -2454,7 +2196,6 @@ if (!window.IS_MEDIAN_APP) {
       const cookieEmoji = purchased ? JAR_THEMES[selectedTheme].cookie : "🍪";
       const jarBg = purchased ? theme.bg : GOLD_LIGHT;
       const jarBorder = purchased ? theme.border : "#fde68a";
-
       return (
         <div className="page-content" style={{ padding: "32px 28px", maxWidth: 1100, margin: "0 auto" }}>
           <style>{`@keyframes floatCookie{from{transform:translateY(0) rotate(-5deg)}to{transform:translateY(-8px) rotate(5deg)}}`}</style>
@@ -2526,7 +2267,6 @@ if (!window.IS_MEDIAN_APP) {
         </div>
       );
     }
-
     // ── BAKERY PAGE ───────────────────────────────────────────────────
     // ── Unlock code verification (no server needed) ──────────────────
     // To generate a code for a buyer: open developer-tool.html privately
@@ -2542,7 +2282,6 @@ if (!window.IS_MEDIAN_APP) {
       const expected = hex.slice(0, 8).toUpperCase();
       return code.trim().toUpperCase() === expected;
     }
-
     function BakeryPage({ purchased, setPurchased, selectedTheme, setSelectedTheme, selectedSound, setSelectedSound }) {
       const t = React.useContext(LangContext);
       const [paypalOpened, setPaypalOpened] = useState(false);
@@ -2553,14 +2292,11 @@ if (!window.IS_MEDIAN_APP) {
       const [showCelebration, setShowCelebration] = useState(false);
       const [playingSound, setPlayingSound] = useState(false);
       const theme = JAR_THEMES[selectedTheme];
-
-
       // Restore unlock from localStorage on mount
       useEffect(() => {
         const saved = localStorage.getItem("ccj_unlocked");
         if (saved === "true" && !purchased) setPurchased(true);
       }, []);
-
       const handleVerify = async () => {
         if (!email.trim() || !code.trim()) return;
         setVerifying(true);
@@ -2582,7 +2318,6 @@ if (!window.IS_MEDIAN_APP) {
         playZenSound(i);
         setTimeout(() => setPlayingSound(false), 3000);
       };
-
       return (
         <div className="page-content" style={{ padding: "32px 28px", maxWidth: 1100, margin: "0 auto" }}>
           <style>{`@keyframes popIn{0%{transform:scale(0);opacity:0}70%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}`}</style>
@@ -2595,13 +2330,11 @@ if (!window.IS_MEDIAN_APP) {
               </div>
             </div>
           )}
-
           <div style={{ textAlign: "center", marginBottom: 32 }}>
             <div style={{ width: 72, height: 72, borderRadius: "50%", background: purchased ? GOLD_LIGHT : ROSE_LIGHT, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34, margin: "0 auto 16px", border: purchased ? `2px solid ${GOLD}` : "none", transition: "all 0.4s" }}>{purchased ? "👑" : "🛍️"}</div>
             <h1 style={{ margin: "0 0 10px", fontSize: 34, fontWeight: 900, color: DARK, fontFamily: "Georgia,serif" }}>{t.bakery_title}</h1>
             <p style={{ margin: 0, color: GRAY, fontSize: 16 }}>{t.bakery_subtitle}</p>
           </div>
-
           <style>{`@media(max-width:520px){.bakery-grid{grid-template-columns:1fr!important}.bakery-card{padding:22px 18px!important}.bakery-price{font-size:26px!important}.bakery-h2{font-size:18px!important}}`}</style>
           <div className="bakery-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, maxWidth: 700, margin: "0 auto", marginBottom: purchased ? 32 : 0 }}>
             <div className="bakery-card" style={{ background: WHITE, borderRadius: 24, padding: "28px 20px", boxShadow: "0 2px 16px rgba(0,0,0,0.08)", border: "2px solid #e5e7eb" }}>
@@ -2618,7 +2351,6 @@ if (!window.IS_MEDIAN_APP) {
               ))}
               <button style={{ width: "100%", marginTop: 20, padding: "13px", borderRadius: 12, border: "2px solid #e5e7eb", background: "transparent", color: GRAY, fontSize: 14, fontWeight: 600, cursor: "default", fontFamily: "inherit" }}>{t.current_plan}</button>
             </div>
-
             <div className="bakery-card" style={{ background: purchased ? `linear-gradient(135deg,#f59e0b,#d97706)` : ROSE, borderRadius: 24, padding: "28px 20px", boxShadow: purchased ? "0 8px 40px rgba(245,158,11,0.45)" : "0 8px 40px rgba(244,63,110,0.35)", position: "relative", overflow: "hidden", transition: "all 0.5s" }}>
               <div style={{ position: "absolute", top: 14, right: -18, background: purchased ? WHITE : GOLD, color: purchased ? GOLD : WHITE, padding: "6px 36px 6px 14px", fontSize: 10, fontWeight: 800, letterSpacing: 0.5, transform: "rotate(12deg)" }}>{purchased ? "✓ OWNED" : "⭐ BEST VALUE"}</div>
               <h2 className="bakery-h2" style={{ margin: "0 0 6px", fontSize: 20, fontWeight: 800, color: WHITE }}>{t.golden_pass}</h2>
@@ -2640,14 +2372,12 @@ if (!window.IS_MEDIAN_APP) {
                       {t.pay_paypal}
                     </button>
                   )}
-
                   {/* Already have a code link */}
                   {!paypalOpened && (
                     <button onClick={() => setPaypalOpened(true)} style={{ width: "100%", marginTop: 10, padding: "10px", borderRadius: 10, border: "2px solid rgba(255,255,255,0.3)", background: "transparent", color: "rgba(255,255,255,0.85)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
                       {t.already_purchased}
                     </button>
                   )}
-
                   {/* Unlock form */}
                   {paypalOpened && (
                     <div style={{ marginTop: 16, background: "rgba(0,0,0,0.2)", borderRadius: 12, padding: "16px" }}>
@@ -2689,14 +2419,12 @@ if (!window.IS_MEDIAN_APP) {
               )}
             </div>
           </div>
-
           {purchased && (
             <div style={{ maxWidth: 700, margin: "0 auto" }}>
               <div style={{ textAlign: "center", margin: "32px 0 24px" }}>
                 <h2 style={{ margin: "0 0 6px", fontSize: 24, fontWeight: 900, color: DARK }}>{t.your_features}</h2>
                 <p style={{ margin: 0, color: GRAY, fontSize: 14 }}>{t.all_unlocked}</p>
               </div>
-
               <div style={{ background: `linear-gradient(135deg,#fdf2f8,#fef9ee)`, borderRadius: 20, padding: "28px", boxShadow: "0 2px 16px rgba(0,0,0,0.07)", marginBottom: 20, border: `2px solid ${ROSE_LIGHT}` }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
                   <div style={{ width: 48, height: 48, borderRadius: "50%", background: ROSE_LIGHT, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0 }}>🍪</div>
@@ -2714,7 +2442,6 @@ if (!window.IS_MEDIAN_APP) {
                 </div>
                 <p style={{ margin: "16px 0 0", textAlign: "right", fontSize: 14, fontWeight: 700, color: ROSE }}>{t.dev_note_sign}</p>
               </div>
-
               <div style={{ background: WHITE, borderRadius: 20, padding: "24px", boxShadow: "0 2px 16px rgba(0,0,0,0.07)", marginBottom: 20, border: "2px solid #a5f3fc" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
                   <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#ecfeff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0 }}>🎵</div>
@@ -2751,7 +2478,6 @@ if (!window.IS_MEDIAN_APP) {
                   ))}
                 </div>
               </div>
-
               <div style={{ background: WHITE, borderRadius: 20, padding: "24px", boxShadow: "0 2px 16px rgba(0,0,0,0.07)", marginBottom: 20, border: "2px solid #d8b4fe" }}>
                 <h3 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 800, color: DARK }}>{t.themes_title}</h3>
                 <p style={{ margin: "0 0 16px", color: GRAY, fontSize: 14 }}>{t.themes_subtitle}</p>
@@ -2771,7 +2497,6 @@ if (!window.IS_MEDIAN_APP) {
                   </div>
                 </div>
               </div>
-
               <div style={{ background: `linear-gradient(135deg,#fce7f3,#fffbeb)`, borderRadius: 20, padding: "28px 24px", textAlign: "center", border: `2px solid ${GOLD}` }}>
                 <div style={{ fontSize: 48, marginBottom: 10 }}>💖</div>
                 <h3 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 800, color: DARK }}>{t.thanks_title}</h3>
@@ -2779,20 +2504,16 @@ if (!window.IS_MEDIAN_APP) {
               </div>
             </div>
           )}
-
         </div>
       );
     }
-
     // ── DATA BACKUP COMPONENT ─────────────────────────────────────────
     function DataBackupButton({ notifShowing, mobileOnly }) {
       const t = React.useContext(LangContext);
       const [open, setOpen] = React.useState(false);
       const [toast, setToast] = React.useState("");
       const fileRef = React.useRef(null);
-
       const KEYS = ["ccj_tasks", "ccj_cookies", "ccj_trophies", "ccj_purchased", "ccj_theme", "ccj_sound", "ccj_intentions", "ccj_snoozed", "ccj_fired", "ccj_lang", "ccj_unlocked", "ccj_splash"];
-
       // Close on outside click
       React.useEffect(() => {
         if (!open) return;
@@ -2800,16 +2521,13 @@ if (!window.IS_MEDIAN_APP) {
         setTimeout(() => document.addEventListener("mousedown", close), 0);
         return () => document.removeEventListener("mousedown", close);
       }, [open]);
-
       // Listen for desktop navbar save trigger
       React.useEffect(() => {
         const handler = () => setOpen(o => !o);
         document.addEventListener("ccj-save", handler);
         return () => document.removeEventListener("ccj-save", handler);
       }, []);
-
       const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 2500); };
-
       const handleExport = () => {
         const data = {};
         KEYS.forEach(k => {
@@ -2827,7 +2545,6 @@ if (!window.IS_MEDIAN_APP) {
         setOpen(false);
         showToast(t.export_done);
       };
-
       const handleImport = (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -2847,7 +2564,6 @@ if (!window.IS_MEDIAN_APP) {
         e.target.value = "";
         setOpen(false);
       };
-
       return (
         <>
           {/* Toast notification */}
@@ -2862,9 +2578,7 @@ if (!window.IS_MEDIAN_APP) {
               animation: "fadeUp 0.3s ease-out",
             }}>{toast}</div>
           )}
-
           <input ref={fileRef} type="file" accept=".json" onChange={handleImport} style={{ display: "none" }} />
-
           {/* Floating folder button */}
           <div style={{ position: "fixed", left: 20, bottom: `calc(max(24px,env(safe-area-inset-bottom)) + ${notifShowing ? "122px" : "72px"})`, zIndex: 400, transition: "bottom 0.3s" }}
             onMouseDown={e => e.stopPropagation()}
@@ -2918,11 +2632,9 @@ if (!window.IS_MEDIAN_APP) {
                       <p style={{ margin: 0, fontSize: 12, color: GRAY }}>{t.load_backup_sub}</p>
                     </div>
                   </button>
-
                 </div>
               </div>
             )}
-
             {/* The folder button itself — hidden on desktop, triggered via navbar event */}
             <button
               className="float-hide-desktop"
@@ -2952,11 +2664,8 @@ if (!window.IS_MEDIAN_APP) {
         </>
       );
     }
-
     // ── APP ROOT ──────────────────────────────────────────────────────
     function App() {
-
-
       // Unlock AudioContext on the very first user interaction (mousedown fires before click)
       useEffect(() => {
         const unlock = () => {
@@ -2975,7 +2684,6 @@ if (!window.IS_MEDIAN_APP) {
         try { const v = localStorage.getItem(key); return v !== null ? JSON.parse(v) : fallback; } catch { return fallback; }
       };
       const save = (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch { } };
-
       const [lang, setLang] = useState(() => localStorage.getItem("ccj_lang") || "en");
       React.useEffect(() => { localStorage.setItem("ccj_lang", lang); }, [lang]);
       const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
@@ -2986,13 +2694,12 @@ if (!window.IS_MEDIAN_APP) {
         const iv = setInterval(() => { const h = new Date().getHours(); setNightMode(h >= 19 || h < 6); }, 60000);
         return () => clearInterval(iv);
       }, []);
-
       const [showSplash, setShowSplash] = useState(true);
       const [splashGone, setSplashGone] = useState(false);
       const splashGoneRef = React.useRef(false);
       const [showBanner, setShowBanner] = useState(false);
+      const bannerSetRef = React.useRef(false);
       const dismissSplash = () => { setShowSplash(false); setTimeout(() => { setSplashGone(true); splashGoneRef.current = true;
-
         // ── Welcome notification: fires on very first visit, no permission needed ──
         const _wKey = 'ccj_welcome_shown';
         if (!localStorage.getItem(_wKey)) {
@@ -3006,13 +2713,11 @@ if (!window.IS_MEDIAN_APP) {
             setTimeout(() => localNotify("Welcome to Cookie-Care-Joy! 🍪", "Your sweet self-care companion is here 🌸", 0), 1200);
           }
         }
-
         // Only show banner if not already registered
         const alreadyRegistered = localStorage.getItem('ccj_notif_registered') === '1';
         const inAppOnly = localStorage.getItem("ccj_inapp_notif") === "true";
         if (!alreadyRegistered && !inAppOnly) setShowBanner(true);
         if (inAppOnly) scheduleReminders(); // re-populate in-app schedule on each page load
-
         // ── Show install chip after splash — every browser session ──
         setTimeout(function() {
           var isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone;
@@ -3023,186 +2728,24 @@ if (!window.IS_MEDIAN_APP) {
         }, 2800);
         // No auto-dismiss — banner stays until user taps Enable or X
         if (Notification.permission === 'granted') {
-          // Ensure OneSignal subscription is active, wait for ID, then schedule
-          (async () => {
-            try {
-              if (window.OneSignal && window.OneSignal.User && window.OneSignal.User.PushSubscription) {
-                const sub = window.OneSignal.User.PushSubscription;
-                if (!sub.optedIn) await sub.optIn();
-                await new Promise(r => setTimeout(r, 2000));
-                dbg("dismissSplash autoStart: sub.id = " + (sub.id || "null"));
-              }
-            } catch(e) { dbg("dismissSplash optIn error: " + e); }
-            scheduleReminders();
-          })();
-        }
-      }, 500); };
-      React.useEffect(() => { const el = document.getElementById("ccj-presplash"); if (el) { el.style.transition = "opacity 0.08s"; el.style.opacity = "0"; setTimeout(() => el && el.remove(), 80); } }, []);
-      const [cookies, setCookiesRaw] = useState(() => load("ccj_cookies", 0));
-      const [trophies, setTrophies] = useState(() => load("ccj_trophies", 0));
-      const [showTrophy, setShowTrophy] = useState(false);
-      const [purchased, setPurchased] = useState(() => load("ccj_purchased", false));
-      const [selectedTheme, setSelectedTheme] = useState(() => load("ccj_theme", 1));
-      const [selectedSound, setSelectedSound] = useState(() => load("ccj_sound", 0));
-      const [tasks, setTasks] = useState(() => load("ccj_tasks", []));
-
-      // ── Auto-save whenever state changes ──
-      useEffect(() => { save("ccj_cookies", cookies); }, [cookies]);
-      useEffect(() => { save("ccj_trophies", trophies); }, [trophies]);
-      useEffect(() => { save("ccj_purchased", purchased); }, [purchased]);
-      useEffect(() => { save("ccj_theme", selectedTheme); }, [selectedTheme]);
-      useEffect(() => { save("ccj_sound", selectedSound); }, [selectedSound]);
-      useEffect(() => { save("ccj_tasks", tasks); }, [tasks]);
-      const [notifPerm, setNotifPerm] = useState(() => {
-        if (localStorage.getItem("ccj_notif_off") === "true") return "off";
-        if (localStorage.getItem("ccj_notif_on") === "true") return "granted";
-        return "default";
-      });
-      const [toastMsg, setToastMsg] = React.useState(null);
-
-      const [notifError, setNotifError] = React.useState("");
-      const [debugLines, setDebugLines] = React.useState([]);
-
-
-
-      // #region agent log (debug notifications)
-      window.__ccjDebug = window.__ccjDebug || [];
-      const dbg = (msg) => {
-        window.__ccjDebug.push(msg);
-        setDebugLines(prev => [...prev.slice(-4), msg]);
-        /* debug fetch removed */
-      };
-      // #endregion
-
-      const waitForOneSignal = () => new Promise((resolve) => {
-        // Already ready
-        if (window._oneSignalFailed) { resolve(false); return; } // IndexedDB unavailable
-        if (window.OneSignal && window.OneSignal.Notifications) { resolve(true); return; }
-        // Wait up to 5 seconds for OneSignal deferred init to complete
-        let tries = 0;
-        const iv = setInterval(() => {
-          tries++;
-          if (window.OneSignal && window.OneSignal.Notifications) {
-            clearInterval(iv);
-            resolve(true);
-          } else if (tries >= 50) { // 50 x 100ms = 5s
-            clearInterval(iv);
-            resolve(false);
-          }
-        }, 100);
-      });
-
-      const requestNotifications = async () => {
-        setNotifError("");
-
-        const grantSuccess = async () => {
-          localStorage.setItem("ccj_notif_on", "true");
-          localStorage.setItem("ccj_notif_off", "false");
-          localStorage.setItem("ccj_notif_registered", "1"); // don't show banner again
-          setNotifPerm("granted");
-          setShowBanner(false);
-          // Show "enabled" pink toast immediately — before "sweet reminders" toast from scheduleReminders
-          if (window._ccjShowToast) {
-            window._ccjShowToast("Notifications enabled! 🍪✨");
-          }
-          // Ensure OneSignal subscription is active and wait for subscription ID to populate
-          try {
-            if (window.OneSignal && window.OneSignal.User && window.OneSignal.User.PushSubscription) {
-              const sub = window.OneSignal.User.PushSubscription;
-              if (!sub.optedIn) await sub.optIn();
-              // Give OneSignal extra time to register subscription and populate PushSubscription.id
-              // 3500ms covers slower mobile registrations
-              await new Promise(r => setTimeout(r, 3500));
-              dbg("grantSuccess: subscription id = " + (sub.id || "null"));
-              if (sub.id) { localStorage.setItem('ccj_onesignal_player_id', sub.id); }
-            }
-          } catch(e) { dbg("grantSuccess optIn error: " + e); }
           scheduleReminders();
-          _startOSRetry(); // background: if OneSignal ID not ready yet, retry for 2 min
         };
-
-        // ── Path A-0: Median native push (OneSignal integrated via Median dashboard) ──
-        if (window.IS_MEDIAN_APP) {
-          // Instant feedback — dismiss banner and mark enabled right away
-          await grantSuccess();
-          // Register + get ID in background (non-blocking)
-          try {
-            if (window.median && window.median.onesignal) {
-              window.median.onesignal.register();
-              // Poll getStatus a few times to capture the subscription ID once granted
-              const tryGetId = (attempt) => {
-                window.median.onesignal.getStatus(function(status) {
-                  dbg("Median onesignal status (attempt " + attempt + "): " + JSON.stringify(status));
-                  if (status) {
-                    // v5+ uses onesignalId; legacy uses subscriptionId/userId
-                    var idType = status.onesignalId ? "onesignal_id" : (status.subscriptionId ? "subscription_id" : "player_id");
-                    var pid = status.onesignalId || status.subscriptionId || status.userId || status.pushToken || null;
-                    if (pid) {
-                      window._medianOneSignalId = pid;
-                      window._medianOneSignalIdType = idType;
-                      localStorage.setItem("ccj_median_player_id", pid);
-                      localStorage.setItem("ccj_median_id_type", idType);
-                      dbg("Stored Median player ID: " + pid);
-                      // Re-schedule reminders now that we have the ID
-                      localStorage.removeItem('ccj_reminders_sched_at');
-                      scheduleReminders();
-                    } else if (attempt < 5) {
-                      setTimeout(() => tryGetId(attempt + 1), 2000);
-                    }
-                  }
-                });
-              };
-              setTimeout(() => tryGetId(1), 1500);
-            }
-          } catch(e) { dbg("Median onesignal.register error: " + e); }
-          return;
         }
-
         // ── Path A: Permission prompt — MUST fire synchronously within user gesture ──
         // Android Chrome drops the prompt if there's any async gap (await) before requestPermission().
-        // So: check OneSignal synchronously first. If ready, use it immediately.
         // If not ready yet, fall straight to native Notification API (no await).
-        // OneSignal opt-in happens AFTER permission is granted so the gesture chain is never broken.
-
         // Already denied?
         if (typeof Notification !== "undefined" && Notification.permission === "denied") {
           setNotifError("Notifications blocked. Open browser Settings → Site permissions to allow.");
           grantLocalOnly(); // still show sweet messages in-app
           return;
         }
-
         // Already granted (page reload, return visit)?
-        if ((window.OneSignal && window.OneSignal.Notifications && window.OneSignal.Notifications.permission === true) ||
-            (typeof Notification !== "undefined" && Notification.permission === "granted")) {
+        if ((typeof Notification !== "undefined" && Notification.permission === "granted")) {
           grantSuccess();
           return;
         }
-
-        // OneSignal ready synchronously — call its prompt immediately (no await before this)
-        if (window.OneSignal && window.OneSignal.Notifications) {
-          try {
-            await window.OneSignal.Notifications.requestPermission();
-            await new Promise(r => setTimeout(r, 300));
-            if (window.OneSignal.Notifications.permission === true ||
-                (typeof Notification !== "undefined" && Notification.permission === "granted")) {
-              grantSuccess();
-              return;
-            }
-            if (typeof Notification !== "undefined" && Notification.permission === "denied") {
-              setNotifError("Notifications blocked. Go to browser Settings → Site permissions to allow, then try again.");
-              grantLocalOnly(); // still show sweet messages in-app
-              return;
-            }
-            setNotifError("Tap Enable again to allow notifications 🔔");
-            showInstallBanner();
-            return;
-          } catch(e) {
-            // OneSignal threw — fall through to native below
-          }
-        }
-
         // ── Path B: Native Notification API ──
-        // OneSignal not loaded yet OR threw. Use native API — also fires synchronously within gesture.
         if (!("Notification" in window)) {
           setNotifError("On iPhone: tap Share → \"Add to Home Screen\", then open from there 📲");
           showInstallBanner();
@@ -3211,8 +2754,6 @@ if (!window.IS_MEDIAN_APP) {
         try {
           const result = await Promise.resolve(Notification.requestPermission());
           if (result === "granted" || Notification.permission === "granted") {
-            // Now wait for OneSignal to finish loading so opt-in/subscription works
-            await waitForOneSignal();
             grantSuccess();
           } else if (result === "denied") {
             setNotifError("Notifications blocked. Check browser settings to allow them.");
@@ -3225,22 +2766,17 @@ if (!window.IS_MEDIAN_APP) {
           setNotifError("Something went wrong. Try again! 😔");
         }
       };
-
             const disableNotifications = () => {
         localStorage.setItem("ccj_notif_off", "true");
         setNotifPerm("off");
         setShowBanner(false);
       };
-
         // grantLocalOnly: populate in-app sweet-message schedule when push is blocked/denied.
         // Saves a flag so scheduleReminders() re-runs on next page load too.
         const grantLocalOnly = () => {
           localStorage.setItem("ccj_inapp_notif", "true");
           scheduleReminders(); // falls through to local/SW path automatically (no player ID)
         };
-
-
-
       // Show compact install chip (every browser session)
       const showInstallBanner = () => {
         try {
@@ -3248,13 +2784,11 @@ if (!window.IS_MEDIAN_APP) {
           if (window.navigator.standalone) return;
           var chip = document.getElementById("ccj-install-chip");
           if (!chip) return;
-
           var label    = document.getElementById("ccj-chip-label");
           var sub      = document.getElementById("ccj-chip-sub");
           var hint     = document.getElementById("ccj-chip-hint");
           var btn      = document.getElementById("ccj-chip-install-btn");
           var closeBtn = document.getElementById("ccj-chip-close");
-
           var ua = navigator.userAgent;
           // Has native install prompt (Chrome, Edge, Chrome on Android, Chrome/Edge on iPad)
           var hasPrompt = !!window._deferredInstallPrompt;
@@ -3262,7 +2796,6 @@ if (!window.IS_MEDIAN_APP) {
           var isIOSSafari = /iphone|ipad|ipod/i.test(ua) && !/crios|fxios|edgios|chrome/i.test(ua);
           // Desktop Safari on Mac (not iOS, not Chrome-based)
           var isSafariMac = /^((?!chrome|android|crios).)*safari/i.test(ua) && !/iphone|ipad|ipod/i.test(ua);
-
           if (hasPrompt) {
             // ── Chrome / Edge on desktop, Android, iPad ──
             if (label) label.textContent = "Install Cookie Care";
@@ -3289,7 +2822,6 @@ if (!window.IS_MEDIAN_APP) {
                 }
               };
             }
-
           } else if (isIOSSafari) {
             // ── iPhone & iPad Safari ──
             if (label) label.textContent = "Add to Home Screen";
@@ -3299,7 +2831,6 @@ if (!window.IS_MEDIAN_APP) {
               hint.style.display = "block";
               hint.innerHTML = "Tap <strong>Share ⬆</strong> then <strong>\"Add to Home Screen\"</strong>";
             }
-
           } else if (isSafariMac) {
             // ── Safari on macOS ──
             if (label) label.textContent = "Add to Dock";
@@ -3309,7 +2840,6 @@ if (!window.IS_MEDIAN_APP) {
               hint.style.display = "block";
               hint.textContent = "Safari → File → Add to Dock";
             }
-
           } else {
             // ── Firefox, Samsung, other browsers ──
             if (label) label.textContent = "Install Cookie Care";
@@ -3320,14 +2850,11 @@ if (!window.IS_MEDIAN_APP) {
               hint.textContent = "Browser menu → Add to Home Screen";
             }
           }
-
           if (closeBtn) closeBtn.onclick = () => chip.classList.remove("visible");
-
           // Force animation replay on each show (in case chip was shown before)
           chip.classList.remove("visible");
           void chip.offsetWidth; // trigger reflow so animation restarts
           chip.classList.add("visible");
-
           // Reset + start timer bar drain, then auto-dismiss after 9s
           var timerFill = document.getElementById("ccj-chip-timer-fill");
           if (timerFill) {
@@ -3339,21 +2866,17 @@ if (!window.IS_MEDIAN_APP) {
             chip.classList.remove("visible");
           }, 9000);
           chip.addEventListener("pointerdown", function () { clearTimeout(autoDismiss); }, { once: true });
-
         } catch(e) { /* silent */ }
       };
-
       const resetNotifications = () => {
         localStorage.removeItem("ccj_notif_on");
         localStorage.removeItem("ccj_notif_off");
         setNotifPerm("default");
         setNotifError("");
       };
-
       React.useEffect(() => {
         window._appResetNotif = resetNotifications;
       });
-
       const setCookies = (delta) => {
         setCookiesRaw(prev => {
           const next = Math.max(0, prev + delta);
@@ -3367,7 +2890,6 @@ if (!window.IS_MEDIAN_APP) {
           return next;
         });
       };
-
       const [snoozed, setSnoozed] = useState(() => load("ccj_snoozed", {}));
       useEffect(() => { save("ccj_snoozed", snoozed); }, [snoozed]);
       const [alarmTask, setAlarmTask] = useState(null);
@@ -3384,7 +2906,6 @@ if (!window.IS_MEDIAN_APP) {
         const today = new Date().toISOString().split("T")[0];
         try { localStorage.setItem("ccj_fired", JSON.stringify({ [today]: firedAlarms })); } catch { }
       }, [firedAlarms]);
-
       // ── Alarm engine ─────────────────────────────────────────────────
       // Use refs so the interval callback always reads the freshest state
       const tasksRef = React.useRef(tasks);
@@ -3399,12 +2920,9 @@ if (!window.IS_MEDIAN_APP) {
       useEffect(() => { firedAlarmsRef.current = firedAlarms; }, [firedAlarms]);
       useEffect(() => { purchasedAlarmRef.current = purchased; }, [purchased]);
       useEffect(() => { selectedSoundAlarmRef.current = selectedSound; }, [selectedSound]);
-
-
       // ── Notification helper: use page Notification when possible so it works without service worker ──
     async function swNotify(title, opts) {
       if (Notification.permission !== "granted") return;
-      
       try {
         if ("serviceWorker" in navigator) {
           const reg = await navigator.serviceWorker.ready;
@@ -3419,13 +2937,8 @@ if (!window.IS_MEDIAN_APP) {
         } catch (_) {}
       }
     }
-
        const cookieIcon = "data:image/svg+xml," + encodeURIComponent(
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#f43f6e"/><text y="72" x="50" text-anchor="middle" font-size="62">🍪</text></svg>')
-
-
-
-
       const caringMsgs = [
         "time to take care of yourself 🍪",
         "your future self is rooting for you 🌸",
@@ -3443,12 +2956,10 @@ if (!window.IS_MEDIAN_APP) {
         "You deserve to follow through for yourself 🌸",
         "Every task you complete is an act of self-love 🍪",
       ];
-
       const fmtTime = d => {
         const hh = d.getHours(); const mm = d.getMinutes();
         return `${String(hh % 12 || 12).padStart(2, "0")}:${String(mm).padStart(2, "0")} ${hh >= 12 ? "PM" : "AM"}`;
       };
-
       // Parse "09:30 AM" to today's timestamp (ms)
       const parseAlertTimeMs = (alertTime, dateStr) => {
         const m = alertTime && alertTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
@@ -3460,52 +2971,9 @@ if (!window.IS_MEDIAN_APP) {
         const d = new Date(dateStr + "T" + String(h).padStart(2, "0") + ":" + String(min).padStart(2, "0") + ":00");
         return isNaN(d.getTime()) ? null : d.getTime();
       };
-
       const reminderSentRef = React.useRef({ day: "", set: new Set() });
-
-      // ── OneSignal server-side push helpers ──
-      const OS_APP_ID = "fc237358-e343-4a93-adfe-b22527bb0aef";
-      // API key removed from frontend — all calls go through the Cloudflare Worker
       const WORKER_URL = "https://cookie-care-joy.futuresuccess105.workers.dev"; // ← set to your deployed Worker URL
-
       async function getPlayerId() {
-        // ── Median native player ID (stored after register + getStatus) ──
-        if (window.IS_MEDIAN_APP) {
-          const stored = window._medianOneSignalId || localStorage.getItem("ccj_median_player_id");
-          if (stored) { dbg("getPlayerId (Median): " + stored); return stored; }
-          // Try fetching live if not stored yet
-          if (window.median && window.median.onesignal) {
-            return await new Promise(function(resolve) {
-              window.median.onesignal.getStatus(function(status) {
-                var idType = (status && status.onesignalId) ? "onesignal_id" : ((status && status.subscriptionId) ? "subscription_id" : "player_id");
-                var pid = (status && (status.onesignalId || status.subscriptionId || status.userId || status.pushToken)) || null;
-                if (pid) {
-                  window._medianOneSignalId = pid;
-                  window._medianOneSignalIdType = idType;
-                  localStorage.setItem("ccj_median_player_id", pid);
-                  localStorage.setItem("ccj_median_id_type", idType);
-                }
-                dbg("getPlayerId (Median live): " + pid + " type: " + idType);
-                resolve(pid);
-              });
-            });
-          }
-          return null;
-        }
-        // Try SDK even if init had a non-fatal error (IndexedDB hiccup etc.)
-        if (!window.OneSignal) return null;
-        const getSub = () => {
-          // OneSignal SDK v16: subscription ID is at User.PushSubscription.id
-          try {
-            const sub = window.OneSignal.User && window.OneSignal.User.PushSubscription;
-            if (sub && sub.id) return sub.id;
-            // Fallback: onesignalId
-            const oid = window.OneSignal.User && window.OneSignal.User.onesignalId;
-            if (oid) return oid;
-          } catch(e2) {}
-          // Last resort: check native SW push subscription endpoint ID
-          return null;
-        };
         // Check localStorage cache first (fast path for page reloads)
         const _cachedId = localStorage.getItem('ccj_onesignal_player_id');
         if (_cachedId) { dbg("getPlayerId (cache): " + _cachedId); return _cachedId; }
@@ -3525,7 +2993,6 @@ if (!window.IS_MEDIAN_APP) {
         dbg("getPlayerId: not found after retries");
         return null;
       }
-
       // localNotify: fires a notification via Service Worker when app is open
       // ── localStorage notification queue (survives SW restart) ────────────
       const _CCJ_ICON = "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png";
@@ -3553,7 +3020,6 @@ if (!window.IS_MEDIAN_APP) {
           ctrl.postMessage({ type: "SYNC_ALL", items });
         } catch(e) {}
       }
-
       // ── localNotify: posts SCHEDULE to SW for reliable background delivery ─
       async function localNotify(title, body, delayMs) {
         if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
@@ -3579,12 +3045,11 @@ if (!window.IS_MEDIAN_APP) {
           }
         } catch(e) { dbg("localNotify error: " + e.message); }
       }
-
-      // osPushWithId: send OneSignal push using already-resolved playerId (no extra polling)
+      
       async function osPushWithId(playerId, title, body, sendAfterMs) {
         if (!playerId) return;
         // Determine correct targeting field based on ID type
-        const idType = window._medianOneSignalIdType || localStorage.getItem("ccj_median_id_type") || "player_id";
+        const idType = "player_id";
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(playerId);
         let targeting = {};
         if (idType === "onesignal_id") {
@@ -3626,15 +3091,13 @@ if (!window.IS_MEDIAN_APP) {
           return true;
         } catch(e) { dbg("osPush error: " + e.message); throw e; }
       }
-
       // osPush: legacy wrapper — resolves player ID then calls osPushWithId
       async function osPush(title, body, sendAfterMs) {
         const playerId = await getPlayerId();
         if (!playerId) { dbg("osPush: no player ID"); return; }
         await osPushWithId(playerId, title, body, sendAfterMs);
       }
-
-      // scheduleTaskPush: called when a task is saved — schedules a OneSignal push
+      
       // 2 minutes BEFORE the task's alertTime so it works even when app is closed.
       async function scheduleTaskPush(task) {
         if (!task || !task.alertTime || task.alertTime === "NOW") return;
@@ -3657,39 +3120,14 @@ if (!window.IS_MEDIAN_APP) {
         await osPushWithId(playerId, "Cookie-Care-Joy 🍪", taskMsg, delayMs);
         dbg("scheduleTaskPush: push scheduled OK");
       }
-
-      // ── OneSignal background retry ─────────────────────────────────────────────
-      // On Android browser the OneSignal subscription ID is sometimes not ready
+      
       // when scheduleReminders() first runs (10-second timeout not enough on slow devices).
       // This poller checks every 5s for up to 2 minutes.  The moment the ID appears,
       // it clears the 1h local-fallback key and re-runs scheduleReminders() so 59 server
-      // pushes get scheduled — ensuring background / locked-phone delivery via OneSignal.
-      function _startOSRetry() {
-        const _schedKey  = 'ccj_reminders_sched_at';
-        const _localKey  = 'ccj_local_fb_sched_at';
-        let retries = 0;
-        const MAX_RETRIES = 24; // 24 × 5s = 2 minutes
-        const iv = setInterval(async () => {
-          retries++;
-          // Stop if OneSignal already scheduled, or we've exceeded 2 minutes
-          if (retries >= MAX_RETRIES || localStorage.getItem(_schedKey)) {
-            clearInterval(iv);
-            dbg("_startOSRetry: stopping (" + (localStorage.getItem(_schedKey) ? "OS scheduled" : "max retries") + ")");
-            return;
-          }
-          const pid = await getPlayerId();
-          if (!pid) return; // still waiting
-          clearInterval(iv);
-          dbg("_startOSRetry: got player ID " + pid + " on attempt " + retries + " — rescheduling with OneSignal");
-          // Clear local-fallback key so scheduleReminders() re-runs OneSignal path
-          localStorage.removeItem(_localKey);
-          scheduleReminders();
-        }, 5000);
-      }
-
+      
       async function scheduleReminders() {
-        // Two keys: one for OneSignal-confirmed (23h), one for local-fallback (1h retry)
-        const _schedKey     = 'ccj_reminders_sched_at';      // set only after OneSignal OK
+        
+        const _schedKey     = 'ccj_reminders_sched_at';
         const _localFbKey   = 'ccj_local_fb_sched_at';       // local fallback, retry in 1h
         // Version bump: clear old schedule so new fireAt-keyed queue takes effect
         const _ccjSchedVer = 'ccj_sched_ver';
@@ -3701,15 +3139,12 @@ if (!window.IS_MEDIAN_APP) {
           localStorage.setItem(_ccjSchedVer, '2');
         }
         const _sweetSchedKey = 'ccj_sweet_schedule';          // page-side checker timestamps
-
         const _lastOS    = parseInt(localStorage.getItem(_schedKey)   || '0', 10);
         const _lastLocal = parseInt(localStorage.getItem(_localFbKey) || '0', 10);
-
         const osDone    = _lastOS    > 0 && (Date.now() - _lastOS)    < 23 * 60 * 60 * 1000;
         const localDone = _lastLocal > 0 && (Date.now() - _lastLocal) <  1 * 60 * 60 * 1000;
-
         // Self-heal: if the 23h OS key is set but ccj_sweet_schedule is empty,
-        // the previous schedule silently failed (OneSignal API error). Reset so we retry.
+        
         if (osDone) {
           const sweetQueue = (() => { try { return JSON.parse(localStorage.getItem(_sweetSchedKey) || '[]'); } catch { return []; } })();
           const hasFuture = sweetQueue.some(x => x.fireAt > Date.now() + 60000);
@@ -3718,12 +3153,11 @@ if (!window.IS_MEDIAN_APP) {
             localStorage.removeItem(_schedKey);
             // fall through to reschedule
           } else {
-            dbg("scheduleReminders: OneSignal already scheduled within 23h and queue OK, skip");
+            
             return;
           }
         }
         dbg("scheduleReminders: start");
-
         // ── Show "sweet reminders" pink toast after a 2s gap ──
         // The "Notifications enabled!" toast fires first (from grantSuccess).
         // This one shows next so they read as a sequence, not overlapping.
@@ -3731,55 +3165,18 @@ if (!window.IS_MEDIAN_APP) {
           if (window._ccjShowToast) window._ccjShowToast("Sweet reminders on the way! 🍪✨");
         }, 2200);
 
-        // Get player ID ONCE — determines which delivery path to use
-        const playerId = await getPlayerId();
-
-        let osSuccess = false;
-        if (playerId) {
-          // ── OneSignal server push (works closed/background/any device) ──
-          dbg("scheduleReminders: using OneSignal push, player=" + playerId);
-          try {
-            // Build full batch and send as one throttled request to the Worker
-            // (avoids 57 parallel calls and OneSignal rate-limit failures)
-            const messages = [];
-            for (let i = 0; i <= 57; i++) {
-              const msg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
-              messages.push({ title: "Cookie-Care-Joy 🍪", body: msg, sendAfterMs: 5 * 60 * 1000 + i * 25 * 60 * 1000 });
-            }
-            const idType = window._medianOneSignalIdType || localStorage.getItem("ccj_median_id_type") || "player_id";
-            const batchResp = await fetch(WORKER_URL + "/schedule", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ playerId, idType, messages }),
-            });
-            const batchData = await batchResp.json();
-            if (!batchResp.ok || batchData.failed === messages.length) throw new Error("Schedule batch failed: " + JSON.stringify(batchData).substring(0, 120));
-            dbg("scheduleReminders: batch scheduled " + batchData.scheduled + " msgs, " + (batchData.failed||0) + " failed");
-            // ✅ Only stamp the 23h key after confirmed delivery
-            localStorage.setItem(_schedKey, Date.now().toString());
-            dbg("scheduleReminders: OneSignal done, key stamped");
-            osSuccess = true;
-          } catch(osErr) {
-            dbg("scheduleReminders: OneSignal error, falling to local: " + osErr.message);
-            // Fall through to local fallback below
-          }
-        }
-
         // ── Local fallback / SW backup ───────────────────────────────────────
-        // Runs when: no player ID, OR OneSignal threw an error.
-        // ALSO runs as a SW backup even when OneSignal succeeded:
+        
         //   - Stores the near-term (≤30 min) notifications in the SW queue + ccj_sweet_schedule
-        //   - Means the SW timer fires even if OneSignal fails to deliver
         //   - Page-side checker (_pageNotifCheck) fires on tab return regardless
         {
-          if (!osSuccess) {
+          if (true) {
             if (localDone && !playerId) { dbg("scheduleReminders: local fallback already scheduled within 1h, skip"); return; }
-            dbg("scheduleReminders: " + (playerId ? "OneSignal failed" : "no player ID") + " — using local fallback");
+            
           } else {
-            dbg("scheduleReminders: OneSignal OK — also scheduling SW backup for near-term reminders");
+            
           }
           localStorage.setItem(_localFbKey, Date.now().toString());
-
           const now = Date.now();
           // Build schedule array: welcome + 5min + 57×25min
           const schedule = [];
@@ -3803,14 +3200,13 @@ if (!window.IS_MEDIAN_APP) {
           // Sync everything to SW so it can rebuild timers after a restart
           _swSyncAll();
           dbg("scheduleReminders: local/backup set, " + schedule.length + " items stored");
-          // If we had no player ID, start background retry so OneSignal gets scheduled
+          
           // once the subscription is ready (takes longer on Android browser)
-          if (!osSuccess && !playerId) {
-            _startOSRetry();
+          if ( !playerId) {
+            
           }
         }
       }
-
       // ── Page-side notification checker ────────────────────────────────────
       // Fires every 30s while page is open. Catches overdue sweet reminders
       // when user returns from another tab — handles the "tab switch" case.
@@ -3865,22 +3261,9 @@ if (!window.IS_MEDIAN_APP) {
           setTimeout(_swSyncAll, 800);
         }
       });
-
       React.useEffect(() => {
         window._ccjShowToast = (msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 6000); };
-        window.OneSignalDeferred = window.OneSignalDeferred || [];
-        window.OneSignalDeferred.push(function(OneSignal) {
-          if (OneSignal.Notifications && OneSignal.Notifications.addEventListener) {
-            OneSignal.Notifications.addEventListener("foregroundWillDisplay", function(event) {
-              event.preventDefault();
-              const notif = event.notification;
-              const msg = (notif && (notif.body || notif.title)) || "";
-              if (msg && window._ccjShowToast) window._ccjShowToast(msg);
-            });
-          }
-        });
       }, []);
-
       useEffect(() => {
         const doCheck = () => {
           if (alarmTaskRef.current) return;
@@ -3892,12 +3275,10 @@ if (!window.IS_MEDIAN_APP) {
           const firedSet = new Set(firedAlarmsRef.current || []);
           const snoozedMap = snoozedRef.current || {};
           const TWO_MIN_MS = 2 * 60 * 1000;
-
           if (reminderSentRef.current.day !== todayStr) {
             reminderSentRef.current.day = todayStr;
             reminderSentRef.current.set.clear();
           }
-
           // 1) Send "2 minutes before" reminder for any task whose alarm is in ~2 min
           for (const task of tasks) {
             if (task.date !== todayStr || !task.alertTime || task.alertTime === "NOW") continue;
@@ -3913,7 +3294,6 @@ if (!window.IS_MEDIAN_APP) {
               localNotify("Cookie-Care-Joy 🍪", taskMsg, 0);
             }
           }
-
           // 2) Find task whose alarm time is now (and not snoozed, not already fired)
           let firing = null;
           for (const task of tasks) {
@@ -3926,11 +3306,9 @@ if (!window.IS_MEDIAN_APP) {
             break;
           }
           if (!firing) return;
-
           firedAlarmsRef.current = [...firedAlarmsRef.current, firing.id + "_" + firing.alertTime];
           setFiredAlarms(prev => [...prev, firing.id + "_" + firing.alertTime]);
           setAlarmTask(firing);
-
           try {
             getCtx().resume().then(() => {
               if (purchasedAlarmRef.current) playZenSound(selectedSoundAlarmRef.current);
@@ -3939,7 +3317,6 @@ if (!window.IS_MEDIAN_APP) {
           } catch (e) { }
           if ("vibrate" in navigator) navigator.vibrate([400, 200, 400, 200, 800]);
         };
-
         // When tab is visible: check every 3s so we hit 2-min reminder and alarm time reliably
         // When tab is hidden: browsers throttle timers; use 30s to avoid missing if they come back
         const VISIBLE_MS = 3000;
@@ -3957,20 +3334,17 @@ if (!window.IS_MEDIAN_APP) {
           }
         };
         document.addEventListener("visibilitychange", onVisible);
-
         return () => {
           clearInterval(iv);
           clearTimeout(warm);
           document.removeEventListener("visibilitychange", onVisible);
         };
       }, []);   // ← runs ONCE — reads live data via refs, never goes stale
-
       const handleSnooze = () => {
         if (!alarmTask) return;
         setSnoozed(s => ({ ...s, [alarmTask.id]: Date.now() + 5 * 60 * 1000 }));
         setAlarmTask(null);
       };
-
       const handleAlarmDone = () => {
         if (!alarmTask) return;
         setCookies(1);
@@ -3978,7 +3352,6 @@ if (!window.IS_MEDIAN_APP) {
         setSnoozed(s => { const n = { ...s }; delete n[alarmTask.id]; return n; });
         setAlarmTask(null);
       };
-
       const renderPage = () => {
         if (page === "today") return <TodayPage tasks={tasks} setTasks={setTasks} cookies={cookies} setCookies={setCookies} setPage={setPage} purchased={purchased} selectedSound={selectedSound} />;
         if (page === "calendar") return <CalendarPage tasks={tasks} setTasks={setTasks} setCookies={setCookies} setPage={setPage} />;
@@ -3986,7 +3359,6 @@ if (!window.IS_MEDIAN_APP) {
         if (page === "cookiejar") return <CookieJarPage cookies={cookies} tasks={tasks} purchased={purchased} selectedTheme={selectedTheme} trophies={trophies} />;
         if (page === "bakery") return <BakeryPage purchased={purchased} setPurchased={setPurchased} selectedTheme={selectedTheme} setSelectedTheme={setSelectedTheme} selectedSound={selectedSound} setSelectedSound={setSelectedSound} />;
       };
-
       return (
         <LangContext.Provider value={t}>
           <div style={{ minHeight: "100vh", background: nightMode ? "#faf4ec" : "#fdf6fb", fontFamily: "system-ui,-apple-system,sans-serif", paddingTop: "env(safe-area-inset-top)" }} className="page-root"
@@ -4002,7 +3374,6 @@ if (!window.IS_MEDIAN_APP) {
             )}
             {showSplash && <SplashScreen onDone={dismissSplash} />}
             {nightMode && <div className="night-overlay" />}
-
             <style>{`
         @keyframes trophyPop{0%{transform:scale(0.3) rotate(-10deg);opacity:0}60%{transform:scale(1.2) rotate(3deg)}100%{transform:scale(1) rotate(0deg);opacity:1}}
         @keyframes confettiFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(120px) rotate(720deg);opacity:0}}
@@ -4023,7 +3394,6 @@ if (!window.IS_MEDIAN_APP) {
                 </div>
               </div>
             )}
-
             {alarmTask && <AlarmModal task={alarmTask} onSnooze={handleSnooze} onDone={handleAlarmDone} purchased={purchased} selectedSound={selectedSound} />}
             {(() => {
               // ONE banner at a time — priority order
@@ -4046,17 +3416,13 @@ if (!window.IS_MEDIAN_APP) {
                   )}
                 </div>
               );
-
               return null;
             })()}
             <div style={{ height: showBanner ? 56 : 0, transition: "height 0.3s", flexShrink: 0 }} />
             <NavBar page={page} setPage={setPage} nightMode={nightMode} lang={lang} setLang={setLang} onSave={() => { document.dispatchEvent(new CustomEvent("ccj-save")); }} onWindDown={() => setShowCoolDown(true)} notifShowing={showBanner} />
-
             {renderPage()}
-
             {/* ── Floating Data Backup button ── */}
             <DataBackupButton notifShowing={false} mobileOnly={true} />
-
             {/* ── Floating Wind Down button ── */}
             {!showCoolDown && (
               <button onClick={() => setShowCoolDown(true)} className="float-hide-desktop" style={{
@@ -4084,7 +3450,6 @@ if (!window.IS_MEDIAN_APP) {
                 <span style={{ fontSize: 11, fontWeight: 800, color: "#92400e", whiteSpace: "nowrap", letterSpacing: "0.3px", marginTop: 1 }}>{t.btn_wind_down}</span>
               </button>
             )}
-
             {showCoolDown && (
               <CoolDownMode
                 onClose={() => setShowCoolDown(false)}
@@ -4092,13 +3457,11 @@ if (!window.IS_MEDIAN_APP) {
                 selectedSound={selectedSound}
               />
             )}
-
             {/* debug bar removed */}
           </div>
         </LangContext.Provider>
       );
     }
-
   class AppErrorBoundary extends React.Component {
     constructor(props) { super(props); this.state = { hasError: false }; }
     static getDerivedStateFromError() { return { hasError: true }; }
@@ -4120,22 +3483,19 @@ if (!window.IS_MEDIAN_APP) {
   const root = ReactDOM.createRoot(document.getElementById('root'));
   root.render(<AppErrorBoundary><App /></AppErrorBoundary>);
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/Cookie-Care-Joy/OneSignalSDKWorker.js")
+    navigator.serviceWorker.register("/Cookie-Care-Joy/sw.js")
       .then(reg => {
         console.log("Service worker registered");
-
         // Sync SW schedule on page load (re-arms any notifications after SW restart)
         navigator.serviceWorker.ready.then(() => {
           if (typeof _swSyncAll === "function") _swSyncAll();
         });
-
         // Register Periodic Background Sync (Chrome Android installed PWA only)
         if ("periodicSync" in reg) {
           reg.periodicSync.register("ccj-notif-sync", { minInterval: 15 * 60 * 1000 })
             .catch(() => { /* permission denied or not installed — ignore */ });
         }
       });
-
     // Keepalive ping every 10 s — resets SW idle timer so it isn't killed mid-schedule.
     // 10s is safe margin under the ~30s browser SW idle timeout.
     function _swPing() {
@@ -4143,7 +3503,6 @@ if (!window.IS_MEDIAN_APP) {
       if (ctrl) ctrl.postMessage({ type: "PING" });
     }
     setInterval(_swPing, 10000);
-
     // Extra ping + re-sync when tab goes hidden (SW may die while we're away)
     document.addEventListener("visibilitychange", function () {
       _swPing();
@@ -4152,7 +3511,6 @@ if (!window.IS_MEDIAN_APP) {
         _swSyncAll();
       }
     });
-
     // Listen for messages from SW: REQUEST_SYNC and CCJ_NOTIFY (in-app toast trigger)
     navigator.serviceWorker.addEventListener("message", function (e) {
       if (!e.data) return;
@@ -4168,7 +3526,6 @@ if (!window.IS_MEDIAN_APP) {
     });
   }
   </script>
-
   <!-- ── iOS "Add to Home Screen" Install Prompt ──────────────────────── -->
   <style>
     /* ── Install Chip (compact reminder) ── */
@@ -4180,7 +3537,6 @@ if (!window.IS_MEDIAN_APP) {
       0%,100% { box-shadow: 0 0 0 0 rgba(244,63,110,0.35); }
       50%      { box-shadow: 0 0 0 8px rgba(244,63,110,0); }
     }
-
     /* ── Install chip — centered white card with timer bar ── */
     #ccj-install-chip {
       display: none;
@@ -4205,7 +3561,6 @@ if (!window.IS_MEDIAN_APP) {
       display: flex !important;
       animation: slideUpInstall 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards;
     }
-
     /* header row */
     #ccj-install-chip .chip-header {
       display: flex; align-items: center; gap: 12px;
@@ -4230,7 +3585,6 @@ if (!window.IS_MEDIAN_APP) {
       align-items: center; justify-content: center;
       flex-shrink: 0; padding: 0; line-height: 1; align-self: flex-start;
     }
-
     /* actions row */
     #ccj-install-chip .chip-actions {
       margin-top: 10px; display: flex; justify-content: center;
@@ -4253,7 +3607,6 @@ if (!window.IS_MEDIAN_APP) {
       animation: installPulse 2.5s ease-in-out infinite;
       letter-spacing: 0.3px; width: 100%;
     }
-
     /* timer bar */
     #ccj-install-chip .chip-timer-bar {
       height: 3px; background: #fce7f3;
@@ -4270,7 +3623,6 @@ if (!window.IS_MEDIAN_APP) {
       from { transform: scaleX(1); }
       to   { transform: scaleX(0); }
     }
-
     /* iOS install banner */
     #ccj-ios-install {
       display: none;
@@ -4333,7 +3685,6 @@ if (!window.IS_MEDIAN_APP) {
       border-right: 10px solid transparent;
       border-top: 10px solid #f9a8d4;
     }
-
     /* Android / Desktop install banner */
     #ccj-android-install {
       display: none;
@@ -4391,7 +3742,6 @@ if (!window.IS_MEDIAN_APP) {
       font-weight: 700;
     }
   </style>
-
   <!-- Install chip — centered white card with timer bar -->
   <div id="ccj-install-chip">
     <div class="chip-header">
@@ -4408,7 +3758,6 @@ if (!window.IS_MEDIAN_APP) {
     </div>
     <div class="chip-timer-bar"><div class="chip-timer-fill" id="ccj-chip-timer-fill"></div></div>
   </div>
-
   <!-- iOS install banner markup — pretty redesign -->
   <div id="ccj-ios-install">
     <div class="ccj-install-row">
@@ -4424,7 +3773,6 @@ if (!window.IS_MEDIAN_APP) {
       <button class="ccj-install-close" id="ccj-ios-close" aria-label="Dismiss">✕</button>
     </div>
   </div>
-
   <!-- Android / Desktop install banner — pretty redesign -->
   <div id="ccj-android-install" style="display:none">
     <div class="ccj-install-app-icon">🍪</div>
@@ -4436,56 +3784,22 @@ if (!window.IS_MEDIAN_APP) {
     <button class="ccj-install-btn" id="ccj-android-btn">🍪 Install</button>
     <button class="ccj-install-close" id="ccj-android-close">✕</button>
   </div>
-
   <script>
-    // ── Median.co (GoNative) detection ──────────────────────────────────────
-    // Median injects "median" or "gonative" into the user agent string
-    // and exposes a window.median bridge object when running as a native app.
-    var IS_MEDIAN = (
-      /median|gonative/i.test(navigator.userAgent) ||
-      typeof window.median !== "undefined" ||
-      typeof window.gonative !== "undefined"
-    );
-
-    // ── Median JS Bridge init ────────────────────────────────────────────────
-    if (IS_MEDIAN) {
-      // Called by Median once the native bridge is ready
-      window.median_ready = function () {
-        // Bridge is confirmed active — update flag
-        window.IS_MEDIAN_APP = true;
-        // Restore stored OneSignal ID + type
-        var storedPid = localStorage.getItem("ccj_median_player_id");
-        var storedType = localStorage.getItem("ccj_median_id_type");
-        if (storedPid) { window._medianOneSignalId = storedPid; }
-        if (storedType) { window._medianOneSignalIdType = storedType; }
-        // Set status bar style (Android: dark icons on light bg)
-        if (window.median && window.median.statusbar) {
-          window.median.statusbar.set({ style: "default", color: "#fdf6fb" });
-        }
-        // Hide the native navigation bar / loading indicator
-        if (window.median && window.median.navigationbar) {
-          window.median.navigationbar.hide();
-        }
-        // Restore any previously stored Median player ID into memory
-        var storedPid = localStorage.getItem("ccj_median_player_id");
-        if (storedPid) { window._medianOneSignalId = storedPid; }
-      };
-
-      // Android hardware back button — let Median handle history navigation
+    
+    
+      
       document.addEventListener("backbutton", function () {
         if (window.history.length > 1) {
           window.history.back();
         }
       }, false);
-
       // Suppress install banners — not needed inside native app
       var iosBanner = document.getElementById("ccj-ios-install");
       var androidBanner = document.getElementById("ccj-android-install");
       if (iosBanner) iosBanner.style.display = "none";
       if (androidBanner) androidBanner.style.display = "none";
-
     } else {
-      // ── Browser install banners (non-Median only) ──────────────────────────
+      
       // IMPORTANT: always capture beforeinstallprompt regardless of dismiss state
       // so the chip install button always works even if user previously dismissed a banner.
       (function () {
@@ -4498,25 +3812,20 @@ if (!window.IS_MEDIAN_APP) {
           });
         }
       })();
-
       (function () {
         const DISMISS_KEY = "ccj_install_dismissed";
         if (localStorage.getItem(DISMISS_KEY)) return;
-
         const isStandalone =
           window.navigator.standalone === true ||
           window.matchMedia("(display-mode: standalone)").matches ||
           window.matchMedia("(display-mode: fullscreen)").matches;
         if (isStandalone) return;
-
         const ua = navigator.userAgent;
         const isIOS = /iP(hone|od|ad)/.test(ua) && !window.MSStream;
         const isIOSSafari = isIOS && /Safari/.test(ua) && !/CriOS|FxiOS|OPiOS|mercury/.test(ua);
-
         function dismiss() {
           localStorage.setItem(DISMISS_KEY, "1");
         }
-
         if (isIOSSafari) {
           // iOS: chip handles auto-show — no separate banner auto-show needed
         } else if (!isIOS) {
@@ -4554,5 +3863,4 @@ if (!window.IS_MEDIAN_APP) {
     }
   </script>
 </body>
-
 </html>
