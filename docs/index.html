@@ -8520,128 +8520,75 @@ if ("serviceWorker" in navigator) {
     }
   </script>
 
-<!-- Cookie Care Joy Download Banner -->
-<div id="cookie-download-banner" style="
+<!-- Cookie Care Joy Install Button -->
+<button id="cookie-install-btn" style="
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  bottom: 30px;
+  right: 30px;
   background: linear-gradient(135deg, #ff6b9d 0%, #c44569 100%);
-  padding: 20px;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
+  color: white;
+  border: none;
+  padding: 16px 28px;
+  border-radius: 25px;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(255, 107, 157, 0.4);
   z-index: 9999;
+  display: none;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  box-shadow: 0 -4px 12px rgba(0,0,0,0.15);
 ">
-  <!-- Logo -->
-  <img 
-    src="/Cookie-Care-Joy/icon-192.png" 
-    alt="Cookie Care Joy" 
-    style="width: 50px; height: 50px; border-radius: 12px;"
-  />
-  
-  <!-- Content -->
-  <div style="flex: 1; color: white;">
-    <div style="font-weight: 600; font-size: 16px; margin-bottom: 4px;">Cookie Care Joy</div>
-    <div style="font-size: 13px; opacity: 0.95;">✨ Sweet reminders • ✅ To-do lists • 🔔 Push notifications</div>
-  </div>
-  
-  <!-- Action Button -->
-  <button id="cookie-action-btn" style="
-    background: linear-gradient(135deg, #ff8fab 0%, #ff6b9d 100%);
-    color: white;
-    border: none;
-    padding: 12px 32px;
-    border-radius: 25px;
-    font-weight: 700;
-    font-size: 15px;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(255, 107, 157, 0.4);
-    letter-spacing: 0.5px;
-  ">
-    Download
-  </button>
-  
-  <!-- Close Button -->
-  <button id="cookie-close-btn" style="
-    background: rgba(255,255,255,0.2);
-    color: white;
-    border: none;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
-  ">
-    ✕
-  </button>
-</div>
+  🍪 Install
+</button>
 
 <script>
 (function() {
-  const banner = document.getElementById('cookie-download-banner');
-  const actionBtn = document.getElementById('cookie-action-btn');
-  const closeBtn = document.getElementById('cookie-close-btn');
+  const btn = document.getElementById('cookie-install-btn');
   
   // Detect if iOS/iPad
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   const isStandalone = window.navigator.standalone === true;
   
   // Check if already dismissed in this session
-  const dismissed = sessionStorage.getItem('cookie-banner-dismissed');
+  const dismissed = sessionStorage.getItem('cookie-install-dismissed');
   
-  // Show banner on page load (if not dismissed)
+  // Show button on page load (if not dismissed)
   window.addEventListener('load', () => {
     if (!dismissed) {
-      banner.style.display = 'flex';
-      
-      // Add hover effect
-      actionBtn.addEventListener('mouseenter', () => {
-        actionBtn.style.transform = 'scale(1.05)';
-      });
-      actionBtn.addEventListener('mouseleave', () => {
-        actionBtn.style.transform = 'scale(1)';
-      });
+      btn.style.display = 'block';
     }
   });
   
-  // Handle action button click
-  actionBtn.addEventListener('click', () => {
+  // Handle button click
+  btn.addEventListener('click', () => {
     if (isIOS && !isStandalone) {
       // iOS: Show "Add to Home Screen" instructions
-      showAddToHomeScreenPrompt();
+      const message = `📱 Add Cookie Care Joy to your Home Screen:\n\n1. Tap the Share button (⬆️)\n2. Scroll down and tap "Add to Home Screen"\n3. Tap "Add" to confirm\n\nThen you can open it anytime like a normal app!`;
+      alert(message);
     } else {
       // Desktop/Android: Download from GitHub
       window.location.href = 'https://github.com/AlexandraDigital/Cookie-Care-Joy/releases/latest';
     }
+    
+    // Hide button after click
+    btn.style.display = 'none';
+    sessionStorage.setItem('cookie-install-dismissed', 'true');
   });
-  
-  // Handle close button
-  closeBtn.addEventListener('click', () => {
-    banner.style.display = 'none';
-    sessionStorage.setItem('cookie-banner-dismissed', 'true');
-  });
-  
-  // Function to show iOS instructions
-  function showAddToHomeScreenPrompt() {
-    const message = `📱 Add Cookie Care Joy to your Home Screen:\n\n1. Tap the Share button (⬆️)\n2. Scroll down and tap "Add to Home Screen"\n3. Tap "Add" to confirm\n\nThen you can open it anytime like a normal app!`;
-    alert(message);
-  }
   
   // Update button text based on device
   window.addEventListener('load', () => {
     if (isIOS && !isStandalone) {
-      actionBtn.textContent = 'Add to Home Screen';
+      btn.textContent = '📱 Add to Home';
     }
+  });
+  
+  // Hover effect
+  btn.addEventListener('mouseenter', () => {
+    btn.style.transform = 'scale(1.05)';
+  });
+  btn.addEventListener('mouseleave', () => {
+    btn.style.transform = 'scale(1)';
   });
 })();
 </script>
