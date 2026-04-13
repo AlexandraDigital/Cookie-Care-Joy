@@ -354,6 +354,93 @@
             }
         }
 
+        /* ── Voice Input Button ──────────────────────────────────────– */
+        .voice-btn {
+            padding: 10px 16px;
+            background: linear-gradient(135deg, #f9a8d4 0%, #f582c3 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .voice-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(249, 168, 212, 0.4);
+        }
+
+        .voice-btn:active {
+            transform: translateY(0);
+        }
+
+        .voice-btn.listening {
+            background: linear-gradient(135deg, #ff6b9d 0%, #ff4081 100%);
+            animation: pulse 0.6s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        .voice-hint {
+            font-size: 12px;
+            color: #666;
+            margin-top: 8px;
+            font-style: italic;
+            display: none;
+        }
+
+        /* ── Install Chip ────────────────────────────────────────────– */
+        .install-chip {
+            background: linear-gradient(135deg, #f9a8d4 0%, #f582c3 100%);
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(249, 168, 212, 0.3);
+            color: white;
+            text-align: center;
+            display: none;
+        }
+
+        .install-chip h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .install-chip p {
+            margin: 0 0 15px 0;
+            font-size: 14px;
+            opacity: 0.95;
+        }
+
+        .install-btn {
+            background: white;
+            color: #f9a8d4;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 20px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .install-btn:hover {
+            transform: scale(1.05);
+        }
+
         /* ── Dark Mode Support ────────────────────────────────────────– */
         @media (prefers-color-scheme: dark) {
             html,
@@ -375,6 +462,10 @@
 
             .todo-text {
                 color: #f0f0f0;
+            }
+
+            .voice-hint {
+                color: #aaa;
             }
         }
     </style>
@@ -427,14 +518,23 @@
             <!-- Status Messages -->
             <div id="statusMessage" style="display: none;"></div>
 
+            <!-- Install Chip (PR #10 - hidden initially) -->
+            <div class="install-chip" id="installChip">
+                <h3>📲 Add Cookie Care Joy to Home Screen</h3>
+                <p>Quick access to your tasks and reminders!</p>
+                <button class="install-btn" id="installBtn">Install App</button>
+            </div>
+
             <!-- Todo Section -->
             <div class="todo-section">
                 <h3>📋 My To-Do List</h3>
                 
                 <div class="todo-input">
                     <input type="text" id="todoInput" placeholder="Add a new task...">
+                    <button class="voice-btn" id="voiceBtn" title="Click to speak task">🎤</button>
                     <button class="btn btn-primary" id="addTodoBtn">Add</button>
                 </div>
+                <div class="voice-hint" id="voiceHint">🎤 Listening... speak your task</div>
 
                 <ul class="todo-list" id="todoList"></ul>
                 
@@ -892,6 +992,97 @@
         }
 
         // ════════════════════════════════════════════════════════════════════
+        // 🎤 VOICE INPUT HANDLER (PR #9)
+        // ════════════════════════════════════════════════════════════════════
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = null;
+        let isListening = false;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onstart = () => {
+                isListening = true;
+                const voiceBtn = document.getElementById('voiceBtn');
+                const voiceHint = document.getElementById('voiceHint');
+                voiceBtn.classList.add('listening');
+                voiceHint.style.display = 'block';
+            };
+
+            recognition.onresult = (event) => {
+                let transcript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    transcript += event.results[i][0].transcript;
+                }
+                if (transcript.trim()) {
+                    document.getElementById('todoInput').value = transcript.trim();
+                    document.getElementById('todoInput').focus();
+                }
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                const voiceBtn = document.getElementById('voiceBtn');
+                const voiceHint = document.getElementById('voiceHint');
+                voiceBtn.classList.remove('listening');
+                voiceHint.style.display = 'none';
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Voice recognition error:', event.error);
+                const voiceHint = document.getElementById('voiceHint');
+                voiceHint.textContent = '❌ Microphone error - try again';
+                voiceHint.style.display = 'block';
+                setTimeout(() => {
+                    voiceHint.style.display = 'none';
+                    voiceHint.textContent = '🎤 Listening... speak your task';
+                }, 2000);
+            };
+        }
+
+        function toggleVoiceInput() {
+            if (!recognition) {
+                alert('Voice input not supported in this browser');
+                return;
+            }
+            if (isListening) {
+                recognition.stop();
+            } else {
+                recognition.start();
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════════════
+        // 📲 INSTALL PROMPT HANDLER (PR #10)
+        // ════════════════════════════════════════════════════════════════════
+        let deferredPrompt = null;
+        let installShown = false;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            showInstallPrompt();
+        });
+
+        function showInstallPrompt() {
+            // Only show if notification banner isn't visible
+            const notifBanner = document.getElementById('notifBanner');
+            if (notifBanner && notifBanner.style.display !== 'none') {
+                return;
+            }
+            if (!installShown) {
+                const installChip = document.getElementById('installChip');
+                if (installChip) {
+                    installChip.style.display = 'block';
+                    installShown = true;
+                }
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════════════
         // 🚀 INITIALIZATION
         // ════════════════════════════════════════════════════════════════════
         async function init() {
@@ -920,6 +1111,29 @@
                     addTodo(document.getElementById('todoInput').value);
                 }
             });
+
+            // Voice input button (PR #9)
+            const voiceBtn = document.getElementById('voiceBtn');
+            if (voiceBtn) {
+                voiceBtn.addEventListener('click', toggleVoiceInput);
+            }
+
+            // Install button (PR #10)
+            const installBtn = document.getElementById('installBtn');
+            if (installBtn && deferredPrompt) {
+                installBtn.addEventListener('click', async () => {
+                    if (deferredPrompt) {
+                        deferredPrompt.prompt();
+                        const { outcome } = await deferredPrompt.userChoice;
+                        console.log(`User response to install prompt: ${outcome}`);
+                        deferredPrompt = null;
+                        const installChip = document.getElementById('installChip');
+                        if (installChip) {
+                            installChip.style.display = 'none';
+                        }
+                    }
+                });
+            }
 
             // Schedule notifications if enabled
             scheduleNotifications();
