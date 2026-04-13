@@ -7383,12 +7383,7 @@ function App() {
     }
     dbg("scheduleReminders: start");
 
-    // ── Show "sweet reminders" pink banner after 2 minutes ──
-    // The "Notifications enabled!" toast fires first (from grantSuccess).
-    // This one shows after a 2-minute delay, giving users time to set it up.
-    setTimeout(() => {
-      if (window._ccjShowToast) window._ccjShowToast("Sweet reminders on the way! 🍪✨");
-    }, 120000);
+    // Removed: Sweet reminders toast — sweet messages start automatically after 1 minute
 
     // Get player ID ONCE — determines which delivery path to use
     const playerId = await getPlayerId();
@@ -7406,7 +7401,7 @@ function App() {
           messages.push({
             title: "Cookie-Care-Joy 🍪",
             body: msg,
-            sendAfterMs: (i + 1) * 60 * 60 * 1000  // Every hour: 1hr, 2hr, 3hr, etc.
+            sendAfterMs: (i === 0 ? 60 * 1000 : (i + 1) * 60 * 60 * 1000)  // First msg: 1min, then every hour
           });
         }
         const idType = window._medianOneSignalIdType || localStorage.getItem("ccj_median_id_type") || "player_id";
