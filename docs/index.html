@@ -6687,67 +6687,10 @@ function App() {
       localStorage.setItem("ccj_notif_registered", "1"); // don't show banner again
       setNotifPerm("granted");
       setShowBanner(false);
-      // Show "enabled" pink toast immediately — before "sweet reminders" toast from scheduleReminders
-      if (window._ccjShowToast) {
-        window._ccjShowToast("Notifications enabled! 🍪✨");
-      }
-      // Ensure OneSignal subscription is active and wait for subscription ID to populate
-      try {
-        if (window.OneSignal && window.OneSignal.User && window.OneSignal.User.PushSubscription) {
-          const sub = window.OneSignal.User.PushSubscription;
-          if (!sub.optedIn) await sub.optIn();
-          // Give OneSignal extra time to register subscription and populate PushSubscription.id
-          // 3500ms covers slower mobile registrations
-          await new Promise(r => setTimeout(r, 3500));
-          dbg("grantSuccess: subscription id = " + (sub.id || "null"));
-          if (sub.id) {
-            localStorage.setItem('ccj_onesignal_player_id', sub.id);
-          }
-        }
-      } catch (e) {
-        dbg("grantSuccess optIn error: " + e);
-      }
       scheduleReminders();
-      // background: if OneSignal ID not ready yet, retry for 2 min
     };
 
-    // ── Path A-0: Median native push (OneSignal integrated via Median dashboard) ──
-    if (window.IS_MEDIAN_APP) {
-      // Instant feedback — dismiss banner and mark enabled right away
-      await grantSuccess();
-      // Register + get ID in background (non-blocking)
-      try {
-        if (window.median && window.median.onesignal) {
-          window.median.onesignal.register();
-          // Poll getStatus a few times to capture the subscription ID once granted
-          const tryGetId = attempt => {
-            window.median.onesignal.getStatus(function (status) {
-              dbg("Median onesignal status (attempt " + attempt + "): " + JSON.stringify(status));
-              if (status) {
-                // v5+ uses onesignalId; legacy uses subscriptionId/userId
-                var idType = status.onesignalId ? "onesignal_id" : status.subscriptionId ? "subscription_id" : "player_id";
-                var pid = status.onesignalId || status.subscriptionId || status.userId || status.pushToken || null;
-                if (pid) {
-                  window._medianOneSignalId = pid;
-                  window._medianOneSignalIdType = idType;
-                  localStorage.setItem("ccj_median_player_id", pid);
-                  localStorage.setItem("ccj_median_id_type", idType);
-                  dbg("Stored Median player ID: " + pid);
-                  // Re-schedule reminders now that we have the ID
-                  localStorage.removeItem('ccj_reminders_sched_at');
-                  scheduleReminders();
-                } else if (attempt < 5) {
-                  setTimeout(() => tryGetId(attempt + 1), 2000);
-                }
-              }
-            });
-          };
-          setTimeout(() => tryGetId(1), 1500);
-        }
-      } catch (e) {
-        dbg("Median onesignal.register error: " + e);
-      }
-      return;
+
     }
 
     // ── Path A: Permission prompt — MUST fire synchronously within user gesture ──
@@ -7383,12 +7326,12 @@ function App() {
     }
     dbg("scheduleReminders: start");
 
-    // ── Show "sweet reminders" pink banner after 2 minutes ──
+    // ── Show "sweet reminders" pink banner after 1 minute ──
     // The "Notifications enabled!" toast fires first (from grantSuccess).
-    // This one shows after a 2-minute delay, giving users time to set it up.
+    // This one shows after a 1-minute delay, giving users time to set it up.
     setTimeout(() => {
       if (window._ccjShowToast) window._ccjShowToast("Sweet reminders on the way! 🍪✨");
-    }, 120000);
+    }, 60000);
 
     // Get player ID ONCE — determines which delivery path to use
     const playerId = await getPlayerId();
