@@ -3018,6 +3018,10 @@ if (!window.IS_MEDIAN_APP) {
           var isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone;
           if (isStandalone) return;
           if (sessionStorage.getItem('ccj_install_chip_shown')) return;
+          // Don't show chip if notification banner is still visible — chip will appear when user dismisses it via ✕
+          var alreadyRegistered = localStorage.getItem('ccj_notif_registered') === '1';
+          var inAppOnly = localStorage.getItem("ccj_inapp_notif") === "true";
+          if (!alreadyRegistered && !inAppOnly) return;
           sessionStorage.setItem('ccj_install_chip_shown', '1');
           if (typeof showInstallBanner === 'function') showInstallBanner();
         }, 2800);
