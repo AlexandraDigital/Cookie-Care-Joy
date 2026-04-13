@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <!-- PWA manifest (required for Android install + iOS 16.4+ push) -->
+  <link rel="manifest" href="/Cookie-Care-Joy/manifest.json" />
+  <!-- iOS PWA support -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Cookie Care" />
+  <!-- Apple touch icons — all device sizes -->
+  <link rel="apple-touch-icon" sizes="180x180" href="/Cookie-Care-Joy/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="152x152" href="/Cookie-Care-Joy/icon-144.png" />
+  <link rel="apple-touch-icon" sizes="120x120" href="/Cookie-Care-Joy/icon-96.png" />
+  <link rel="apple-touch-icon" sizes="76x76"   href="/Cookie-Care-Joy/icon-48.png"  />
+  <!-- iOS splash screens — common iPhone/iPad sizes -->
+  <link rel="apple-touch-startup-image" media="screen and (device-width:430px) and (device-height:932px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"  href="/Cookie-Care-Joy/icon-512.png" />
+  <link rel="apple-touch-startup-image" media="screen and (device-width:393px) and (device-height:852px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"  href="/Cookie-Care-Joy/icon-512.png" />
+  <link rel="apple-touch-startup-image" media="screen and (device-width:390px) and (device-height:844px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"  href="/Cookie-Care-Joy/icon-512.png" />
+  <link rel="apple-touch-startup-image" media="screen and (device-width:375px) and (device-height:812px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"  href="/Cookie-Care-Joy/icon-512.png" />
+  <link rel="apple-touch-startup-image" media="screen and (device-width:414px) and (device-height:896px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)"  href="/Cookie-Care-Joy/icon-512.png" />
+  <link rel="apple-touch-startup-image" media="screen and (device-width:375px) and (device-height:667px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)"  href="/Cookie-Care-Joy/icon-512.png" />
+  <link rel="apple-touch-startup-image" media="screen and (device-width:768px) and (device-height:1024px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)" href="/Cookie-Care-Joy/icon-512.png" />
+  <!-- Theme color for Android Chrome toolbar -->
+  <meta name="theme-color" content="#f9a8d4" />
+  <!-- Prevent phone number auto-detection on iOS -->
+  <meta name="format-detection" content="telephone=no" />
+  <!-- App description for install prompts -->
+  <meta name="description" content="Your sweet little self-care companion 🍪" />
+  <title>Cookie-Care-Joy 🍪</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      /* Remove blue flash on tap (iOS + Android) */
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    body {
+      background: #fdf6fb;
+      font-family: system-ui, -apple-system, sans-serif;
+      /* Prevent pull-to-refresh on Android Chrome */
+      overscroll-behavior: none;
+      /* Prevent Safari from adjusting font sizes automatically */
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+
+    body, html {
+      background: #fdf6fb;
+    }
+
+    #root {
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+    }
+
+    button,
+    input {
+      font-family: inherit;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #f9a8d4;
+      border-radius: 999px;
+    }
+
+    .time-col::-webkit-scrollbar {
+      display: none;
+    }
+
+    .night-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9000;
+      pointer-events: none;
+      background: linear-gradient(to bottom, rgba(180, 120, 60, 0.08) 0%, rgba(140, 80, 30, 0.13) 100%);
+      animation: nightFadeIn 2s ease forwards;
+    }
+
+    body.night {
+      background: #f9f0e6 !important;
+    }
+
+    .night-badge {
+      position: fixed;
+      top: max(14px, env(safe-area-inset-top));
+      right: 16px;
+      z-index: 9001;
+      background: rgba(254, 243, 199, 0.85);
+      border: 1px solid rgba(217, 119, 6, 0.25);
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #92400e;
+      backdrop-filter: blur(8px);
+      pointer-events: none;
+      animation: nightFadeIn 3s ease forwards;
+      letter-spacing: 0.2px;
+    }
+
+    .top-nav {
+      display: flex;
+    }
+
+    .bottom-nav {
+      display: none;
+    }
+
+    @keyframes breatheIn {
+      0% {
+        transform: scale(1);
+        opacity: 0.7
+      }
+
+      100% {
+        transform: scale(1.55);
+        opacity: 1
+      }
+    }
+
+    @keyframes breatheOut {
+      0% {
+        transform: scale(1.55);
+        opacity: 1
+      }
+
+      100% {
+        transform: scale(1);
+        opacity: 0.7
+      }
+    }
+
+    @keyframes breatheHold {
+
+      0%,
+      100% {
+        transform: scale(1.55)
+      }
+    }
+
+    @keyframes ripple1 {
+      0% {
+        transform: scale(1);
+        opacity: 0.4
+      }
+
+      100% {
+        transform: scale(2.2);
+        opacity: 0
+      }
+    }
+
+    @keyframes ripple2 {
+      0% {
+        transform: scale(1);
+        opacity: 0.3
+      }
+
+      100% {
+        transform: scale(2.8);
+        opacity: 0
+      }
+    }
+
+    @keyframes nightFadeIn {
+      from {
+        opacity: 0
+      }
+
+      to {
+        opacity: 1
+      }
+    }
+
+    @keyframes slideDown {
+      0% {
+        transform: translateY(-100%);
+        opacity: 0
+      }
+
+      100% {
+        transform: translateY(0);
+        opacity: 1
+      }
+    }
+
+    @keyframes btnPulse {
+
+      0%,
+      100% {
+        transform: scale(1);
+        box-shadow: 0 2px 12px rgba(244, 63, 110, 0.2)
+      }
+
+      50% {
+        transform: scale(1.06);
+        box-shadow: 0 4px 20px rgba(244, 63, 110, 0.45)
+      }
+    }
+
+    @keyframes coolIn {
+      0% {
+        opacity: 0;
+        transform: scale(1.04)
+      }
+
+      100% {
+        opacity: 1;
+        transform: scale(1)
+      }
+    }
+
+    @keyframes coolOut {
+      0% {
+        opa...
