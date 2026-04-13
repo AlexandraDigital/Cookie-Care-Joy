@@ -8031,6 +8031,20 @@ class AppErrorBoundary extends React.Component {
 }
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(/*#__PURE__*/React.createElement(AppErrorBoundary, null, /*#__PURE__*/React.createElement(App, null)));
+
+// ── Splashscreen Timeout Safety Net ──────────────────────────────────
+// Ensure presplash is hidden even if React rendering fails or is delayed
+setTimeout(() => {
+  const presplash = document.getElementById('ccj-presplash');
+  if (presplash && presplash.style.opacity !== '0') {
+    presplash.style.transition = 'opacity 0.3s';
+    presplash.style.opacity = '0';
+    setTimeout(() => {
+      const el = document.getElementById('ccj-presplash');
+      if (el && el.parentNode) el.remove();
+    }, 300);
+  }
+}, 3000);
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/Cookie-Care-Joy/OneSignalSDKWorker.js").then(reg => {
     console.log("Service worker registered");
