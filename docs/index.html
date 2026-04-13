@@ -2002,6 +2002,10 @@ if (!window.IS_MEDIAN_APP) {
               type: parsed.type || f.type,
               date: parsed.date || f.date,
             }));
+            // Auto-open time wheel so it visually rolls to the detected time
+            if (parsed.alertTime) {
+              setTimeout(() => setShowTimePicker(true), 350);
+            }
           }
         };
         r.onerror = () => setListening(false);
@@ -2016,14 +2020,16 @@ if (!window.IS_MEDIAN_APP) {
           <div style={{ background: WHITE, borderRadius: 20, padding: "24px", boxShadow: "0 4px 24px rgba(0,0,0,0.10)", marginBottom: 20, border: `2px solid ${ROSE}` }}>
             <div style={{ height: 4, borderRadius: 999, background: `linear-gradient(90deg,${ROSE},${GOLD})`, marginBottom: 20 }} />
             <p style={{ margin: "0 0 10px", fontWeight: 700, color: ROSE, fontSize: 15 }}>{t.whats_on_mind}</p>
-            <div style={{ position: "relative", marginBottom: 14 }}>
+            <div style={{ marginBottom: 14 }}>
               <input value={form.text} onChange={e => setForm(f => ({ ...f, text: e.target.value }))} placeholder={t.task_placeholder}
-                style={{ width: "100%", border: `2px solid ${listening ? "#ff6eb4" : ROSE}`, borderRadius: 10, padding: "14px 52px 14px 16px", fontSize: 15, outline: "none", fontFamily: "inherit", color: DARK, boxSizing: "border-box", transition: "border-color 0.2s" }}
+                style={{ width: "100%", border: `2px solid ${listening ? "#ff6eb4" : ROSE}`, borderRadius: 10, padding: "14px 16px", fontSize: 15, outline: "none", fontFamily: "inherit", color: DARK, boxSizing: "border-box", transition: "border-color 0.2s", marginBottom: 8 }}
               />
-              <button onClick={startVoice} title={listening ? "Stop listening" : "Speak your task"}
-                style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: listening ? "#ff6eb4" : ROSE_LIGHT, border: "none", borderRadius: 8, width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "background 0.2s", boxShadow: listening ? "0 0 0 3px rgba(255,110,180,0.3)" : "none", animation: listening ? "micPulse 1s infinite" : "none" }}>
-                <span style={{ fontSize: 18 }}>{listening ? "🔴" : "🎤"}</span>
+              <button onClick={startVoice} title={listening ? "Stop listening" : "Speak your task — include time, date, or folder"}
+                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: listening ? "#ff6eb4" : `linear-gradient(135deg,${ROSE},#ff8fab)`, border: "none", borderRadius: 12, padding: "12px 18px", fontSize: 15, fontWeight: 700, color: WHITE, cursor: "pointer", fontFamily: "inherit", boxShadow: listening ? "0 0 0 4px rgba(255,110,180,0.35),0 4px 16px rgba(236,72,153,0.4)" : "0 4px 16px rgba(236,72,153,0.3)", animation: listening ? "micPulse 1s infinite" : "none", transition: "box-shadow 0.2s,background 0.2s" }}>
+                <span style={{ fontSize: 20 }}>{listening ? "🔴" : "🎤"}</span>
+                <span>{listening ? "Listening… tap to stop" : "Speak your task"}</span>
               </button>
+              {listening && <p style={{ margin: "6px 0 0", fontSize: 12, color: "#ff6eb4", textAlign: "center", fontWeight: 600 }}>Say the task, time, date, or folder — e.g. "Take meds tomorrow at 8am"</p>}
             </div>
             <div style={{ display: "flex", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
               <input value={form.folder} onChange={e => setForm(f => ({ ...f, folder: e.target.value }))} placeholder={t.folder_placeholder}
@@ -2354,7 +2360,7 @@ if (!window.IS_MEDIAN_APP) {
           }
           setCustomText(finalT || interim);
         };
-        r.onend = () => { setScListening(false); if (finalT.trim()) setCustomText(finalT.trim()); };
+        r.onend = () => { setScListening(false); if (finalT.trim()) { const parsed = parseVoice(finalT.trim(), today); setCustomText(parsed.text || finalT.trim()); } };
         r.onerror = () => setScListening(false);
         r.start();
       }
@@ -3352,6 +3358,7 @@ if (!window.IS_MEDIAN_APP) {
 
       React.useEffect(() => {
         window._appResetNotif = resetNotifications;
+        window._appRequestNotif = requestNotifications;
       });
 
       const setCookies = (delta) => {
