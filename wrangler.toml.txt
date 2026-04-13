@@ -1,0 +1,15 @@
+name = "cookie-care-joy"
+pages_build_output_dir = "."
+
+# ── KV Namespace ──────────────────────────────────────────────────────────────
+# Run this ONCE to create the namespace:
+#   npx wrangler kv:namespace create CCJ_SUBS
+# Then replace the id below with the one it gives you.
+
+[[kv_namespaces]]
+binding = "CCJ_SUBS"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+# ── Cron Trigger — fires every 30 minutes to send due notifications ───────────
+[triggers]
+crons = ["*/30 * * * *"]
