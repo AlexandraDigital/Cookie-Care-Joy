@@ -4,9 +4,28 @@
 <head>
   <meta charset="UTF-8" />
 <script>
-// Removed: OneSignal and Median - using native notifications only
-window.IS_MEDIAN_APP = false;
-window._oneSignalFailed = true; // Assume OneSignal unavailable
+// ── Median.co (GoNative) detection — set as early as possible ──────────────
+window.IS_MEDIAN_APP = (
+  /median|gonative/i.test(navigator.userAgent) ||
+  typeof window.median !== "undefined" ||
+  typeof window.gonative !== "undefined"
+);
+</script>
+ <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+
+<script>
+// Skip OneSignal web SDK in Median — push notifications are handled natively
+if (!window.IS_MEDIAN_APP) {
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    try {
+      await window._oneSignalReady = true;
+    } catch(e) {
+      console.warn("OneSignal init failed (IndexedDB issue?), falling back to local notifications.", e.message || e);
+      window._oneSignalFailed = true;
+    }
+  });
+}
 </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <!-- PWA manifest (required for Android install + iOS 16.4+ push) -->
@@ -6668,10 +6687,67 @@ function App() {
       localStorage.setItem("ccj_notif_registered", "1"); // don't show banner again
       setNotifPerm("granted");
       setShowBanner(false);
+      // Show "enabled" pink toast immediately — before "sweet reminders" toast from scheduleReminders
+      if (window._ccjShowToast) {
+        window._ccjShowToast("Notifications enabled! 🍪✨");
+      }
+      // Ensure OneSignal subscription is active and wait for subscription ID to populate
+      try {
+        if (window.OneSignal && window.OneSignal.User && window.OneSignal.User.PushSubscription) {
+          const sub = window.OneSignal.User.PushSubscription;
+          if (!sub.optedIn) await sub.optIn();
+          // Give OneSignal extra time to register subscription and populate PushSubscription.id
+          // 3500ms covers slower mobile registrations
+          await new Promise(r => setTimeout(r, 3500));
+          dbg("grantSuccess: subscription id = " + (sub.id || "null"));
+          if (sub.id) {
+            localStorage.setItem('ccj_onesignal_player_id', sub.id);
+          }
+        }
+      } catch (e) {
+        dbg("grantSuccess optIn error: " + e);
+      }
       scheduleReminders();
+      // background: if OneSignal ID not ready yet, retry for 2 min
     };
 
-
+    // ── Path A-0: Median native push (OneSignal integrated via Median dashboard) ──
+    if (window.IS_MEDIAN_APP) {
+      // Instant feedback — dismiss banner and mark enabled right away
+      await grantSuccess();
+      // Register + get ID in background (non-blocking)
+      try {
+        if (window.median && window.median.onesignal) {
+          window.median.onesignal.register();
+          // Poll getStatus a few times to capture the subscription ID once granted
+          const tryGetId = attempt => {
+            window.median.onesignal.getStatus(function (status) {
+              dbg("Median onesignal status (attempt " + attempt + "): " + JSON.stringify(status));
+              if (status) {
+                // v5+ uses onesignalId; legacy uses subscriptionId/userId
+                var idType = status.onesignalId ? "onesignal_id" : status.subscriptionId ? "subscription_id" : "player_id";
+                var pid = status.onesignalId || status.subscriptionId || status.userId || status.pushToken || null;
+                if (pid) {
+                  window._medianOneSignalId = pid;
+                  window._medianOneSignalIdType = idType;
+                  localStorage.setItem("ccj_median_player_id", pid);
+                  localStorage.setItem("ccj_median_id_type", idType);
+                  dbg("Stored Median player ID: " + pid);
+                  // Re-schedule reminders now that we have the ID
+                  localStorage.removeItem('ccj_reminders_sched_at');
+                  scheduleReminders();
+                } else if (attempt < 5) {
+                  setTimeout(() => tryGetId(attempt + 1), 2000);
+                }
+              }
+            });
+          };
+          setTimeout(() => tryGetId(1), 1500);
+        }
+      } catch (e) {
+        dbg("Median onesignal.register error: " + e);
+      }
+      return;
     }
 
     // ── Path A: Permission prompt — MUST fire synchronously within user gesture ──
@@ -7307,12 +7383,12 @@ function App() {
     }
     dbg("scheduleReminders: start");
 
-    // ── Show "sweet reminders" pink banner after 1 minute ──
+    // ── Show "sweet reminders" pink banner after 2 minutes ──
     // The "Notifications enabled!" toast fires first (from grantSuccess).
-    // This one shows after a 1-minute delay, giving users time to set it up.
+    // This one shows after a 2-minute delay, giving users time to set it up.
     setTimeout(() => {
       if (window._ccjShowToast) window._ccjShowToast("Sweet reminders on the way! 🍪✨");
-    }, 60000);
+    }, 120000);
 
     // Get player ID ONCE — determines which delivery path to use
     const playerId = await getPlayerId();
@@ -7486,7 +7562,17 @@ function App() {
       setToastMsg(msg);
       setTimeout(() => setToastMsg(null), 6000);
     };
-    // Removed: OneSignal notification listener — using native notifications instead
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    window.OneSignalDeferred.push(function (OneSignal) {
+      if (OneSignal.Notifications && OneSignal.Notifications.addEventListener) {
+        OneSignal.Notifications.addEventListener("foregroundWillDisplay", event => {
+          event.preventDefault();
+          const notif = event.notification;
+          const msg = notif && (notif.body || notif.title) || "";
+          if (msg && window._ccjShowToast) window._ccjShowToast(msg);
+        });
+      }
+    });
   }, []);
   useEffect(() => {
     const doCheck = () => {
@@ -8002,23 +8088,8 @@ class AppErrorBoundary extends React.Component {
 }
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(/*#__PURE__*/React.createElement(AppErrorBoundary, null, /*#__PURE__*/React.createElement(App, null)));
-
-// ── Splashscreen Timeout Safety Net ──────────────────────────────────
-// Ensure presplash is hidden even if React rendering fails or is delayed
-setTimeout(() => {
-  const presplash = document.getElementById('ccj-presplash');
-  if (presplash && presplash.style.opacity !== '0') {
-    presplash.style.transition = 'opacity 0.3s';
-    presplash.style.opacity = '0';
-    setTimeout(() => {
-      const el = document.getElementById('ccj-presplash');
-      if (el && el.parentNode) el.remove();
-    }, 300);
-  }
-}, 3000);
-
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/Cookie-Care-Joy/sw.js").then(reg => {
+  navigator.serviceWorker.register("/Cookie-Care-Joy/OneSignalSDKWorker.js").then(reg => {
     console.log("Service worker registered");
 
     // Sync SW schedule on page load (re-arms any notifications after SW restart)
@@ -8348,10 +8419,35 @@ if ("serviceWorker" in navigator) {
     );
 
     // ── Median JS Bridge init ────────────────────────────────────────────────
-    // Removed: Median integration code — app now runs standalone
-    if (false) { // Disabled
-      // Was: if (IS_MEDIAN) {
-      // Median bridge code removed
+    if (IS_MEDIAN) {
+      // Called by Median once the native bridge is ready
+      window.median_ready = function () {
+        // Bridge is confirmed active — update flag
+        window.IS_MEDIAN_APP = true;
+        // Restore stored OneSignal ID + type
+        var storedPid = localStorage.getItem("ccj_median_player_id");
+        var storedType = localStorage.getItem("ccj_median_id_type");
+        if (storedPid) { window._medianOneSignalId = storedPid; }
+        if (storedType) { window._medianOneSignalIdType = storedType; }
+        // Set status bar style (Android: dark icons on light bg)
+        if (window.median && window.median.statusbar) {
+          window.median.statusbar.set({ style: "default", color: "#fdf6fb" });
+        }
+        // Hide the native navigation bar / loading indicator
+        if (window.median && window.median.navigationbar) {
+          window.median.navigationbar.hide();
+        }
+        // Restore any previously stored Median player ID into memory
+        var storedPid = localStorage.getItem("ccj_median_player_id");
+        if (storedPid) { window._medianOneSignalId = storedPid; }
+      };
+
+      // Android hardware back button — let Median handle history navigation
+      document.addEventListener("backbutton", function () {
+        if (window.history.length > 1) {
+          window.history.back();
+        }
+      }, false);
 
       // Suppress install banners — not needed inside native app
       var iosBanner = document.getElementById("ccj-ios-install");
