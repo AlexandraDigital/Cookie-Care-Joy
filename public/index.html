@@ -633,13 +633,26 @@
                 try {
                     if ('serviceWorker' in navigator) {
                         const registration = await navigator.serviceWorker.ready;
-                        registration.showNotification(message.title, {
+                        const notifOptions = {
                             body: message.body,
                             icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180"><rect fill="%23fff5f8" width="180" height="180"/><text x="90" y="120" font-size="100" text-anchor="middle" dominant-baseline="middle">🍪</text></svg>',
                             badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180"><rect fill="%23f9a8d4" width="180" height="180"/><text x="90" y="120" font-size="100" text-anchor="middle" dominant-baseline="middle">🍪</text></svg>',
                             tag: 'cookie-care-joy',
                             requireInteraction: false
-                        });
+                        };
+                        
+                        registration.showNotification(message.title, notifOptions);
+                        
+                        // Post to SW as fallback for background delivery
+                        if (registration.active) {
+                            registration.active.postMessage({
+                                type: 'SCHEDULE',
+                                id: `notif-${Date.now()}`,
+                                delay: 0,
+                                title: message.title,
+                                options: notifOptions
+                            });
+                        }
                     }
                     return true;
                 } catch (e) {
@@ -663,6 +676,16 @@
             
             if (!settings.notificationsEnabled) {
                 if (notificationInterval) clearInterval(notificationInterval);
+                // Cancel all SW notifications when disabled
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.ready.then(registration => {
+                        if (registration.active) {
+                            registration.active.postMessage({
+                                type: 'CANCEL_ALL'
+                            });
+                        }
+                    });
+                }
                 return;
             }
 
@@ -847,7 +870,22 @@
                 }
                 showStatus('Notifications enabled! 🔔', 'success');
             } else {
+                // Disable notifications
                 showStatus('Notifications disabled', 'info');
+                
+                // Cancel all pending notifications in SW
+                if ('serviceWorker' in navigator) {
+                    try {
+                        const registration = await navigator.serviceWorker.ready;
+                        if (registration.active) {
+                            registration.active.postMessage({
+                                type: 'CANCEL_ALL'
+                            });
+                        }
+                    } catch (e) {
+                        console.error('Error cancelling SW notifications:', e);
+                    }
+                }
             }
 
             saveSettings();

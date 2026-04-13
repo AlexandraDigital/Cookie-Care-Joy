@@ -149,4 +149,47 @@ self.addEventListener('notificationclose', event => {
     console.log('Notification closed:', event.notification.tag);
 });
 
+// ════════════════════════════════════════════════════════════════════
+// MESSAGE - Handle scheduled notifications from the page
+// Maintains its own setTimeout map so notifications fire even when tab is hidden
+// ════════════════════════════════════════════════════════════════════
+const swTimers = new Map(); // timerId -> { timeoutId, timestamp }
+
+self.addEventListener('message', event => {
+    const { type, id, delay, title, options } = event.data;
+
+    if (type === 'SCHEDULE') {
+        // Cancel any existing timer for this ID
+        if (swTimers.has(id)) {
+            clearTimeout(swTimers.get(id).timeoutId);
+        }
+
+        // Schedule new notification
+        const timeoutId = setTimeout(() => {
+            console.log(`[SW] Firing scheduled notification: ${id}`);
+            self.registration.showNotification(title, options);
+            swTimers.delete(id);
+        }, delay);
+
+        swTimers.set(id, { timeoutId, timestamp: Date.now() });
+        console.log(`[SW] Scheduled notification ${id} for ${delay}ms`);
+
+    } else if (type === 'CANCEL') {
+        // Cancel a specific notification
+        if (swTimers.has(id)) {
+            clearTimeout(swTimers.get(id).timeoutId);
+            swTimers.delete(id);
+            console.log(`[SW] Cancelled notification: ${id}`);
+        }
+
+    } else if (type === 'CANCEL_ALL') {
+        // Cancel all pending notifications
+        for (const { timeoutId } of swTimers.values()) {
+            clearTimeout(timeoutId);
+        }
+        swTimers.clear();
+        console.log('[SW] Cancelled all notifications');
+    }
+});
+
 console.log('🍪 Service Worker loaded and ready!');
