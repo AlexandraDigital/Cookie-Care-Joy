@@ -7383,12 +7383,12 @@ function App() {
     }
     dbg("scheduleReminders: start");
 
-    // ── Show "sweet reminders" pink toast after a 2s gap ──
+    // ── Show "sweet reminders" pink banner after 2 minutes ──
     // The "Notifications enabled!" toast fires first (from grantSuccess).
-    // This one shows next so they read as a sequence, not overlapping.
+    // This one shows after a 2-minute delay, giving users time to set it up.
     setTimeout(() => {
       if (window._ccjShowToast) window._ccjShowToast("Sweet reminders on the way! 🍪✨");
-    }, 2200);
+    }, 120000);
 
     // Get player ID ONCE — determines which delivery path to use
     const playerId = await getPlayerId();
@@ -7399,13 +7399,14 @@ function App() {
       try {
         // Build full batch and send as one throttled request to the Worker
         // (avoids 57 parallel calls and OneSignal rate-limit failures)
+        // Schedule notifications every hour for 57 hours
         const messages = [];
         for (let i = 0; i <= 57; i++) {
           const msg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
           messages.push({
             title: "Cookie-Care-Joy 🍪",
             body: msg,
-            sendAfterMs: 5 * 60 * 1000 + i * 25 * 60 * 1000
+            sendAfterMs: (i + 1) * 60 * 60 * 1000  // Every hour: 1hr, 2hr, 3hr, etc.
           });
         }
         const idType = window._medianOneSignalIdType || localStorage.getItem("ccj_median_id_type") || "player_id";
@@ -7451,16 +7452,11 @@ function App() {
       }
       localStorage.setItem(_localFbKey, Date.now().toString());
       const now = Date.now();
-      // Build schedule array: welcome + 5min + 57×25min
+      // Build schedule array: every hour for 58 hours
       const schedule = [];
-      schedule.push({
-        fireAt: now + 5 * 60 * 1000,
-        title: "Cookie-Care-Joy 🍪",
-        body: caringMsgs[Math.floor(Math.random() * caringMsgs.length)]
-      });
-      for (let i = 1; i <= 57; i++) {
+      for (let i = 0; i <= 57; i++) {
         schedule.push({
-          fireAt: now + 5 * 60 * 1000 + i * 25 * 60 * 1000,
+          fireAt: now + (i + 1) * 60 * 60 * 1000,  // Every hour: 1hr, 2hr, 3hr, etc.
           title: "Cookie-Care-Joy 🍪",
           body: caringMsgs[Math.floor(Math.random() * caringMsgs.length)]
         });
