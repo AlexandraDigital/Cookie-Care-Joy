@@ -8520,25 +8520,29 @@ if ("serviceWorker" in navigator) {
     }
   </script>
 
-<!-- Cookie Care Joy Install Box -->
-<div id="cookie-install-box" style="
-  display: none;
-  margin: 16px 0;
-  padding: 20px;
+<!-- Cookie Care Joy Download Banner -->
+<div id="cookie-download-banner" style="
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
   background: linear-gradient(135deg, #ff6b9d 0%, #c44569 100%);
-  border-radius: 16px;
+  border-radius: 20px;
   color: white;
+  padding: 20px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  box-shadow: 0 4px 15px rgba(255, 107, 157, 0.3);
+  box-shadow: 0 8px 24px rgba(255, 107, 157, 0.35);
+  z-index: 9999;
+  display: none;
+  max-width: 300px;
 ">
   <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-    <span style="font-size: 28px;">🍪</span>
+    <span style="font-size: 36px;">🍪</span>
     <div>
       <div style="font-weight: 700; font-size: 16px;">Get Cookie Care Joy</div>
-      <div style="font-size: 13px; opacity: 0.9;">✨ Sweet reminders • ✅ To-do lists • 🔔 Notifications</div>
+      <div style="font-size: 12px; opacity: 0.95;">✨ Sweet reminders • ✅ To-do lists • 🔔 Notifications</div>
     </div>
   </div>
-  <button id="cookie-install-action" style="
+  <button id="cookie-install-btn" style="
     width: 100%;
     padding: 12px 16px;
     background: rgba(255,255,255,0.25);
@@ -8549,32 +8553,15 @@ if ("serviceWorker" in navigator) {
     font-size: 15px;
     cursor: pointer;
     transition: all 0.3s ease;
-    margin-bottom: 8px;
   ">
     Install Now
-  </button>
-  <button id="cookie-close-box" style="
-    width: 100%;
-    padding: 8px 16px;
-    background: transparent;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 13px;
-    cursor: pointer;
-    opacity: 0.8;
-    transition: opacity 0.3s ease;
-  ">
-    Dismiss
   </button>
 </div>
 
 <script>
 (function() {
-  const box = document.getElementById('cookie-install-box');
-  const actionBtn = document.getElementById('cookie-install-action');
-  const closeBtn = document.getElementById('cookie-close-box');
+  const banner = document.getElementById('cookie-download-banner');
+  const btn = document.getElementById('cookie-install-btn');
   
   // Detect if iOS/iPad
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
@@ -8583,20 +8570,20 @@ if ("serviceWorker" in navigator) {
   // Check if already dismissed in this session
   const dismissed = sessionStorage.getItem('cookie-install-dismissed');
   
-  // Show box on page load (if not dismissed)
+  // Show banner on page load (if not dismissed)
   window.addEventListener('load', () => {
     if (!dismissed) {
-      box.style.display = 'block';
+      banner.style.display = 'block';
     }
     
     // Update button text based on device
     if (isIOS && !isStandalone) {
-      actionBtn.textContent = 'Add to Home Screen';
+      btn.textContent = 'Add to Home Screen';
     }
   });
   
-  // Handle action button click
-  actionBtn.addEventListener('click', () => {
+  // Handle button click
+  btn.addEventListener('click', () => {
     if (isIOS && !isStandalone) {
       // iOS: Show "Add to Home Screen" instructions
       const message = `📱 Add Cookie Care Joy to your Home Screen:\n\n1. Tap the Share button (⬆️)\n2. Scroll down and tap "Add to Home Screen"\n3. Tap "Add" to confirm\n\nThen you can open it anytime like a normal app!`;
@@ -8605,27 +8592,18 @@ if ("serviceWorker" in navigator) {
       // Desktop/Android: Download from GitHub
       window.location.href = 'https://github.com/AlexandraDigital/Cookie-Care-Joy/releases/latest';
     }
-  });
-  
-  // Handle close button
-  closeBtn.addEventListener('click', () => {
-    box.style.display = 'none';
+    
+    // Hide banner after click
+    banner.style.display = 'none';
     sessionStorage.setItem('cookie-install-dismissed', 'true');
   });
   
-  // Hover effect on action button
-  actionBtn.addEventListener('mouseenter', () => {
-    actionBtn.style.background = 'rgba(255,255,255,0.35)';
+  // Hover effect
+  btn.addEventListener('mouseenter', () => {
+    btn.style.background = 'rgba(255,255,255,0.35)';
   });
-  actionBtn.addEventListener('mouseleave', () => {
-    actionBtn.style.background = 'rgba(255,255,255,0.25)';
-  });
-  
-  closeBtn.addEventListener('mouseenter', () => {
-    closeBtn.style.opacity = '1';
-  });
-  closeBtn.addEventListener('mouseleave', () => {
-    closeBtn.style.opacity = '0.8';
+  btn.addEventListener('mouseleave', () => {
+    btn.style.background = 'rgba(255,255,255,0.25)';
   });
 })();
 </script>
