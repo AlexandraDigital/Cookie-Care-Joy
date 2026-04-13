@@ -4,28 +4,9 @@
 <head>
   <meta charset="UTF-8" />
 <script>
-// ── Median.co (GoNative) detection — set as early as possible ──────────────
-window.IS_MEDIAN_APP = (
-  /median|gonative/i.test(navigator.userAgent) ||
-  typeof window.median !== "undefined" ||
-  typeof window.gonative !== "undefined"
-);
-</script>
- <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-
-<script>
-// Skip OneSignal web SDK in Median — push notifications are handled natively
-if (!window.IS_MEDIAN_APP) {
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  OneSignalDeferred.push(async function(OneSignal) {
-    try {
-      await window._oneSignalReady = true;
-    } catch(e) {
-      console.warn("OneSignal init failed (IndexedDB issue?), falling back to local notifications.", e.message || e);
-      window._oneSignalFailed = true;
-    }
-  });
-}
+// Removed: OneSignal and Median - using native notifications only
+window.IS_MEDIAN_APP = false;
+window._oneSignalFailed = true; // Assume OneSignal unavailable
 </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <!-- PWA manifest (required for Android install + iOS 16.4+ push) -->
@@ -7505,17 +7486,7 @@ function App() {
       setToastMsg(msg);
       setTimeout(() => setToastMsg(null), 6000);
     };
-    window.OneSignalDeferred = window.OneSignalDeferred || [];
-    window.OneSignalDeferred.push(function (OneSignal) {
-      if (OneSignal.Notifications && OneSignal.Notifications.addEventListener) {
-        OneSignal.Notifications.addEventListener("foregroundWillDisplay", event => {
-          event.preventDefault();
-          const notif = event.notification;
-          const msg = notif && (notif.body || notif.title) || "";
-          if (msg && window._ccjShowToast) window._ccjShowToast(msg);
-        });
-      }
-    });
+    // Removed: OneSignal notification listener — using native notifications instead
   }, []);
   useEffect(() => {
     const doCheck = () => {
@@ -8031,8 +8002,23 @@ class AppErrorBoundary extends React.Component {
 }
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(/*#__PURE__*/React.createElement(AppErrorBoundary, null, /*#__PURE__*/React.createElement(App, null)));
+
+// ── Splashscreen Timeout Safety Net ──────────────────────────────────
+// Ensure presplash is hidden even if React rendering fails or is delayed
+setTimeout(() => {
+  const presplash = document.getElementById('ccj-presplash');
+  if (presplash && presplash.style.opacity !== '0') {
+    presplash.style.transition = 'opacity 0.3s';
+    presplash.style.opacity = '0';
+    setTimeout(() => {
+      const el = document.getElementById('ccj-presplash');
+      if (el && el.parentNode) el.remove();
+    }, 300);
+  }
+}, 3000);
+
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/Cookie-Care-Joy/OneSignalSDKWorker.js").then(reg => {
+  navigator.serviceWorker.register("/Cookie-Care-Joy/sw.js").then(reg => {
     console.log("Service worker registered");
 
     // Sync SW schedule on page load (re-arms any notifications after SW restart)
@@ -8362,35 +8348,10 @@ if ("serviceWorker" in navigator) {
     );
 
     // ── Median JS Bridge init ────────────────────────────────────────────────
-    if (IS_MEDIAN) {
-      // Called by Median once the native bridge is ready
-      window.median_ready = function () {
-        // Bridge is confirmed active — update flag
-        window.IS_MEDIAN_APP = true;
-        // Restore stored OneSignal ID + type
-        var storedPid = localStorage.getItem("ccj_median_player_id");
-        var storedType = localStorage.getItem("ccj_median_id_type");
-        if (storedPid) { window._medianOneSignalId = storedPid; }
-        if (storedType) { window._medianOneSignalIdType = storedType; }
-        // Set status bar style (Android: dark icons on light bg)
-        if (window.median && window.median.statusbar) {
-          window.median.statusbar.set({ style: "default", color: "#fdf6fb" });
-        }
-        // Hide the native navigation bar / loading indicator
-        if (window.median && window.median.navigationbar) {
-          window.median.navigationbar.hide();
-        }
-        // Restore any previously stored Median player ID into memory
-        var storedPid = localStorage.getItem("ccj_median_player_id");
-        if (storedPid) { window._medianOneSignalId = storedPid; }
-      };
-
-      // Android hardware back button — let Median handle history navigation
-      document.addEventListener("backbutton", function () {
-        if (window.history.length > 1) {
-          window.history.back();
-        }
-      }, false);
+    // Removed: Median integration code — app now runs standalone
+    if (false) { // Disabled
+      // Was: if (IS_MEDIAN) {
+      // Median bridge code removed
 
       // Suppress install banners — not needed inside native app
       var iosBanner = document.getElementById("ccj-ios-install");
