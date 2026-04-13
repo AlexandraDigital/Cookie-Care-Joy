@@ -1,0 +1,65 @@
+{
+  "name": "Cookie Care Joy",
+  "short_name": "CookieCarJoy",
+  "description": "🍪 Sweet reminders and to-do list for self-care",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#f9a8d4",
+  "background_color": "#fff5f8",
+  "categories": ["productivity", "lifestyle"],
+  "screenshots": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 720'><rect fill='%23fff5f8' width='540' height='720'/><rect fill='%23f9a8d4' width='540' height='120'/><text x='270' y='70' font-size='60' font-weight='bold' text-anchor='middle' dominant-baseline='middle' fill='white'>Cookie Care Joy</text><text x='270' y='400' font-size='100' text-anchor='middle' dominant-baseline='middle'>🍪</text></svg>",
+      "sizes": "540x720",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1280 720'><rect fill='%23fff5f8' width='1280' height='720'/><rect fill='%23f9a8d4' width='1280' height='120'/><text x='640' y='70' font-size='60' font-weight='bold' text-anchor='middle' dominant-baseline='middle' fill='white'>Cookie Care Joy</text><text x='640' y='400' font-size='100' text-anchor='middle' dominant-baseline='middle'>🍪</text></svg>",
+      "sizes": "1280x720",
+      "form_factor": "wide"
+    }
+  ],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%23fff5f8' width='192' height='192'/><text x='96' y='144' font-size='120' text-anchor='middle' dominant-baseline='middle'>🍪</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%23f9a8d4' width='192' height='192'/><text x='96' y='144' font-size='120' text-anchor='middle' dominant-baseline='middle'>🍪</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect fill='%23fff5f8' width='512' height='512'/><text x='256' y='384' font-size='320' text-anchor='middle' dominant-baseline='middle'>🍪</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect fill='%23f9a8d4' width='512' height='512'/><text x='256' y='384' font-size='320' text-anchor='middle' dominant-baseline='middle'>🍪</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Add Task",
+      "short_name": "Add Task",
+      "description": "Quickly add a task to your to-do list",
+      "url": "/?shortcut=add-task",
+      "icons": [
+        {
+          "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%23f9a8d4' width='192' height='192'/><text x='96' y='96' font-size='100' text-anchor='middle' dominant-baseline='middle'>📋</text></svg>",
+          "sizes": "192x192",
+          "type": "image/svg+xml"
+        }
+      ]
+    }
+  ]
+}
