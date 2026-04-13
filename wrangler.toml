@@ -8,7 +8,7 @@ pages_build_output_dir = "./docs"
 
 [[kv_namespaces]]
 binding = "CCJ_SUBS"
-id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+id = "28f2e2c698e64cd5be42dd23a748a513"
 
 # ── Cron Trigger — fires every 30 minutes to send due notifications ───────────
 [triggers]
