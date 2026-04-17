@@ -1,158 +1,167 @@
-// src/index.js — Main Worker entry point
-// Routes HTTP requests and handles scheduled cron triggers
+import webpush from 'web-push';
 
-import { sendPush } from "../functions/send-push.js";
+// List of motivational messages
+const motivationalMessages = [
+  "Every cookie baked with care brings joy to someone's day! 🍪",
+  "You're doing amazing, keep spreading sweetness! 💛",
+  "Remember to take breaks and enjoy the little things! ☕",
+  "Your dedication to Cookie Care Joy is inspiring! ✨",
+  "Each act of kindness is like a fresh-baked cookie! 🥭",
+  "You've got this! Keep being awesome! 🌟",
+  "Spread joy like sprinkles on a cupcake! 🧁",
+  "Your smile is the best ingredient in life! 😊",
+  "Keep shining bright, you magnificent human! ☀️",
+  "Today is the perfect day for something sweet! 🎂",
+];
 
-// ─── Scheduled Cron Handler ───────────────────────────────────────────────────
+// Helper: Get a random motivational message
+function getRandomMessage() {
+  return motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
+}
 
-export async function scheduled(event, env, ctx) {
+// Helper: Send push notification
+async function sendPush(subscription, payload, env) {
   try {
-    console.log("Cron triggered at", new Date().toISOString());
-
-    // Get all stored subscriptions from KV
-    const subscriptions = await env.CCJ_SUBS.list();
-
-    if (!subscriptions.keys || subscriptions.keys.length === 0) {
-      console.log("No subscriptions found");
-      return;
+    await webpush.sendNotification(subscription, JSON.stringify(payload));
+    return { status: 'sent' };
+  } catch (error) {
+    if (error.statusCode === 410 || error.statusCode === 404) {
+      return { status: 'expired' };
     }
-
-    console.log(`Found ${subscriptions.keys.length} subscriptions, sending notifications...`);
-
-    // Array of motivational messages
-    const motivations = [
-      { title: "🍪 Cookie Care Joy", body: "Time for a moment of joy—you've got this!" },
-      { title: "✨ Self-Care Reminder", body: "Pause and celebrate yourself. You matter!" },
-      { title: "💪 You're Doing Great", body: "Keep going—progress looks good on you!" },
-      { title: "🌟 Moment of Gratitude", body: "Grateful for you showing up for yourself today." },
-      { title: "🎉 Keep Shining", body: "Your effort makes a difference. Well done!" },
-    ];
-
-    const randomMsg = motivations[Math.floor(Math.random() * motivations.length)];
-
-    // Send to each subscription
-    const results = await Promise.allSettled(
-      subscriptions.keys.map(async (key) => {
-        const subData = await env.CCJ_SUBS.get(key.name);
-        if (!subData) return { status: "missing" };
-
-        try {
-          const subscription = JSON.parse(subData);
-          const response = await sendPush(subscription, randomMsg.title, randomMsg.body);
-
-          if (response.status === 410 || response.status === 404) {
-            // Subscription expired — clean up
-            await env.CCJ_SUBS.delete(key.name);
-            return { status: "expired", key: key.name };
-          }
-
-          return { status: "sent", key: key.name, httpStatus: response.status };
-        } catch (err) {
-          console.error(`Error sending to ${key.name}:`, err);
-          return { status: "error", key: key.name, error: err.message };
-        }
-      })
-    );
-
-    // Log summary
-    const sent = results.filter((r) => r.value?.status === "sent").length;
-    const expired = results.filter((r) => r.value?.status === "expired").length;
-    const errors = results.filter((r) => r.value?.status === "error").length;
-
-    console.log(`Cron complete: sent=${sent}, expired=${expired}, errors=${errors}`);
-  } catch (err) {
-    console.error("Cron handler error:", err);
+    console.error('Push error:', error.message);
+    return { status: 'error', message: error.message };
   }
 }
 
-// ─── HTTP Request Router ──────────────────────────────────────────────────────
+// Helper: Handle cron job (send push notifications to all subscribers)
+async function handleCronSchedule(env) {
+  try {
+    console.log('🔔 Starting scheduled push notifications...');
 
+    // Get all subscriptions from KV
+    const allKeys = await env.CCJ_SUBS.list();
+    console.log(`Found ${allKeys.keys.length} subscribers`);
+
+    if (allKeys.keys.length === 0) {
+      console.log('No subscribers found');
+      return new Response('No subscribers', { status: 200 });
+    }
+
+    // Get the random message
+    const messageTitle = 'Cookie Care Joy';
+    const messageBody = getRandomMessage();
+
+    // Send push to all subscribers
+    const pushPromises = allKeys.keys.map(async (key) => {
+      const subscription = await env.CCJ_SUBS.get(key.name, 'json');
+      if (!subscription) return { status: 'error', message: 'No subscription data' };
+
+      const payload = {
+        title: messageTitle,
+        body: messageBody,
+        icon: '/icon-192x192.png',
+      };
+
+      return await sendPush(subscription, payload, env);
+    });
+
+    const results = await Promise.allSettled(pushPromises);
+
+    // Log summary
+    const sent = results.filter((r) => r.status === 'fulfilled' && r.value?.status === 'sent').length;
+    const expired = results.filter((r) => r.status === 'fulfilled' && r.value?.status === 'expired').length;
+    const errors = results.filter((r) => r.status === 'rejected' || (r.status === 'fulfilled' && r.value?.status === 'error')).length;
+
+    console.log(`📊 Summary: ${sent} sent, ${expired} expired, ${errors} errors`);
+
+    // Clean up expired subscriptions
+    for (let i = 0; i < allKeys.keys.length; i++) {
+      const result = results[i];
+      if (result.status === 'fulfilled' && result.value?.status === 'expired') {
+        await env.CCJ_SUBS.delete(allKeys.keys[i].name);
+        console.log(`🗑️ Deleted expired subscription: ${allKeys.keys[i].name}`);
+      }
+    }
+  } catch (error) {
+    console.error('Cron error:', error);
+  }
+}
+
+// Worker fetch handler
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    const path = url.pathname;
-    const method = request.method;
+    const pathname = url.pathname;
 
-    // CORS preflight
-    if (method === "OPTIONS") {
-      return new Response(null, {
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type",
-        },
-      });
-    }
-
-    // POST /subscribe — save a Web Push subscription
-    if (path === "/subscribe" && method === "POST") {
+    // Route: POST /subscribe - Add a new subscription
+    if (pathname === '/subscribe' && request.method === 'POST') {
       try {
-        const sub = await request.json();
-        if (!sub || !sub.endpoint) {
-          return json({ error: "Invalid subscription" }, 400);
-        }
-        const key = "sub_" + btoa(sub.endpoint).replace(/[^a-zA-Z0-9]/g, "").slice(-48);
-        await env.CCJ_SUBS.put(key, JSON.stringify(sub), {
-          expirationTtl: 60 * 60 * 24 * 90, // 90 days
+        const subscription = await request.json();
+        const subscriptionId = `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        await env.CCJ_SUBS.put(subscriptionId, JSON.stringify(subscription));
+        console.log(`✅ New subscription: ${subscriptionId}`);
+        return new Response(JSON.stringify({ success: true, id: subscriptionId }), {
+          status: 201,
+          headers: { 'Content-Type': 'application/json' },
         });
-        return json({ ok: true, key });
-      } catch (e) {
-        return json({ error: e.message }, 500);
+      } catch (error) {
+        console.error('Subscribe error:', error);
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
     }
 
-    // DELETE /subscribe — remove a subscription
-    if (path === "/subscribe" && method === "DELETE") {
+    // Route: DELETE /subscribe/:id - Remove a subscription
+    if (pathname.startsWith('/subscribe/') && request.method === 'DELETE') {
       try {
-        const { endpoint } = await request.json();
-        if (!endpoint) return json({ error: "No endpoint" }, 400);
-        const key = "sub_" + btoa(endpoint).replace(/[^a-zA-Z0-9]/g, "").slice(-48);
-        await env.CCJ_SUBS.delete(key);
-        return json({ ok: true });
-      } catch (e) {
-        return json({ error: e.message }, 500);
+        const id = pathname.split('/')[2];
+        await env.CCJ_SUBS.delete(id);
+        console.log(`❌ Deleted subscription: ${id}`);
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      } catch (error) {
+        console.error('Delete error:', error);
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
     }
 
-    // POST /send-push — send a Web Push notification
-    if (path === "/send-push" && method === "POST") {
+    // Route: POST /send-push - Manual push notification
+    if (pathname === '/send-push' && request.method === 'POST') {
       try {
-        const { endpoint, title, body } = await request.json();
-        if (!endpoint) return json({ error: "No endpoint" }, 400);
-
-        const key = "sub_" + btoa(endpoint).replace(/[^a-zA-Z0-9]/g, "").slice(-48);
-        const stored = await env.CCJ_SUBS.get(key);
-        if (!stored) return json({ error: "Subscription not found" }, 404);
-
-        const subscription = JSON.parse(stored);
-        const resp = await sendPush(
-          subscription,
-          title || "Cookie-Care-Joy 🍪",
-          body || "Time to take care of yourself ✨"
-        );
-
-        if (resp.status === 410 || resp.status === 404) {
-          await env.CCJ_SUBS.delete(key);
-          return json({ ok: false, expired: true });
-        }
-
-        return json({ ok: resp.ok, status: resp.status });
-      } catch (e) {
-        return json({ error: e.message }, 500);
+        const { subscription, title, body } = await request.json();
+        const payload = { title, body, icon: '/icon-192x192.png' };
+        const result = await sendPush(subscription, payload, env);
+        return new Response(JSON.stringify(result), {
+          status: result.status === 'sent' ? 200 : 400,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      } catch (error) {
+        console.error('Send push error:', error);
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
     }
 
-    // 404
-    return json({ error: "Not Found" }, 404);
+    // Route: GET / - Health check
+    if (pathname === '/' && request.method === 'GET') {
+      return new Response('Cookie Care Joy Worker is running! 🍪', { status: 200 });
+    }
+
+    return new Response('Not Found', { status: 404 });
+  },
+
+  // Scheduled handler - runs on cron trigger
+  async scheduled(event, env, ctx) {
+    console.log('⏰ Cron triggered at', new Date().toISOString());
+    ctx.waitUntil(handleCronSchedule(env));
   },
 };
-
-function json(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-    },
-  });
-}
