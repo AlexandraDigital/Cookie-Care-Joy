@@ -7899,6 +7899,59 @@ if ("serviceWorker" in navigator) {
 }
 </script>
 
+<button id="ccj-pwa-install-btn" style="display:flex;align-items:center;gap:6px;">
+  <img src="/icon-192.png" style="width:18px;height:18px;">
+  Add to Home
+</button>
+
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+
+  const btn = document.getElementById('ccj-pwa-install-btn');
+  if (!btn) return;
+
+  // Detect device
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+
+  // Set button text
+  function updateButton() {
+    if (isStandalone) {
+      btn.textContent = "🚀 Open App";
+    } else {
+      btn.innerHTML = `
+        <img src="/Cookie-Care-Joy/icon-192.png" style="width:18px;height:18px;">
+        Add to Home
+      `;
+    }
+  }
+
+  updateButton();
+
+  // Click behavior
+  btn.addEventListener('click', async () => {
+
+    // iPhone → manual instructions
+    if (isIOS && !isStandalone) {
+      alert("Tap ⬆️ then 'Add to Home Screen'");
+      return;
+    }
+
+    // Android → use GLOBAL prompt (your existing one)
+    if (window._deferredInstallPrompt) {
+      window._deferredInstallPrompt.prompt();
+      window._deferredInstallPrompt = null;
+      return;
+    }
+
+    // Installed → open app
+    window.location.href = "/Cookie-Care-Joy/";
+  });
+
+});
+</script>
 
 </body>
 
