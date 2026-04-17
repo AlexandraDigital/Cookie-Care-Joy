@@ -1,5 +1,3 @@
-import webpush from 'web-push';
-
 // List of motivational messages
 const motivationalMessages = [
   "Every cookie baked with care brings joy to someone's day! 🍪",
@@ -19,15 +17,30 @@ function getRandomMessage() {
   return motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
 }
 
-// Helper: Send push notification
-async function sendPush(subscription, payload, env) {
+// Helper: Send push notification to subscription endpoint
+async function sendPush(subscription) {
   try {
-    await webpush.sendNotification(subscription, JSON.stringify(payload));
-    return { status: 'sent' };
-  } catch (error) {
-    if (error.statusCode === 410 || error.statusCode === 404) {
+    const response = await fetch(subscription.endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'TTL': '24',
+      },
+      body: JSON.stringify({
+        title: 'Cookie Care Joy',
+        body: getRandomMessage(),
+        icon: '/icon-192x192.png',
+      }),
+    });
+
+    if (response.status === 410 || response.status === 404) {
       return { status: 'expired' };
     }
+    if (response.ok) {
+      return { status: 'sent' };
+    }
+    return { status: 'error', message: `HTTP ${response.status}` };
+  } catch (error) {
     console.error('Push error:', error.message);
     return { status: 'error', message: error.message };
   }
@@ -47,22 +60,11 @@ async function handleCronSchedule(env) {
       return new Response('No subscribers', { status: 200 });
     }
 
-    // Get the random message
-    const messageTitle = 'Cookie Care Joy';
-    const messageBody = getRandomMessage();
-
     // Send push to all subscribers
     const pushPromises = allKeys.keys.map(async (key) => {
       const subscription = await env.CCJ_SUBS.get(key.name, 'json');
       if (!subscription) return { status: 'error', message: 'No subscription data' };
-
-      const payload = {
-        title: messageTitle,
-        body: messageBody,
-        icon: '/icon-192x192.png',
-      };
-
-      return await sendPush(subscription, payload, env);
+      return await sendPush(subscription);
     });
 
     const results = await Promise.allSettled(pushPromises);
@@ -135,9 +137,8 @@ export default {
     // Route: POST /send-push - Manual push notification
     if (pathname === '/send-push' && request.method === 'POST') {
       try {
-        const { subscription, title, body } = await request.json();
-        const payload = { title, body, icon: '/icon-192x192.png' };
-        const result = await sendPush(subscription, payload, env);
+        const { subscription } = await request.json();
+        const result = await sendPush(subscription);
         return new Response(JSON.stringify(result), {
           status: result.status === 'sent' ? 200 : 400,
           headers: { 'Content-Type': 'application/json' },
