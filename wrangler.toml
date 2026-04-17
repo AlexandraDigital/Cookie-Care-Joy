@@ -1,0 +1,12 @@
+name = "cookie-care-joy"
+pages_build_output_dir = "./"
+
+# ── KV Namespace ──────────────────────────────────────────────────────────────
+# Run this ONCE to create the namespace:
+#   npx wrangler kv:namespace create CCJ_SUBS
+# Then replace the id below with the one it gives you.
+
+[[kv_namespaces]]
+binding = "CCJ_SUBS"
+id = "28f2e2c698e64cd5be42dd23a748a513"
+
