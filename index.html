@@ -563,6 +563,23 @@ window.addEventListener('beforeinstallprompt', function(e) {
         left: 0 !important;
       }
     }
+    
+.install-banner {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  color: #111;
+  padding: 12px 18px;
+  border-radius: 14px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  font-size: 14px;
+  font-family: sans-serif;
+  display: none;
+  z-index: 9999;
+}
+
   </style>
 
   <script>
@@ -7902,42 +7919,46 @@ if ("serviceWorker" in navigator) {
 
 
 <script>
-  <button id="ccj-pwa-install-btn" style="padding:10px 14px;border-radius:10px;">
-  Add to Home
-</button>
+<div id="installBanner" class="install-banner">
+  <span>📲 Add to Home Screen</span>
+</div>
+
+
+const banner = document.getElementById("installBanner");
 
 let deferredPrompt = null;
-
-const btn = document.getElementById("ccj-pwa-install-btn");
 
 // Detect iPhone
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
 
-// Capture Android install prompt
+// Show Android install banner when available
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   deferredPrompt = e;
+  banner.style.display = "block";
 });
 
-// Click behavior
-btn.addEventListener("click", async () => {
+// Show iPhone banner (manual install)
+if (isIOS) {
+  banner.style.display = "block";
+}
 
-  // iPhone (no install prompt exists)
+// Click banner behavior
+banner.addEventListener("click", async () => {
+
   if (isIOS) {
-    alert("Tap the Share button ⬆️ then select 'Add to Home Screen'");
+    alert("Tap Share ⬆️ then 'Add to Home Screen'");
     return;
   }
 
-  // Android install popup
   if (deferredPrompt) {
     deferredPrompt.prompt();
     deferredPrompt = null;
-    return;
   }
 
-  // Already installed or unsupported → just open app
-  window.location.href = "/Cookie-Care-Joy/";
+  banner.style.display = "none";
 });
 </script>
+
 </body>
 
