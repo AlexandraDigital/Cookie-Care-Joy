@@ -9,3 +9,9 @@ pages_build_output_dir = "./"
 [[kv_namespaces]]
 binding = "CCJ_SUBS"
 id = "28f2e2c698e64cd5be42dd23a748a513"
+
+# ── Scheduled Triggers ─────────────────────────────────────────────────────────
+# Every 30 minutes: Process scheduled messages (schedule.js)
+# Every hour: Send motivational messages (motivational-hourly.js)
+[triggers]
+crons = ["*/30 * * * *", "0 * * * *"]
