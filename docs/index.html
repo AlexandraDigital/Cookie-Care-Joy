@@ -31,25 +31,25 @@ window.addEventListener('beforeinstallprompt', function(e) {
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <!-- PWA manifest (required for Android install + iOS 16.4+ push) -->
-  <link rel="manifest" href="/Cookie-Care-Joy/manifest.json" />
+  <link rel="manifest" href="/manifest.json" />
   <!-- iOS PWA support -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Cookie Care" />
   <!-- Apple touch icons — all device sizes -->
-  <link rel="apple-touch-icon" sizes="180x180" href="/Cookie-Care-Joy/icon-192.png" />
-  <link rel="apple-touch-icon" sizes="152x152" href="/Cookie-Care-Joy/icon-144.png" />
-  <link rel="apple-touch-icon" sizes="120x120" href="/Cookie-Care-Joy/icon-96.png" />
-  <link rel="apple-touch-icon" sizes="76x76"   href="/Cookie-Care-Joy/icon-48.png"  />
+  <link rel="apple-touch-icon" sizes="180x180" href="/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="152x152" href="/icon-144.png" />
+  <link rel="apple-touch-icon" sizes="120x120" href="/icon-96.png" />
+  <link rel="apple-touch-icon" sizes="76x76"   href="/icon-48.png"  />
   <!-- iOS splash screens — common iPhone/iPad sizes -->
-  <link rel="apple-touch-startup-image" media="screen and (device-width:430px) and (device-height:932px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"  href="/Cookie-Care-Joy/icon-512.png" />
-  <link rel="apple-touch-startup-image" media="screen and (device-width:393px) and (device-height:852px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"  href="/Cookie-Care-Joy/icon-512.png" />
-  <link rel="apple-touch-startup-image" media="screen and (device-width:390px) and (device-height:844px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"  href="/Cookie-Care-Joy/icon-512.png" />
-  <link rel="apple-touch-startup-image" media="screen and (device-width:375px) and (device-height:812px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"  href="/Cookie-Care-Joy/icon-512.png" />
-  <link rel="apple-touch-startup-image" media="screen and (device-width:414px) and (device-height:896px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)"  href="/Cookie-Care-Joy/icon-512.png" />
-  <link rel="apple-touch-startup-image" media="screen and (device-width:375px) and (device-height:667px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)"  href="/Cookie-Care-Joy/icon-512.png" />
-  <link rel="apple-touch-startup-image" media="screen and (device-width:768px) and (device-height:1024px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)" href="/Cookie-Care-Joy/icon-512.png" />
+  <link rel="apple-touch-startup-image" media="screen and (device-width:430px) and (device-height:932px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"  href="/icon-512.png" />
+  <link rel="apple-touch-startup-image" media="screen and (device-width:393px) and (device-height:852px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"  href="/icon-512.png" />
+  <link rel="apple-touch-startup-image" media="screen and (device-width:390px) and (device-height:844px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"  href="/icon-512.png" />
+  <link rel="apple-touch-startup-image" media="screen and (device-width:375px) and (device-height:812px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"  href="/icon-512.png" />
+  <link rel="apple-touch-startup-image" media="screen and (device-width:414px) and (device-height:896px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)"  href="/icon-512.png" />
+  <link rel="apple-touch-startup-image" media="screen and (device-width:375px) and (device-height:667px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)"  href="/icon-512.png" />
+  <link rel="apple-touch-startup-image" media="screen and (device-width:768px) and (device-height:1024px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)" href="/icon-512.png" />
   <!-- Theme color for Android Chrome toolbar -->
   <meta name="theme-color" content="#f9a8d4" />
   <!-- Prevent phone number auto-detection on iOS -->
@@ -6535,8 +6535,24 @@ function DataBackupButton(_ref16) {
   }, t.btn_save))));
 }
 
-// ── APP ROOT ──────────────────────────────────────────────────────
-function App() {
+// ── Custom Install Card ───────────────────────────────────────────
+function InstallCard(_ref) {
+  let {
+    onInstall,
+    onDismiss
+  } = _ref;
+  const t = React.useContext(LangContext);
+  const [showCard, setShowCard] = React.useState(true);
+  const handleInstall = () => {
+    onInstall();
+    setShowCard(false);
+  };
+  const handleDismiss = () => {
+    setShowCard(false);
+    onDismiss();
+  };
+  if (!showCard) return null;
+  return /*#__PURE__*/React.createElement(\"div\", {\n    style: {\n      position: \"fixed\",\n      bottom: \"max(24px, env(safe-area-inset-bottom))\",\n      left: \"max(16px, env(safe-area-inset-left))\",\n      right: \"max(16px, env(safe-area-inset-right))\",\n      zIndex: 250,\n      maxWidth: 360,\n      animation: \"slideDown 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards\",\n      pointerEvents: \"all\"\n    }\n  }, /*#__PURE__*/React.createElement(\"div\", {\n    style: {\n      background: \"linear-gradient(135deg, #fff5f8 0%, #fffbf8 100%)\",\n      border: \"2px solid #f9a8d4\",\n      borderRadius: 20,\n      padding: \"20px\",\n      boxShadow: \"0 12px 48px rgba(244, 63, 110, 0.25), 0 2px 8px rgba(244, 63, 110, 0.15)\",\n      backdropFilter: \"blur(10px)\"\n    }\n  }, /*#__PURE__*/React.createElement(\"div\", {\n    style: {\n      display: \"flex\",\n      alignItems: \"center\",\n      gap: 16,\n      marginBottom: 16\n    }\n  }, /*#__PURE__*/React.createElement(\"img\", {\n    src: \"/icon-192.png\",\n    alt: \"Cookie-Care-Joy\",\n    style: {\n      width: 64,\n      height: 64,\n      borderRadius: 16,\n      boxShadow: \"0 4px 16px rgba(244, 63, 110, 0.25)\",\n      flexShrink: 0\n    }\n  }), /*#__PURE__*/React.createElement(\"div\", {\n    style: {\n      flex: 1\n    }\n  }, /*#__PURE__*/React.createElement(\"h3\", {\n    style: {\n      margin: \"0 0 4px\",\n      fontSize: 16,\n      fontWeight: 800,\n      color: \"#f43f6e\",\n      fontFamily: \"Georgia,serif\"\n    }\n  }, \"Cookie-Care-Joy\"), /*#__PURE__*/React.createElement(\"p\", {\n    style: {\n      margin: 0,\n      fontSize: 12,\n      color: \"#6b7280\",\n      fontWeight: 500\n    }\n  }, \"Add to home screen\"))), /*#__PURE__*/React.createElement(\"div\", {\n    style: {\n      display: \"flex\",\n      gap: 10\n    }\n  }, /*#__PURE__*/React.createElement(\"button\", {\n    onClick: handleDismiss,\n    style: {\n      flex: 1,\n      padding: \"12px 16px\",\n      border: \"2px solid #f0e6f0\",\n      borderRadius: 12,\n      background: \"#fff\",\n      color: \"#6b7280\",\n      cursor: \"pointer\",\n      fontFamily: \"inherit\",\n      fontSize: 14,\n      fontWeight: 600,\n      transition: \"all 0.2s\"\n    },\n    onMouseEnter: e => {\n      e.currentTarget.style.background = \"#f9f5f8\";\n      e.currentTarget.style.borderColor = \"#e5b5d0\";\n    },\n    onMouseLeave: e => {\n      e.currentTarget.style.background = \"#fff\";\n      e.currentTarget.style.borderColor = \"#f0e6f0\";\n    }\n  }, \"Maybe later\"), /*#__PURE__*/React.createElement(\"button\", {\n    onClick: handleInstall,\n    style: {\n      flex: 1,\n      padding: \"12px 16px\",\n      border: \"none\",\n      borderRadius: 12,\n      background: \"linear-gradient(135deg, #f43f6e 0%, #fb923c 100%)\",\n      color: \"#fff\",\n      cursor: \"pointer\",\n      fontFamily: \"inherit\",\n      fontSize: 14,\n      fontWeight: 700,\n      boxShadow: \"0 4px 16px rgba(244, 63, 110, 0.3)\",\n      transition: \"all 0.2s\"\n    },\n    onMouseEnter: e => {\n      e.currentTarget.style.transform = \"scale(1.05)\";\n      e.currentTarget.style.boxShadow = \"0 6px 24px rgba(244, 63, 110, 0.45)\";\n    },\n    onMouseLeave: e => {\n      e.currentTarget.style.transform = \"scale(1)\";\n      e.currentTarget.style.boxShadow = \"0 4px 16px rgba(244, 63, 110, 0.3)\";\n    }\n  }, \"✨ Install\"))));\n}\n\n// ── APP ROOT ──────────────────────────────────────────────────────\nfunction App() {
   // Unlock AudioContext on the very first user interaction (mousedown fires before click)
   useEffect(() => {
     const unlock = () => {
@@ -6575,6 +6591,7 @@ function App() {
   const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
   const [page, setPage] = useState("today");
   const [showCoolDown, setShowCoolDown] = useState(false);
+  const [showInstallCard, setShowInstallCard] = useState(false);
   const [nightMode, setNightMode] = useState(() => {
     const h = new Date().getHours();
     return h >= 19 || h < 6;
@@ -6627,6 +6644,43 @@ function App() {
   const [selectedTheme, setSelectedTheme] = useState(() => load("ccj_theme", 1));
   const [selectedSound, setSelectedSound] = useState(() => load("ccj_sound", 0));
   const [tasks, setTasks] = useState(() => load("ccj_tasks", []));
+
+  // ── Set up install card trigger ──
+  useEffect(() => {
+    const showInstall = () => {
+      if (localStorage.getItem('ccj_install_dismissed') !== '1') {
+        setShowInstallCard(true);
+      }
+    };
+    
+    const handleInstall = async () => {
+      if (window._deferredInstallPrompt) {
+        window._deferredInstallPrompt.prompt();
+        const result = await window._deferredInstallPrompt.userChoice;
+        if (result.outcome === 'accepted') {
+          localStorage.setItem('ccj_install_dismissed', '1');
+          setShowInstallCard(false);
+        }
+      }
+    };
+    
+    const handleDismiss = () => {
+      localStorage.setItem('ccj_install_dismissed', '1');
+      setShowInstallCard(false);
+    };
+    
+    window._ccjShowInstallCard = showInstall;
+    window._ccjHandleInstall = handleInstall;
+    window._ccjHandleDismiss = handleDismiss;
+    
+    const timer = setTimeout(() => {
+      if (splashGoneRef.current && window._deferredInstallPrompt) {
+        showInstall();
+      }
+    }, 1500);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   // ── Auto-save whenever state changes ──
   useEffect(() => {
@@ -6988,7 +7042,7 @@ function App() {
 
   // localNotify: fires a notification via Service Worker when app is open
   // ── localStorage notification queue (survives SW restart) ────────────
-  const _CCJ_ICON = "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png";
+  const _CCJ_ICON = "https://alexandradigital.github.io/icon-192.png";
   function _lsQueueGet() {
     try {
       return JSON.parse(localStorage.getItem("ccj_notif_queue") || "[]");
@@ -7245,8 +7299,8 @@ function App() {
             navigator.serviceWorker.ready.then(reg => {
               reg.showNotification(item.title, {
                 body: item.body,
-                icon: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png",
-                badge: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-96.png",
+                icon: "https://alexandradigital.github.io/icon-192.png",
+                badge: "https://alexandradigital.github.io/icon-96.png",
                 tag,
                 requireInteraction: false
               });
@@ -7724,6 +7778,9 @@ function App() {
     onClose: () => setShowCoolDown(false),
     purchased: purchased,
     selectedSound: selectedSound
+  }), showInstallCard && /*#__PURE__*/React.createElement(InstallCard, {
+    onInstall: window._ccjHandleInstall,
+    onDismiss: window._ccjHandleDismiss
   })));
 }
 class AppErrorBoundary extends React.Component {
@@ -7944,7 +8001,7 @@ if ("serviceWorker" in navigator) {
     var icon = document.createElement('div');
     icon.className = 'ccj-il-icon';
     var iconImg = document.createElement('img');
-    iconImg.src = '/Cookie-Care-Joy/icon-192.png';
+    iconImg.src = '/icon-192.png';
     iconImg.alt = 'Cookie Care Joy';
     iconImg.onerror = function() {
       icon.textContent = '🍪';
