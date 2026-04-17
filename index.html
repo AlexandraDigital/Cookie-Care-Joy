@@ -565,106 +565,6 @@ window.addEventListener('beforeinstallprompt', function(e) {
     }
   </style>
 
-  <style>
-    /* ── PWA Install Button — desktop fixed top-right ── */
-    #ccj-pwa-install-btn {
-      position: fixed;
-      top: calc(env(safe-area-inset-top) + 12px);
-      right: 24px;
-      z-index: 9999;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: linear-gradient(135deg, #f43f6e 0%, #fb7185 100%);
-      border: none;
-      border-radius: 999px;
-      padding: 10px 20px 10px 14px;
-      cursor: pointer;
-      font-family: system-ui, -apple-system, sans-serif;
-      font-size: 13px;
-      font-weight: 800;
-      color: #fff;
-      letter-spacing: 0.3px;
-      white-space: nowrap;
-      box-shadow: 0 4px 18px rgba(244,63,110,0.45), 0 1px 4px rgba(0,0,0,0.08);
-      transition: transform 0.15s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.15s;
-      touch-action: manipulation;
-      -webkit-tap-highlight-color: transparent;
-      animation: ccjBtnPop 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
-    }
-    /* desktop btn always visible except on mobile */
-    @media (max-width: 600px) { #ccj-pwa-install-btn { display: none !important; } }
-    #ccj-pwa-install-btn:hover {
-      transform: scale(1.05);
-      box-shadow: 0 6px 24px rgba(244,63,110,0.55), 0 2px 6px rgba(0,0,0,0.1);
-    }
-    #ccj-pwa-install-btn:active { transform: scale(0.96); }
-    #ccj-pwa-install-btn img {
-      width: 22px; height: 22px; border-radius: 6px;
-      display: block; flex-shrink: 0;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-    }
-
-    /* ── PWA Install FAB — mobile floating above bottom nav ── */
-    #ccj-pwa-install-fab {
-      position: fixed;
-      bottom: calc(76px + env(safe-area-inset-bottom));
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 9999;
-      display: none; /* shown on mobile only via .show */
-      align-items: center;
-      gap: 10px;
-      background: linear-gradient(135deg, #f43f6e 0%, #fb7185 100%);
-      border: none;
-      border-radius: 999px;
-      padding: 14px 28px 14px 20px;
-      cursor: pointer;
-      font-family: system-ui, -apple-system, sans-serif;
-      font-size: 15px;
-      font-weight: 800;
-      color: #fff;
-      letter-spacing: 0.3px;
-      white-space: nowrap;
-      box-shadow: 0 6px 28px rgba(244,63,110,0.5), 0 2px 8px rgba(0,0,0,0.1);
-      touch-action: manipulation;
-      -webkit-tap-highlight-color: transparent;
-      animation: ccjBtnPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
-    }
-    /* mobile fab only visible on mobile when .show */
-    #ccj-pwa-install-fab.show { display: inline-flex !important; }
-    @media (min-width: 601px) { #ccj-pwa-install-fab { display: none !important; } }
-    #ccj-pwa-install-fab:active { transform: translateX(-50%) scale(0.95); }
-    #ccj-pwa-install-fab img {
-      width: 24px; height: 24px; border-radius: 7px;
-      display: block; flex-shrink: 0;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-    }
-
-    @keyframes ccjBtnPop {
-      from { opacity: 0; transform: scale(0.7) translateY(-8px); }
-      to   { opacity: 1; transform: scale(1) translateY(0); }
-    }
-    #ccj-pwa-install-fab { animation-name: ccjFabPop; }
-    @keyframes ccjFabPop {
-      from { opacity: 0; transform: translateX(-50%) scale(0.7) translateY(12px); }
-      to   { opacity: 1; transform: translateX(-50%) scale(1) translateY(0); }
-    }
-  </style>
-
-</head>
-
-<body>
-  <!-- Desktop install button (fixed top-right, desktop only) -->
-  <button id="ccj-pwa-install-btn" aria-label="Install Cookie Care">
-    <img src="/icon-192.png" alt="" onerror="this.style.display='none'">
-    Install App
-  </button>
-  <!-- Mobile install FAB (floating above bottom nav, mobile only) -->
-  <button id="ccj-pwa-install-fab" aria-label="Install Cookie Care">
-    <img src="/icon-192.png" alt="" onerror="this.style.display='none'">
-    Install App
-  </button>
   <script>
   (function () {
     var ua = navigator.userAgent;
@@ -683,10 +583,7 @@ window.addEventListener('beforeinstallprompt', function(e) {
     var btn = document.getElementById('ccj-pwa-install-btn');
     var fab = document.getElementById('ccj-pwa-install-fab');
 
-    function resetBtn() {
-      if (btn) btn.innerHTML = '<img src="/Cookie-Care-Joy/icon-192.png" alt="" onerror="this.style.display='none'" style="width:22px;height:22px;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,.2);display:block;flex-shrink:0"> Install App';
-      if (fab) fab.innerHTML = '<img src="/Cookie-Care-Joy/icon-192.png" alt="" onerror="this.style.display='none'" style="width:24px;height:24px;border-radius:7px;box-shadow:0 1px 4px rgba(0,0,0,.2);display:block;flex-shrink:0"> Install App';
-    }
+   
     function doInstall() {
       var p = window._deferredInstallPrompt;
       if (p) {
