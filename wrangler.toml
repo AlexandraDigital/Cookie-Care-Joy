@@ -1,5 +1,5 @@
 name = "cookie-care-joy"
-pages_build_output_dir = "./docs"
+pages_build_output_dir = "./"
 
 # ── KV Namespace ──────────────────────────────────────────────────────────────
 # Run this ONCE to create the namespace:
