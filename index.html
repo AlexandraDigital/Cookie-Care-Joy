@@ -7974,44 +7974,5 @@ if ("serviceWorker" in navigator) {
 }
 </script>
 
-
-
-<script>
-<div id="installBanner" class="install-banner">
-  <span>📲 Add to Home Screen</span>
-</div>
-
-
-const banner = document.getElementById("installBanner");
-
-let _deferredInstallPrompt= null;
-
-// Detect iPhone
-const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-
-
-
-// Show iPhone banner (manual install)
-if (isIOS) {
-  banner.style.display = "block";
-}
-
-// Click banner behavior
-banner.addEventListener("click", async () => {
-
-  if (isIOS) {
-    alert("Tap Share ⬆️ then 'Add to Home Screen'");
-    return;
-  }
-
-  if (deferredPrompt) {
-    deferredPrompt.prompt();
-    deferredPrompt = null;
-  }
-
-  banner.style.display = "none";
-});
-</script>
-
 </body>
 
