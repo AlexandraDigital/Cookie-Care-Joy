@@ -10,6 +10,3 @@ pages_build_output_dir = "./docs"
 binding = "CCJ_SUBS"
 id = "28f2e2c698e64cd5be42dd23a748a513"
 
-# ── Cron Trigger — fires every 30 minutes to send due notifications ───────────
-[triggers]
-crons = ["*/30 * * * *"]
