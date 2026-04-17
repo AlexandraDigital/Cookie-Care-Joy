@@ -17,6 +17,16 @@ window.addEventListener('beforeinstallprompt', function(e) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <!-- PWA manifest (required for Android install + iOS 16.4+ push) -->
   <link rel="manifest" href="/manifest.json" />
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/service-worker.js').catch(err => {
+          console.log('Service Worker registration failed:', err);
+        });
+      });
+    }
+  </script>
   <!-- iOS PWA support -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -646,6 +656,10 @@ window.addEventListener('beforeinstallprompt', function(e) {
   </script>
   <div id="ccj-presplash" style="position:fixed;inset:0;background:#fdf6fb;z-index:9999;display:flex;align-items:center;justify-content:center"><span style="font-size:72px;line-height:1">🍪</span></div>
   <div id="root"></div>
+  <!-- PWA Install Button (Desktop) -->
+  <button id="ccj-pwa-install-btn" style="position:fixed;bottom:24px;right:24px;z-index:9998;background:#f43f6e;color:#fff;border:none;border-radius:50px;padding:14px 24px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 6px 24px rgba(244,63,110,0.35);font-family:inherit;display:none;transition:all 0.2s;opacity:0.9" onmouseover="this.style.opacity='1';this.style.transform='scale(1.05)'" onmouseout="this.style.opacity='0.9';this.style.transform='scale(1)'">📲 Add to Home Screen</button>
+  <!-- PWA Install Button (Mobile FAB) -->
+  <button id="ccj-pwa-install-fab" style="position:fixed;bottom:calc(100px + env(safe-area-inset-bottom));right:20px;z-index:9998;background:#f43f6e;color:#fff;border:none;border-radius:50%;width:56px;height:56px;font-size:24px;cursor:pointer;box-shadow:0 4px 20px rgba(244,63,110,0.4);font-family:inherit;display:none;opacity:0;transition:opacity 0.3s"></button>
   <script>
 const {
   useState,
