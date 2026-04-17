@@ -1,0 +1,5 @@
+/service-worker.js
+  Content-Type: application/javascript
+
+/sw.js
+  Content-Type: application/javascript
