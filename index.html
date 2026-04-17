@@ -7984,17 +7984,12 @@ if ("serviceWorker" in navigator) {
 
 const banner = document.getElementById("installBanner");
 
-let deferredPrompt = null;
+let _deferredInstallPrompt= null;
 
 // Detect iPhone
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
 
-// Show Android install banner when available
-window.addEventListener("beforeinstallprompt", (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-  banner.style.display = "block";
-});
+
 
 // Show iPhone banner (manual install)
 if (isIOS) {
