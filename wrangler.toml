@@ -1,11 +1,15 @@
 name = "cookie-care-joy"
-pages_build_output_dir = "./"
+type = "service"
+main = "src/index.js"
+compatibility_date = "2025-04-17"
 
 # ── KV Namespace ──────────────────────────────────────────────────────────────
-# Run this ONCE to create the namespace:
-#   npx wrangler kv:namespace create CCJ_SUBS
-# Then replace the id below with the one it gives you.
-
+# This stores Web Push subscriptions
 [[kv_namespaces]]
 binding = "CCJ_SUBS"
 id = "28f2e2c698e64cd5be42dd23a748a513"
+
+# ── Scheduled Trigger (Cron) ───────────────────────────────────────────────────
+# Runs every 30 minutes to send motivational push notifications
+[triggers]
+crons = ["*/30 * * * *"]
