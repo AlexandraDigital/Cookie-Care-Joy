@@ -7899,11 +7899,13 @@ if ("serviceWorker" in navigator) {
 }
 </script>
 
-<button id="ccj-pwa-install-btn">
+
+
+<script>
+  <button id="ccj-pwa-install-btn" style="padding:10px 14px;border-radius:10px;">
   Add to Home
 </button>
 
-<script>
 let deferredPrompt = null;
 
 const btn = document.getElementById("ccj-pwa-install-btn");
@@ -7934,7 +7936,7 @@ btn.addEventListener("click", async () => {
   }
 
   // Already installed or unsupported → just open app
-  window.location.href = "./";
+  window.location.href = "/Cookie-Care-Joy/";
 });
 </script>
 </body>
