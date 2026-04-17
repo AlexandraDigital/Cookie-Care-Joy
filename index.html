@@ -659,7 +659,7 @@ window.addEventListener('beforeinstallprompt', function(e) {
   <!-- PWA Install Button (Desktop) -->
   <button id="ccj-pwa-install-btn" style="position:fixed;top:80px;right:12px;z-index:9998;background:#e8e8e8;color:#333;border:none;border-radius:20px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.1);font-family:inherit;display:none;transition:all 0.2s;opacity:0.8" onmouseover="this.style.opacity='1';this.style.background='#d0d0d0'" onmouseout="this.style.opacity='0.8';this.style.background='#e8e8e8'">📲 Add to Home Screen</button>
   <!-- PWA Install Button (Mobile FAB) -->
-  <button id="ccj-pwa-install-fab" style="position:fixed;top:calc(100px + env(safe-area-inset-top));right:20px;z-index:9998;background:#f43f6e;color:#fff;border:none;border-radius:50%;width:56px;height:56px;font-size:24px;cursor:pointer;box-shadow:0 4px 20px rgba(244,63,110,0.4);font-family:inherit;display:none;opacity:0;transition:opacity 0.3s"></button>
+  <button id="ccj-pwa-install-fab" style="position:fixed;top:calc(100px + env(safe-area-inset-top));right:20px;z-index:9998;background:#f43f6e;color:#fff;border:none;border-radius:50%;width:42px;height:42px;font-size:9px;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(244,63,110,0.4);font-family:inherit;display:none;opacity:0;transition:opacity 0.3s;padding:0;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.1">write install</button>
   <!-- PWA Install Prompt Handler -->
   <script>
     let deferredPrompt = null;
@@ -685,9 +685,14 @@ window.addEventListener('beforeinstallprompt', function(e) {
           deferredPrompt.prompt();
           const { outcome } = await deferredPrompt.userChoice;
           console.log(`User response to the install prompt: ${outcome}`);
+          if (outcome === 'accepted') {
+            // Buttons will hide via appinstalled event
+            setTimeout(() => {
+              if (installBtn) installBtn.style.display = 'none';
+              if (installFab) installFab.style.display = 'none';
+            }, 500);
+          }
           deferredPrompt = null;
-          installBtn.style.display = 'none';
-          installFab.style.display = 'none';
         }
       });
     }
@@ -699,9 +704,14 @@ window.addEventListener('beforeinstallprompt', function(e) {
           deferredPrompt.prompt();
           const { outcome } = await deferredPrompt.userChoice;
           console.log(`User response to the install prompt: ${outcome}`);
+          if (outcome === 'accepted') {
+            // Buttons will hide via appinstalled event
+            setTimeout(() => {
+              if (installBtn) installBtn.style.display = 'none';
+              if (installFab) installFab.style.display = 'none';
+            }, 500);
+          }
           deferredPrompt = null;
-          installBtn.style.display = 'none';
-          installFab.style.display = 'none';
         }
       });
     }
@@ -709,9 +719,22 @@ window.addEventListener('beforeinstallprompt', function(e) {
     // Handle when app is installed
     window.addEventListener('appinstalled', () => {
       console.log('PWA was installed');
-      installBtn.style.display = 'none';
-      installFab.style.display = 'none';
+      if (installBtn) installBtn.style.display = 'none';
+      if (installFab) installFab.style.display = 'none';
       deferredPrompt = null;
+    });
+    
+    // Check if already installed and hide buttons
+    window.addEventListener('load', () => {
+      function isStandalone() {
+        return window.matchMedia('(display-mode: standalone)').matches ||
+               window.matchMedia('(display-mode: fullscreen)').matches ||
+               window.navigator.standalone === true;
+      }
+      if (isStandalone()) {
+        if (installBtn) installBtn.style.display = 'none';
+        if (installFab) installFab.style.display = 'none';
+      }
     });
   </script>
   <script>
