@@ -9,6 +9,3 @@ pages_build_output_dir = "./"
 [[kv_namespaces]]
 binding = "CCJ_SUBS"
 id = "28f2e2c698e64cd5be42dd23a748a513"
-
-[env.production]
-build.command = "echo 'Static site'"
