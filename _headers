@@ -1,5 +1,8 @@
-/service-worker.js
+/
   Content-Type: application/javascript
 
-/sw.js
+/Cookie-Care-Joy/service-worker.js
+  Content-Type: application/javascript
+
+/Cookie-Care-Joy/sw.js
   Content-Type: application/javascript
