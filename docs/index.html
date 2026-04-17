@@ -4,52 +4,31 @@
 <head>
   <meta charset="UTF-8" />
 <script>
-// ── Capture beforeinstallprompt IMMEDIATELY — must be first script in <head>
-// Android Chrome fires this during page parse, before body/defer scripts run.
-window._deferredInstallPrompt = null;
-window.addEventListener('beforeinstallprompt', function(e) {
-  e.preventDefault();
-  window._deferredInstallPrompt = e;
-  // If the install card is already showing without a prompt button, rebuild it
-  var existing = document.getElementById('ccj-install-inline');
-  if (existing) {
-    existing.remove();
-    window._ccjInjected = false;
-  }
-  // _ccjScheduleInject may not be defined yet if the event fires very early;
-  // keep retrying until it is.
-  function _tryUpgrade(n) {
-    if (typeof window._ccjScheduleInject === 'function') {
-      window._ccjScheduleInject();
-    } else if (n < 40) {
-      setTimeout(function() { _tryUpgrade(n + 1); }, 150);
-    }
-  }
-  _tryUpgrade(0);
-});
+// Removed: OneSignal and Median - using native notifications only
+window.IS_MEDIAN_APP = false;
+window._oneSignalFailed = true; // Assume OneSignal unavailable
 </script>
-
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <!-- PWA manifest (required for Android install + iOS 16.4+ push) -->
-  <link rel="manifest" href="/manifest.json" />
+  <link rel="manifest" href="/Cookie-Care-Joy/manifest.json" />
   <!-- iOS PWA support -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Cookie Care" />
   <!-- Apple touch icons — all device sizes -->
-  <link rel="apple-touch-icon" sizes="180x180" href="/icon-192.png" />
-  <link rel="apple-touch-icon" sizes="152x152" href="/icon-144.png" />
-  <link rel="apple-touch-icon" sizes="120x120" href="/icon-96.png" />
-  <link rel="apple-touch-icon" sizes="76x76"   href="/icon-48.png"  />
+  <link rel="apple-touch-icon" sizes="180x180" href="/Cookie-Care-Joy/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="152x152" href="/Cookie-Care-Joy/icon-144.png" />
+  <link rel="apple-touch-icon" sizes="120x120" href="/Cookie-Care-Joy/icon-96.png" />
+  <link rel="apple-touch-icon" sizes="76x76"   href="/Cookie-Care-Joy/icon-48.png"  />
   <!-- iOS splash screens — common iPhone/iPad sizes -->
-  <link rel="apple-touch-startup-image" media="screen and (device-width:430px) and (device-height:932px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"  href="/icon-512.png" />
-  <link rel="apple-touch-startup-image" media="screen and (device-width:393px) and (device-height:852px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"  href="/icon-512.png" />
-  <link rel="apple-touch-startup-image" media="screen and (device-width:390px) and (device-height:844px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"  href="/icon-512.png" />
-  <link rel="apple-touch-startup-image" media="screen and (device-width:375px) and (device-height:812px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"  href="/icon-512.png" />
-  <link rel="apple-touch-startup-image" media="screen and (device-width:414px) and (device-height:896px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)"  href="/icon-512.png" />
-  <link rel="apple-touch-startup-image" media="screen and (device-width:375px) and (device-height:667px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)"  href="/icon-512.png" />
-  <link rel="apple-touch-startup-image" media="screen and (device-width:768px) and (device-height:1024px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)" href="/icon-512.png" />
+  <link rel="apple-touch-startup-image" media="screen and (device-width:430px) and (device-height:932px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"  href="/Cookie-Care-Joy/icon-512.png" />
+  <link rel="apple-touch-startup-image" media="screen and (device-width:393px) and (device-height:852px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"  href="/Cookie-Care-Joy/icon-512.png" />
+  <link rel="apple-touch-startup-image" media="screen and (device-width:390px) and (device-height:844px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"  href="/Cookie-Care-Joy/icon-512.png" />
+  <link rel="apple-touch-startup-image" media="screen and (device-width:375px) and (device-height:812px) and (-webkit-device-pixel-ratio:3) and (orientation:portrait)"  href="/Cookie-Care-Joy/icon-512.png" />
+  <link rel="apple-touch-startup-image" media="screen and (device-width:414px) and (device-height:896px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)"  href="/Cookie-Care-Joy/icon-512.png" />
+  <link rel="apple-touch-startup-image" media="screen and (device-width:375px) and (device-height:667px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)"  href="/Cookie-Care-Joy/icon-512.png" />
+  <link rel="apple-touch-startup-image" media="screen and (device-width:768px) and (device-height:1024px) and (-webkit-device-pixel-ratio:2) and (orientation:portrait)" href="/Cookie-Care-Joy/icon-512.png" />
   <!-- Theme color for Android Chrome toolbar -->
   <meta name="theme-color" content="#f9a8d4" />
   <!-- Prevent phone number auto-detection on iOS -->
@@ -2282,7 +2261,7 @@ function NavBar(_ref4) {
     style: {
       fontSize: 16
     }
-  }, currentLang.flag), /*#__PURE__*/React.createElement("span", {style:{fontSize:13,maxWidth:48,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}, currentLang.label), /*#__PURE__*/React.createElement("span", {
+  }, currentLang.flag), /*#__PURE__*/React.createElement("span", null, currentLang.code.toUpperCase()), /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 10,
       marginLeft: 2,
@@ -2295,11 +2274,11 @@ function NavBar(_ref4) {
       right: 0,
       background: WHITE,
       borderRadius: 14,
-      padding: "12px 10px",
+      padding: 8,
       boxShadow: "0 8px 32px rgba(0,0,0,0.14)",
       zIndex: 600,
       border: "1px solid #f0e6f0",
-      minWidth: 180
+      minWidth: 160
     }
   }, LANGS.map(l => /*#__PURE__*/React.createElement("button", {
     key: l.code,
@@ -2450,15 +2429,15 @@ function NavBar(_ref4) {
     onMouseDown: e => e.stopPropagation(),
     style: {
       position: "absolute",
-      bottom: "calc(100% + 16px)",
+      bottom: "calc(100% + 8px)",
       right: 0,
       background: WHITE,
       borderRadius: 14,
-      padding: "12px 10px",
+      padding: 8,
       boxShadow: "0 -4px 32px rgba(0,0,0,0.16)",
       zIndex: 600,
       border: "1px solid #f0e6f0",
-      minWidth: 180
+      minWidth: 160
     }
   }, LANGS.map(l => /*#__PURE__*/React.createElement("button", {
     key: l.code,
@@ -2932,7 +2911,7 @@ function TypeDropdown(_ref8) {
       padding: "8px",
       boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
       zIndex: 500,
-      minWidth: 180,
+      minWidth: 160,
       border: "1px solid #f0e6f0"
     }
   }, TYPES.map(ty => /*#__PURE__*/React.createElement("div", {
@@ -3832,19 +3811,7 @@ function TodayPage(_ref10) {
     };
     setTasks(prev => [...prev, newTask]);
     setShowForm(false);
-    if (newTask.alertTime && newTask.alertTime !== "NOW") {
-      const dateStr = newTask.date || new Date().toISOString().split("T")[0];
-      const m = newTask.alertTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-      if (m) {
-        let h = parseInt(m[1], 10);
-        const min = parseInt(m[2], 10);
-        if (m[3].toUpperCase() === "PM" && h !== 12) h += 12;
-        if (m[3].toUpperCase() === "AM" && h === 12) h = 0;
-        const alarmMs = new Date(dateStr + "T" + String(h).padStart(2,"0") + ":" + String(min).padStart(2,"0") + ":00").getTime();
-        const delayMs = alarmMs - 2 * 60 * 1000 - Date.now();
-        if (delayMs > 0) localNotify("Cookie-Care-Joy 🍪", "⏰ In 2 minutes: " + (newTask.text || "Task"), delayMs);
-      }
-    }
+    scheduleTaskPush(newTask);
   };
   const toggleTask = id => {
     const t = tasks.find(t => t.id === id);
@@ -3863,20 +3830,10 @@ function TodayPage(_ref10) {
       ...changes
     } : t));
     const existing = tasks.find(t => t.id === id);
-    const updated = existing ? { ...existing, ...changes } : null;
-    if (updated && updated.alertTime && updated.alertTime !== "NOW") {
-      const dateStr = updated.date || new Date().toISOString().split("T")[0];
-      const m = updated.alertTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-      if (m) {
-        let h = parseInt(m[1], 10);
-        const min = parseInt(m[2], 10);
-        if (m[3].toUpperCase() === "PM" && h !== 12) h += 12;
-        if (m[3].toUpperCase() === "AM" && h === 12) h = 0;
-        const alarmMs = new Date(dateStr + "T" + String(h).padStart(2,"0") + ":" + String(min).padStart(2,"0") + ":00").getTime();
-        const delayMs = alarmMs - 2 * 60 * 1000 - Date.now();
-        if (delayMs > 0) localNotify("Cookie-Care-Joy 🍪", "⏰ In 2 minutes: " + (updated.text || "Task"), delayMs);
-      }
-    }
+    if (existing) scheduleTaskPush({
+      ...existing,
+      ...changes
+    });
   };
   return /*#__PURE__*/React.createElement("div", {
     className: "page-content",
@@ -4156,19 +4113,7 @@ function CalendarPage(_ref11) {
     };
     setTasks(prev => [...prev, newTask]);
     setShowForm(false);
-    if (newTask.alertTime && newTask.alertTime !== "NOW") {
-      const dateStr = newTask.date || new Date().toISOString().split("T")[0];
-      const m = newTask.alertTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-      if (m) {
-        let h = parseInt(m[1], 10);
-        const min = parseInt(m[2], 10);
-        if (m[3].toUpperCase() === "PM" && h !== 12) h += 12;
-        if (m[3].toUpperCase() === "AM" && h === 12) h = 0;
-        const alarmMs = new Date(dateStr + "T" + String(h).padStart(2,"0") + ":" + String(min).padStart(2,"0") + ":00").getTime();
-        const delayMs = alarmMs - 2 * 60 * 1000 - Date.now();
-        if (delayMs > 0) localNotify("Cookie-Care-Joy 🍪", "⏰ In 2 minutes: " + (newTask.text || "Task"), delayMs);
-      }
-    }
+    scheduleTaskPush(newTask);
   };
   const toggleTask = id => {
     const t = tasks.find(t => t.id === id);
@@ -4185,20 +4130,10 @@ function CalendarPage(_ref11) {
       ...changes
     } : t));
     const existing = tasks.find(t => t.id === id);
-    const updated = existing ? { ...existing, ...changes } : null;
-    if (updated && updated.alertTime && updated.alertTime !== "NOW") {
-      const dateStr = updated.date || new Date().toISOString().split("T")[0];
-      const m = updated.alertTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-      if (m) {
-        let h = parseInt(m[1], 10);
-        const min = parseInt(m[2], 10);
-        if (m[3].toUpperCase() === "PM" && h !== 12) h += 12;
-        if (m[3].toUpperCase() === "AM" && h === 12) h = 0;
-        const alarmMs = new Date(dateStr + "T" + String(h).padStart(2,"0") + ":" + String(min).padStart(2,"0") + ":00").getTime();
-        const delayMs = alarmMs - 2 * 60 * 1000 - Date.now();
-        if (delayMs > 0) localNotify("Cookie-Care-Joy 🍪", "⏰ In 2 minutes: " + (updated.text || "Task"), delayMs);
-      }
-    }
+    if (existing) scheduleTaskPush({
+      ...existing,
+      ...changes
+    });
   };
   return /*#__PURE__*/React.createElement("div", {
     className: "page-content",
@@ -6535,24 +6470,8 @@ function DataBackupButton(_ref16) {
   }, t.btn_save))));
 }
 
-// ── Custom Install Card ───────────────────────────────────────────
-function InstallCard(_ref) {
-  let {
-    onInstall,
-    onDismiss
-  } = _ref;
-  const t = React.useContext(LangContext);
-  const [showCard, setShowCard] = React.useState(true);
-  const handleInstall = () => {
-    onInstall();
-    setShowCard(false);
-  };
-  const handleDismiss = () => {
-    setShowCard(false);
-    onDismiss();
-  };
-  if (!showCard) return null;
-  return /*#__PURE__*/React.createElement(\"div\", {\n    style: {\n      position: \"fixed\",\n      bottom: \"max(24px, env(safe-area-inset-bottom))\",\n      left: \"max(16px, env(safe-area-inset-left))\",\n      right: \"max(16px, env(safe-area-inset-right))\",\n      zIndex: 250,\n      maxWidth: 360,\n      animation: \"slideDown 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards\",\n      pointerEvents: \"all\"\n    }\n  }, /*#__PURE__*/React.createElement(\"div\", {\n    style: {\n      background: \"linear-gradient(135deg, #fff5f8 0%, #fffbf8 100%)\",\n      border: \"2px solid #f9a8d4\",\n      borderRadius: 20,\n      padding: \"20px\",\n      boxShadow: \"0 12px 48px rgba(244, 63, 110, 0.25), 0 2px 8px rgba(244, 63, 110, 0.15)\",\n      backdropFilter: \"blur(10px)\"\n    }\n  }, /*#__PURE__*/React.createElement(\"div\", {\n    style: {\n      display: \"flex\",\n      alignItems: \"center\",\n      gap: 16,\n      marginBottom: 16\n    }\n  }, /*#__PURE__*/React.createElement(\"img\", {\n    src: \"/icon-192.png\",\n    alt: \"Cookie-Care-Joy\",\n    style: {\n      width: 64,\n      height: 64,\n      borderRadius: 16,\n      boxShadow: \"0 4px 16px rgba(244, 63, 110, 0.25)\",\n      flexShrink: 0\n    }\n  }), /*#__PURE__*/React.createElement(\"div\", {\n    style: {\n      flex: 1\n    }\n  }, /*#__PURE__*/React.createElement(\"h3\", {\n    style: {\n      margin: \"0 0 4px\",\n      fontSize: 16,\n      fontWeight: 800,\n      color: \"#f43f6e\",\n      fontFamily: \"Georgia,serif\"\n    }\n  }, \"Cookie-Care-Joy\"), /*#__PURE__*/React.createElement(\"p\", {\n    style: {\n      margin: 0,\n      fontSize: 12,\n      color: \"#6b7280\",\n      fontWeight: 500\n    }\n  }, \"Add to home screen\"))), /*#__PURE__*/React.createElement(\"div\", {\n    style: {\n      display: \"flex\",\n      gap: 10\n    }\n  }, /*#__PURE__*/React.createElement(\"button\", {\n    onClick: handleDismiss,\n    style: {\n      flex: 1,\n      padding: \"12px 16px\",\n      border: \"2px solid #f0e6f0\",\n      borderRadius: 12,\n      background: \"#fff\",\n      color: \"#6b7280\",\n      cursor: \"pointer\",\n      fontFamily: \"inherit\",\n      fontSize: 14,\n      fontWeight: 600,\n      transition: \"all 0.2s\"\n    },\n    onMouseEnter: e => {\n      e.currentTarget.style.background = \"#f9f5f8\";\n      e.currentTarget.style.borderColor = \"#e5b5d0\";\n    },\n    onMouseLeave: e => {\n      e.currentTarget.style.background = \"#fff\";\n      e.currentTarget.style.borderColor = \"#f0e6f0\";\n    }\n  }, \"Maybe later\"), /*#__PURE__*/React.createElement(\"button\", {\n    onClick: handleInstall,\n    style: {\n      flex: 1,\n      padding: \"12px 16px\",\n      border: \"none\",\n      borderRadius: 12,\n      background: \"linear-gradient(135deg, #f43f6e 0%, #fb923c 100%)\",\n      color: \"#fff\",\n      cursor: \"pointer\",\n      fontFamily: \"inherit\",\n      fontSize: 14,\n      fontWeight: 700,\n      boxShadow: \"0 4px 16px rgba(244, 63, 110, 0.3)\",\n      transition: \"all 0.2s\"\n    },\n    onMouseEnter: e => {\n      e.currentTarget.style.transform = \"scale(1.05)\";\n      e.currentTarget.style.boxShadow = \"0 6px 24px rgba(244, 63, 110, 0.45)\";\n    },\n    onMouseLeave: e => {\n      e.currentTarget.style.transform = \"scale(1)\";\n      e.currentTarget.style.boxShadow = \"0 4px 16px rgba(244, 63, 110, 0.3)\";\n    }\n  }, \"✨ Install\"))));\n}\n\n// ── APP ROOT ──────────────────────────────────────────────────────\nfunction App() {
+// ── APP ROOT ──────────────────────────────────────────────────────
+function App() {
   // Unlock AudioContext on the very first user interaction (mousedown fires before click)
   useEffect(() => {
     const unlock = () => {
@@ -6591,7 +6510,6 @@ function InstallCard(_ref) {
   const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
   const [page, setPage] = useState("today");
   const [showCoolDown, setShowCoolDown] = useState(false);
-  const [showInstallCard, setShowInstallCard] = useState(false);
   const [nightMode, setNightMode] = useState(() => {
     const h = new Date().getHours();
     return h >= 19 || h < 6;
@@ -6617,15 +6535,51 @@ function InstallCard(_ref) {
       setSplashGone(true);
       splashGoneRef.current = true;
 
+      // ── Welcome notification: fires on very first visit, no permission needed ──
+      const _wKey = 'ccj_welcome_shown';
+      if (!localStorage.getItem(_wKey)) {
+        localStorage.setItem(_wKey, '1');
+        // In-app toast always fires (no permission required)
+        setTimeout(() => {
+          if (window._ccjShowToast) window._ccjShowToast("Welcome to Cookie-Care-Joy! 🍪 Ready to take sweet care of you 🌸");
+        }, 700);
+        // System notification fires too if permission already granted
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+          setTimeout(() => localNotify("Welcome to Cookie-Care-Joy! 🍪", "Your sweet self-care companion is here 🌸", 0), 1200);
+        }
+      }
+
       // Only show banner if not already registered
       const alreadyRegistered = localStorage.getItem('ccj_notif_registered') === '1';
       const inAppOnly = localStorage.getItem("ccj_inapp_notif") === "true";
       if (!alreadyRegistered && !inAppOnly) setShowBanner(true);
       if (inAppOnly) scheduleReminders(); // re-populate in-app schedule on each page load
 
+      // ── Show install chip after splash — every browser session ──
+      setTimeout(function () {
+        var isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+        if (isStandalone) return;
+        if (showBannerRef.current) return;
+        if (sessionStorage.getItem('ccj_install_chip_shown')) return;
+        sessionStorage.setItem('ccj_install_chip_shown', '1');
+        if (typeof showInstallBanner === 'function') showInstallBanner();
+      }, 2800);
       // No auto-dismiss — banner stays until user taps Enable or X
       if (Notification.permission === 'granted') {
-        scheduleReminders();
+        // Ensure OneSignal subscription is active, wait for ID, then schedule
+        (async () => {
+          try {
+            if (window.OneSignal && window.OneSignal.User && window.OneSignal.User.PushSubscription) {
+              const sub = window.OneSignal.User.PushSubscription;
+              if (!sub.optedIn) await sub.optIn();
+              await new Promise(r => setTimeout(r, 2000));
+              dbg("dismissSplash autoStart: sub.id = " + (sub.id || "null"));
+            }
+          } catch (e) {
+            dbg("dismissSplash optIn error: " + e);
+          }
+          scheduleReminders();
+        })();
       }
     }, 500);
   };
@@ -6644,43 +6598,6 @@ function InstallCard(_ref) {
   const [selectedTheme, setSelectedTheme] = useState(() => load("ccj_theme", 1));
   const [selectedSound, setSelectedSound] = useState(() => load("ccj_sound", 0));
   const [tasks, setTasks] = useState(() => load("ccj_tasks", []));
-
-  // ── Set up install card trigger ──
-  useEffect(() => {
-    const showInstall = () => {
-      if (localStorage.getItem('ccj_install_dismissed') !== '1') {
-        setShowInstallCard(true);
-      }
-    };
-    
-    const handleInstall = async () => {
-      if (window._deferredInstallPrompt) {
-        window._deferredInstallPrompt.prompt();
-        const result = await window._deferredInstallPrompt.userChoice;
-        if (result.outcome === 'accepted') {
-          localStorage.setItem('ccj_install_dismissed', '1');
-          setShowInstallCard(false);
-        }
-      }
-    };
-    
-    const handleDismiss = () => {
-      localStorage.setItem('ccj_install_dismissed', '1');
-      setShowInstallCard(false);
-    };
-    
-    window._ccjShowInstallCard = showInstall;
-    window._ccjHandleInstall = handleInstall;
-    window._ccjHandleDismiss = handleDismiss;
-    
-    const timer = setTimeout(() => {
-      if (splashGoneRef.current && window._deferredInstallPrompt) {
-        showInstall();
-      }
-    }, 1500);
-    
-    return () => clearTimeout(timer);
-  }, []);
 
   // ── Auto-save whenever state changes ──
   useEffect(() => {
@@ -6719,44 +6636,30 @@ function InstallCard(_ref) {
   };
   // #endregion
 
-  const VAPID_PUBLIC_KEY = "BAS4G2cNqgLqZQl896xIGmCHdwsWqVmteQ8zUrf8zU5x_3mVg7SE6IfjzBZI4WPWeivdXsHrV6njLcqceAoyZSA";
-  const CCJ_BASE_URL = "https://cookie-care-joy.pages.dev";
-
-  // Subscribe this device to Web Push and register with backend
-  async function registerWebPush() {
-    try {
-      if (!("serviceWorker" in navigator) || !("PushManager" in window)) return null;
-      const reg = await navigator.serviceWorker.ready;
-      // Check if already subscribed
-      let sub = await reg.pushManager.getSubscription();
-      if (!sub) {
-        sub = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-        });
-      }
-      // Send subscription to backend
-      await fetch(CCJ_BASE_URL + "/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(sub.toJSON()),
-      });
-      localStorage.setItem("ccj_push_endpoint", sub.endpoint);
-      dbg("Web Push registered: " + sub.endpoint.slice(-20));
-      return sub;
-    } catch (e) {
-      dbg("registerWebPush error: " + e.message);
-      return null;
+  const waitForOneSignal = () => new Promise(resolve => {
+    // Already ready
+    if (window._oneSignalFailed) {
+      resolve(false);
+      return;
+    } // IndexedDB unavailable
+    if (window.OneSignal && window.OneSignal.Notifications) {
+      resolve(true);
+      return;
     }
-  }
-
-  function urlBase64ToUint8Array(base64String) {
-    const padding = "=".repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-    const raw = atob(base64);
-    return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
-  }
-
+    // Wait up to 5 seconds for OneSignal deferred init to complete
+    let tries = 0;
+    const iv = setInterval(() => {
+      tries++;
+      if (window.OneSignal && window.OneSignal.Notifications) {
+        clearInterval(iv);
+        resolve(true);
+      } else if (tries >= 50) {
+        // 50 x 100ms = 5s
+        clearInterval(iv);
+        resolve(false);
+      }
+    }, 100);
+  });
   const requestNotifications = async () => {
     setNotifError("");
     const grantSuccess = async () => {
@@ -6765,28 +6668,54 @@ function InstallCard(_ref) {
       localStorage.setItem("ccj_notif_registered", "1"); // don't show banner again
       setNotifPerm("granted");
       setShowBanner(false);
-      // Show "enabled" pink toast immediately — before "sweet reminders" toast from scheduleReminders
-      if (window._ccjShowToast) {
-        window._ccjShowToast("Notifications enabled! 🍪✨");
-      }
-      // Register Web Push subscription with backend (runs in background)
-      registerWebPush().then(() => scheduleReminders());
+      scheduleReminders();
     };
+
+
+    }
+
+    // ── Path A: Permission prompt — MUST fire synchronously within user gesture ──
+    // Android Chrome drops the prompt if there's any async gap (await) before requestPermission().
+    // So: check OneSignal synchronously first. If ready, use it immediately.
+    // If not ready yet, fall straight to native Notification API (no await).
+    // OneSignal opt-in happens AFTER permission is granted so the gesture chain is never broken.
 
     // Already denied?
     if (typeof Notification !== "undefined" && Notification.permission === "denied") {
       setNotifError("Notifications blocked. Open browser Settings → Site permissions to allow.");
-      grantLocalOnly();
+      grantLocalOnly(); // still show sweet messages in-app
       return;
     }
 
     // Already granted (page reload, return visit)?
-    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+    if (window.OneSignal && window.OneSignal.Notifications && window.OneSignal.Notifications.permission === true || typeof Notification !== "undefined" && Notification.permission === "granted") {
       grantSuccess();
       return;
     }
 
-    // ── Native Notification API ──
+    // OneSignal ready synchronously — call its prompt immediately (no await before this)
+    if (window.OneSignal && window.OneSignal.Notifications) {
+      try {
+        await new Promise(r => setTimeout(r, 300));
+        if (window.OneSignal.Notifications.permission === true || typeof Notification !== "undefined" && Notification.permission === "granted") {
+          grantSuccess();
+          return;
+        }
+        if (typeof Notification !== "undefined" && Notification.permission === "denied") {
+          setNotifError("Notifications blocked. Go to browser Settings → Site permissions to allow, then try again.");
+          grantLocalOnly(); // still show sweet messages in-app
+          return;
+        }
+        setNotifError("Tap Enable again to allow notifications 🔔");
+        showInstallBanner();
+        return;
+      } catch (e) {
+        // OneSignal threw — fall through to native below
+      }
+    }
+
+    // ── Path B: Native Notification API ──
+    // OneSignal not loaded yet OR threw. Use native API — also fires synchronously within gesture.
     if (!("Notification" in window)) {
       setNotifError("On iPhone: tap Share → \"Add to Home Screen\", then open from there 📲");
       showInstallBanner();
@@ -6795,10 +6724,11 @@ function InstallCard(_ref) {
     try {
       const result = await Promise.resolve(Notification.requestPermission());
       if (result === "granted" || Notification.permission === "granted") {
+        // Now wait for OneSignal to finish loading so opt-in/subscription works
         grantSuccess();
       } else if (result === "denied") {
         setNotifError("Notifications blocked. Check browser settings to allow them.");
-        grantLocalOnly();
+        grantLocalOnly(); // still show sweet messages in-app
       } else {
         setNotifError("Tap Enable again, or on iPhone tap Share → \"Add to Home Screen\" first 📲");
         showInstallBanner();
@@ -7040,9 +6970,80 @@ function InstallCard(_ref) {
     set: new Set()
   });
 
+  // ── OneSignal server-side push helpers ──
+  const OS_APP_ID = "fc237358-e343-4a93-adfe-b22527bb0aef";
+  // API key removed from frontend — all calls go through the Cloudflare Worker
+  const WORKER_URL = "https://cookie-care-joy.futuresuccess105.workers.dev"; // ← set to your deployed Worker URL
+
+  async function getPlayerId() {
+    // ── Median native player ID (stored after register + getStatus) ──
+    if (window.IS_MEDIAN_APP) {
+      const stored = window._medianOneSignalId || localStorage.getItem("ccj_median_player_id");
+      if (stored) {
+        dbg("getPlayerId (Median): " + stored);
+        return stored;
+      }
+      // Try fetching live if not stored yet
+      if (window.median && window.median.onesignal) {
+        return await new Promise(function (resolve) {
+          window.median.onesignal.getStatus(function (status) {
+            var idType = status && status.onesignalId ? "onesignal_id" : status && status.subscriptionId ? "subscription_id" : "player_id";
+            var pid = status && (status.onesignalId || status.subscriptionId || status.userId || status.pushToken) || null;
+            if (pid) {
+              window._medianOneSignalId = pid;
+              window._medianOneSignalIdType = idType;
+              localStorage.setItem("ccj_median_player_id", pid);
+              localStorage.setItem("ccj_median_id_type", idType);
+            }
+            dbg("getPlayerId (Median live): " + pid + " type: " + idType);
+            resolve(pid);
+          });
+        });
+      }
+      return null;
+    }
+    // Try SDK even if init had a non-fatal error (IndexedDB hiccup etc.)
+    if (!window.OneSignal) return null;
+    const getSub = () => {
+      // OneSignal SDK v16: subscription ID is at User.PushSubscription.id
+      try {
+        const sub = window.OneSignal.User && window.OneSignal.User.PushSubscription;
+        if (sub && sub.id) return sub.id;
+        // Fallback: onesignalId
+        const oid = window.OneSignal.User && window.OneSignal.User.onesignalId;
+        if (oid) return oid;
+      } catch (e2) {}
+      // Last resort: check native SW push subscription endpoint ID
+      return null;
+    };
+    // Check localStorage cache first (fast path for page reloads)
+    const _cachedId = localStorage.getItem('ccj_onesignal_player_id');
+    if (_cachedId) {
+      dbg("getPlayerId (cache): " + _cachedId);
+      return _cachedId;
+    }
+    let id = getSub();
+    if (id) {
+      localStorage.setItem('ccj_onesignal_player_id', id);
+      dbg("getPlayerId: " + id);
+      return id;
+    }
+    for (let i = 0; i < 20; i++) {
+      await new Promise(r => setTimeout(r, 500));
+      id = getSub();
+      if (id) {
+        localStorage.setItem('ccj_onesignal_player_id', id);
+        dbg("getPlayerId (retry " + (i + 1) + "): " + id);
+        return id;
+      }
+    }
+    dbg("getPlayerId: not found after retries");
+    return null;
+  }
+
   // localNotify: fires a notification via Service Worker when app is open
   // ── localStorage notification queue (survives SW restart) ────────────
-  const _CCJ_ICON = "https://alexandradigital.github.io/icon-192.png";
+  const _CCJ_ICON = "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png";
   function _lsQueueGet() {
     try {
       return JSON.parse(localStorage.getItem("ccj_notif_queue") || "[]");
@@ -7125,128 +7126,289 @@ function InstallCard(_ref) {
     }
   }
 
-  // applyUserSettings — call with a settings object to persist and re-schedule.
-  // Accepts: { notifications_enabled, todo_time, timezone_offset }
-  function applyUserSettings(settings) {
-    try {
-      const existing = JSON.parse(localStorage.getItem("ccj_user_settings") || "{}");
-      const merged = Object.assign({}, existing, settings);
-      localStorage.setItem("ccj_user_settings", JSON.stringify(merged));
-      localStorage.removeItem("ccj_reminders_sched_at");
-      localStorage.removeItem("ccj_sweet_schedule");
-    } catch (e) { dbg("applyUserSettings error: " + e.message); }
-    if (settings.notifications_enabled === false) {
-      if (navigator.serviceWorker && navigator.serviceWorker.controller)
-        navigator.serviceWorker.controller.postMessage({ type: "CANCEL_ALL" });
-      try { localStorage.removeItem("ccj_notif_queue"); } catch {}
+  // osPushWithId: send OneSignal push using already-resolved playerId (no extra polling)
+  async function osPushWithId(playerId, title, body, sendAfterMs) {
+    if (!playerId) return;
+    // Determine correct targeting field based on ID type
+    const idType = window._medianOneSignalIdType || localStorage.getItem("ccj_median_id_type") || "player_id";
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(playerId);
+    let targeting = {};
+    if (idType === "onesignal_id") {
+      targeting = {
+        include_aliases: {
+          onesignal_id: [playerId]
+        },
+        target_channel: "push"
+      };
+    } else if (idType === "subscription_id" || isUUID) {
+      targeting = {
+        include_subscription_ids: [playerId]
+      };
     } else {
-      scheduleReminders();
+      targeting = {
+        include_player_ids: [playerId]
+      };
+    }
+    const payload = {
+      app_id: OS_APP_ID,
+      ...targeting,
+      headings: {
+        en: title
+      },
+      contents: {
+        en: body
+      },
+      android_channel_id: "ccj_reminders",
+      android_accent_color: "fff43f6e",
+      android_visibility: 1,
+      priority: 10,
+      ios_sound: "default",
+      android_sound: "default",
+      chrome_web_icon: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png",
+      firefox_icon: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png",
+      chrome_web_badge: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-96.png",
+      web_url: "https://alexandradigital.github.io/Cookie-Care-Joy/",
+      app_url: "https://alexandradigital.github.io/Cookie-Care-Joy/"
+    };
+    if (sendAfterMs && sendAfterMs > 0) {
+      payload.send_after = new Date(Date.now() + sendAfterMs).toISOString();
+    }
+    try {
+      const resp = await fetch(WORKER_URL + "/push", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          playerId,
+          idType,
+          title,
+          body: body,
+          sendAfterMs: sendAfterMs || 0
+        })
+      });
+      const data = await resp.json();
+      dbg("osPush " + (resp.ok ? "OK" : "ERR") + " send_after=" + (sendAfterMs || 0) + "ms: " + JSON.stringify(data).substring(0, 120));
+      if (!resp.ok) throw new Error("osPush HTTP " + resp.status + ": " + JSON.stringify(data).substring(0, 120));
+      return true;
+    } catch (e) {
+      dbg("osPush error: " + e.message);
+      throw e;
     }
   }
-  window._ccjApplySettings = applyUserSettings;
 
-  async function scheduleReminders() {
-    const _schedKey = 'ccj_reminders_sched_at';
-    const _sweetSchedKey = 'ccj_sweet_schedule';
-
-    // Version bump: clear old schedule
-    const _ccjSchedVer = 'ccj_sched_ver';
-    if (localStorage.getItem(_ccjSchedVer) !== '4') {
-      localStorage.removeItem(_schedKey);
-      localStorage.removeItem('ccj_notif_queue');
-      localStorage.removeItem(_sweetSchedKey);
-      localStorage.setItem(_ccjSchedVer, '4');
-    }
-
-    // Don't reschedule if done within last hour (self-heal: skip if no future items)
-    const _last = parseInt(localStorage.getItem(_schedKey) || '0', 10);
-    if (_last > 0 && Date.now() - _last < 60 * 60 * 1000) {
-      let sweetQueue = [];
-      try { sweetQueue = JSON.parse(localStorage.getItem(_sweetSchedKey) || '[]'); } catch {}
-      if (sweetQueue.some(x => x.fireAt > Date.now() + 60000)) {
-        dbg("scheduleReminders: already scheduled, skip");
-        return;
-      }
-      localStorage.removeItem(_schedKey);
-    }
-
-    dbg("scheduleReminders: start");
-    const now = Date.now();
-
-    // ── Read user settings ────────────────────────────────────────────────────
-    let userSettings = {};
-    try { userSettings = JSON.parse(localStorage.getItem("ccj_user_settings") || "{}"); } catch {}
-
-    // notifications_enabled: honour the flag — bail out if user turned off
-    if (userSettings.notifications_enabled === false) {
-      dbg("scheduleReminders: notifications_enabled=false, skipping");
+  // osPush: legacy wrapper — resolves player ID then calls osPushWithId
+  async function osPush(title, body, sendAfterMs) {
+    const playerId = await getPlayerId();
+    if (!playerId) {
+      dbg("osPush: no player ID");
       return;
     }
+    await osPushWithId(playerId, title, body, sendAfterMs);
+  }
 
-    // todo_time: "HH:MM" — the daily reminder time the user chose (default 09:00)
-    const todoTimeStr = userSettings.todo_time || "09:00";
-    const [todoHour, todoMin] = todoTimeStr.split(":").map(Number);
-
-    // timezone_offset: hours offset from UTC (e.g. -5 = EST).
-    // We need to fire at todoHour:todoMin in *that* timezone.
-    // Convert: UTC fire time = local wall-clock time - offset
-    const tzOffset = typeof userSettings.timezone_offset === "number"
-      ? userSettings.timezone_offset : 0;
-
-    // Build next-7-days schedule: one message per day at todo_time
-    const schedule = [];
-    for (let day = 0; day < 7; day++) {
-      // Compute today's fire time in UTC
-      const d = new Date(now);
-      // Start from UTC midnight, shift by day, then apply hour/min in user's tz
-      const utcMidnight = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + day);
-      // Wall-clock todo_time in user's tz → UTC: subtract tzOffset hours
-      const fireAt = utcMidnight
-        + (todoHour - tzOffset) * 60 * 60 * 1000
-        + todoMin * 60 * 1000;
-
-      if (fireAt <= now + 5000) continue; // skip if already past today
-
-      schedule.push({
-        fireAt,
-        title: "Cookie-Care-Joy 🍪",
-        body: caringMsgs[Math.floor(Math.random() * caringMsgs.length)],
-        sendAfterMs: fireAt - now,
-      });
+  // scheduleTaskPush: called when a task is saved — schedules a OneSignal push
+  // 2 minutes BEFORE the task's alertTime so it works even when app is closed.
+  async function scheduleTaskPush(task) {
+    if (!task || !task.alertTime || task.alertTime === "NOW") return;
+    const dateStr = task.date || new Date().toISOString().split("T")[0];
+    const m = task.alertTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!m) return;
+    let h = parseInt(m[1], 10);
+    const min = parseInt(m[2], 10);
+    if (m[3].toUpperCase() === "PM" && h !== 12) h += 12;
+    if (m[3].toUpperCase() === "AM" && h === 12) h = 0;
+    const alarmMs = new Date(dateStr + "T" + String(h).padStart(2, "0") + ":" + String(min).padStart(2, "0") + ":00").getTime();
+    const pushMs = alarmMs - 2 * 60 * 1000; // 2 minutes before
+    const nowMs = Date.now();
+    if (pushMs <= nowMs) {
+      dbg("scheduleTaskPush: time already past");
+      return;
     }
+    const delayMs = pushMs - nowMs;
+    const taskMsg = "⏰ In 2 minutes: " + (task.text || "Task");
+    dbg("scheduleTaskPush: scheduling in " + Math.round(delayMs / 1000) + "s for: " + task.text);
+    const playerId = await getPlayerId();
+    if (!playerId) {
+      dbg("scheduleTaskPush: no player ID");
+      return;
+    }
+    await osPushWithId(playerId, "Cookie-Care-Joy 🍪", taskMsg, delayMs);
+    dbg("scheduleTaskPush: push scheduled OK");
+  }
 
-    // Save for page-side checker
-    try { localStorage.setItem(_sweetSchedKey, JSON.stringify(schedule)); } catch {}
-    localStorage.setItem(_schedKey, now.toString());
-
-    // ── Path A: Server-side Web Push (works when app is closed) ──────────────
-    const endpoint = localStorage.getItem("ccj_push_endpoint");
-    if (endpoint) {
-      try {
-        const resp = await fetch(CCJ_BASE_URL + "/schedule", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ endpoint, messages: schedule }),
-        });
-        const data = await resp.json();
-        dbg("scheduleReminders: server scheduled " + (data.scheduled || 0) + " msgs");
-      } catch (e) {
-        dbg("scheduleReminders: server error: " + e.message + " — using SW fallback only");
+  // ── OneSignal background retry ─────────────────────────────────────────────
+  // On Android browser the OneSignal subscription ID is sometimes not ready
+  // when scheduleReminders() first runs (10-second timeout not enough on slow devices).
+  // This poller checks every 5s for up to 2 minutes.  The moment the ID appears,
+  // it clears the 1h local-fallback key and re-runs scheduleReminders() so 59 server
+  // pushes get scheduled — ensuring background / locked-phone delivery via OneSignal.
+  function _startOSRetry() {
+    const _schedKey = 'ccj_reminders_sched_at';
+    const _localKey = 'ccj_local_fb_sched_at';
+    let retries = 0;
+    const MAX_RETRIES = 24; // 24 × 5s = 2 minutes
+    const iv = setInterval(async () => {
+      retries++;
+      // Stop if OneSignal already scheduled, or we've exceeded 2 minutes
+      if (retries >= MAX_RETRIES || localStorage.getItem(_schedKey)) {
+        clearInterval(iv);
+        dbg("_startOSRetry: stopping (" + (localStorage.getItem(_schedKey) ? "OS scheduled" : "max retries") + ")");
+        return;
       }
-    } else {
-      dbg("scheduleReminders: no endpoint yet — SW fallback only");
+      const pid = await getPlayerId();
+      if (!pid) return; // still waiting
+      clearInterval(iv);
+      dbg("_startOSRetry: got player ID " + pid + " on attempt " + retries + " — rescheduling with OneSignal");
+      // Clear local-fallback key so scheduleReminders() re-runs OneSignal path
+      localStorage.removeItem(_localKey);
+      scheduleReminders();
+    }, 5000);
+  }
+  async function scheduleReminders() {
+    // Two keys: one for OneSignal-confirmed (23h), one for local-fallback (1h retry)
+    const _schedKey = 'ccj_reminders_sched_at'; // set only after OneSignal OK
+    const _localFbKey = 'ccj_local_fb_sched_at'; // local fallback, retry in 1h
+    // Version bump: clear old schedule so new fireAt-keyed queue takes effect
+    const _ccjSchedVer = 'ccj_sched_ver';
+    if (localStorage.getItem(_ccjSchedVer) !== '2') {
+      localStorage.removeItem(_schedKey);
+      localStorage.removeItem(_localFbKey);
+      localStorage.removeItem('ccj_notif_queue');
+      localStorage.removeItem('ccj_sweet_schedule');
+      localStorage.setItem(_ccjSchedVer, '2');
+    }
+    const _sweetSchedKey = 'ccj_sweet_schedule'; // page-side checker timestamps
+
+    const _lastOS = parseInt(localStorage.getItem(_schedKey) || '0', 10);
+    const _lastLocal = parseInt(localStorage.getItem(_localFbKey) || '0', 10);
+    const osDone = _lastOS > 0 && Date.now() - _lastOS < 23 * 60 * 60 * 1000;
+    const localDone = _lastLocal > 0 && Date.now() - _lastLocal < 1 * 60 * 60 * 1000;
+
+    // Self-heal: if the 23h OS key is set but ccj_sweet_schedule is empty,
+    // the previous schedule silently failed (OneSignal API error). Reset so we retry.
+    if (osDone) {
+      const sweetQueue = (() => {
+        try {
+          return JSON.parse(localStorage.getItem(_sweetSchedKey) || '[]');
+        } catch {
+          return [];
+        }
+      })();
+      const hasFuture = sweetQueue.some(x => x.fireAt > Date.now() + 60000);
+      if (!hasFuture) {
+        dbg("scheduleReminders: 23h key set but no future schedule found — clearing stale key and retrying");
+        localStorage.removeItem(_schedKey);
+        // fall through to reschedule
+      } else {
+        dbg("scheduleReminders: OneSignal already scheduled within 23h and queue OK, skip");
+        return;
+      }
+    }
+    dbg("scheduleReminders: start");
+
+    // ── Show "sweet reminders" pink banner after 1 minute ──
+    // The "Notifications enabled!" toast fires first (from grantSuccess).
+    // This one shows after a 1-minute delay, giving users time to set it up.
+    setTimeout(() => {
+      if (window._ccjShowToast) window._ccjShowToast("Sweet reminders on the way! 🍪✨");
+    }, 60000);
+
+    // Get player ID ONCE — determines which delivery path to use
+    const playerId = await getPlayerId();
+    let osSuccess = false;
+    if (playerId) {
+      // ── OneSignal server push (works closed/background/any device) ──
+      dbg("scheduleReminders: using OneSignal push, player=" + playerId);
+      try {
+        // Build full batch and send as one throttled request to the Worker
+        // (avoids 57 parallel calls and OneSignal rate-limit failures)
+        // Schedule notifications every hour for 57 hours
+        const messages = [];
+        for (let i = 0; i <= 57; i++) {
+          const msg = caringMsgs[Math.floor(Math.random() * caringMsgs.length)];
+          messages.push({
+            title: "Cookie-Care-Joy 🍪",
+            body: msg,
+            sendAfterMs: (i + 1) * 60 * 60 * 1000  // Every hour: 1hr, 2hr, 3hr, etc.
+          });
+        }
+        const idType = window._medianOneSignalIdType || localStorage.getItem("ccj_median_id_type") || "player_id";
+        const batchResp = await fetch(WORKER_URL + "/schedule", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            playerId,
+            idType,
+            messages
+          })
+        });
+        const batchData = await batchResp.json();
+        if (!batchResp.ok || batchData.failed === messages.length) throw new Error("Schedule batch failed: " + JSON.stringify(batchData).substring(0, 120));
+        dbg("scheduleReminders: batch scheduled " + batchData.scheduled + " msgs, " + (batchData.failed || 0) + " failed");
+        // ✅ Only stamp the 23h key after confirmed delivery
+        localStorage.setItem(_schedKey, Date.now().toString());
+        dbg("scheduleReminders: OneSignal done, key stamped");
+        osSuccess = true;
+      } catch (osErr) {
+        dbg("scheduleReminders: OneSignal error, falling to local: " + osErr.message);
+        // Fall through to local fallback below
+      }
     }
 
-    // ── Path B: SW local fallback (all items — SW re-arms from localStorage on reload) ──
-    for (const item of schedule) {
-      _lsQueueAdd(item.fireAt, item.title, item.body);
+    // ── Local fallback / SW backup ───────────────────────────────────────
+    // Runs when: no player ID, OR OneSignal threw an error.
+    // ALSO runs as a SW backup even when OneSignal succeeded:
+    //   - Stores the near-term (≤30 min) notifications in the SW queue + ccj_sweet_schedule
+    //   - Means the SW timer fires even if OneSignal fails to deliver
+    //   - Page-side checker (_pageNotifCheck) fires on tab return regardless
+    {
+      if (!osSuccess) {
+        if (localDone && !playerId) {
+          dbg("scheduleReminders: local fallback already scheduled within 1h, skip");
+          return;
+        }
+        dbg("scheduleReminders: " + (playerId ? "OneSignal failed" : "no player ID") + " — using local fallback");
+      } else {
+        dbg("scheduleReminders: OneSignal OK — also scheduling SW backup for near-term reminders");
+      }
+      localStorage.setItem(_localFbKey, Date.now().toString());
+      const now = Date.now();
+      // Build schedule array: every hour for 58 hours
+      const schedule = [];
+      for (let i = 0; i <= 57; i++) {
+        schedule.push({
+          fireAt: now + (i + 1) * 60 * 60 * 1000,  // Every hour: 1hr, 2hr, 3hr, etc.
+          title: "Cookie-Care-Joy 🍪",
+          body: caringMsgs[Math.floor(Math.random() * caringMsgs.length)]
+        });
+      }
+      // Save to localStorage for page-side checker
+      try {
+        localStorage.setItem(_sweetSchedKey, JSON.stringify(schedule));
+      } catch (e) {}
+      // Post to SW: near-term items (≤ 30 min) go into SW timer queue
+      // Long-term items still stored in ccj_sweet_schedule so page-checker fires on tab return
+      for (const item of schedule) {
+        _lsQueueAdd(item.fireAt, item.title, item.body);
+        // Only send SCHEDULE to SW for items ≤ 30 min (SW timers survive that long with keepalive)
+        // Skip items < 5s — those are shown directly via _ccjShowToast above (no SW round-trip duplicate)
+        const delay = item.fireAt - now;
+        if (delay >= 5000 && delay <= 30 * 60 * 1000) {
+          localNotify(item.title, item.body, delay);
+        }
+      }
+      // Sync everything to SW so it can rebuild timers after a restart
+      _swSyncAll();
+      dbg("scheduleReminders: local/backup set, " + schedule.length + " items stored");
+      // If we had no player ID, start background retry so OneSignal gets scheduled
+      // once the subscription is ready (takes longer on Android browser)
+      if (!osSuccess && !playerId) {
+        _startOSRetry();
+      }
     }
-    // _swSyncAll pushes the full queue into the SW via SYNC_ALL so every item
-    // gets a setTimeout inside the SW. Items beyond ~30s will be re-armed by
-    // _swSyncAll on every page load / tab-return / visibilitychange, so they
-    // survive SW restarts without needing to call localNotify individually.
-    _swSyncAll();
-    dbg("scheduleReminders: SW fallback set for near-term items");
   }
 
   // ── Page-side notification checker ────────────────────────────────────
@@ -7299,8 +7461,8 @@ function InstallCard(_ref) {
             navigator.serviceWorker.ready.then(reg => {
               reg.showNotification(item.title, {
                 body: item.body,
-                icon: "https://alexandradigital.github.io/icon-192.png",
-                badge: "https://alexandradigital.github.io/icon-96.png",
+                icon: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png",
+                badge: "https://alexandradigital.github.io/Cookie-Care-Joy/icon-96.png",
                 tag,
                 requireInteraction: false
               });
@@ -7324,6 +7486,7 @@ function InstallCard(_ref) {
       setToastMsg(msg);
       setTimeout(() => setToastMsg(null), 6000);
     };
+    // Removed: OneSignal notification listener — using native notifications instead
   }, []);
   useEffect(() => {
     const doCheck = () => {
@@ -7351,6 +7514,8 @@ function InstallCard(_ref) {
         if (nowMs >= alarmMs - TWO_MIN_MS && nowMs < alarmMs) {
           reminderSentRef.current.set.add(key);
           const taskMsg = "⏰ In 2 minutes: " + (task.text || "Task");
+          // localNotify for in-app SW alert; osPush removed — scheduleTaskPush
+          // already scheduled a server-side push when the task was saved.
           localNotify("Cookie-Care-Joy 🍪", taskMsg, 0);
         }
       }
@@ -7778,9 +7943,6 @@ function InstallCard(_ref) {
     onClose: () => setShowCoolDown(false),
     purchased: purchased,
     selectedSound: selectedSound
-  }), showInstallCard && /*#__PURE__*/React.createElement(InstallCard, {
-    onInstall: window._ccjHandleInstall,
-    onDismiss: window._ccjHandleDismiss
   })));
 }
 class AppErrorBoundary extends React.Component {
@@ -7840,6 +8002,21 @@ class AppErrorBoundary extends React.Component {
 }
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(/*#__PURE__*/React.createElement(AppErrorBoundary, null, /*#__PURE__*/React.createElement(App, null)));
+
+// ── Splashscreen Timeout Safety Net ──────────────────────────────────
+// Ensure presplash is hidden even if React rendering fails or is delayed
+setTimeout(() => {
+  const presplash = document.getElementById('ccj-presplash');
+  if (presplash && presplash.style.opacity !== '0') {
+    presplash.style.transition = 'opacity 0.3s';
+    presplash.style.opacity = '0';
+    setTimeout(() => {
+      const el = document.getElementById('ccj-presplash');
+      if (el && el.parentNode) el.remove();
+    }, 300);
+  }
+}, 3000);
+
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/Cookie-Care-Joy/sw.js").then(reg => {
     console.log("Service worker registered");
@@ -7892,339 +8069,365 @@ if ("serviceWorker" in navigator) {
 }
 </script>
 
-<!-- ── Smart Inline Install Button ───────────────────────────── -->
-<style>
-  #ccj-install-inline {
-    display: none;
-    margin: 0 0 18px 0;
-    background: #ffffff;
-    border: 1.5px solid #fce7f3;
-    border-radius: 18px;
-    padding: 14px 16px;
-    box-shadow: 0 4px 18px rgba(244,63,110,0.12);
-    font-family: system-ui, -apple-system, sans-serif;
-    align-items: center;
-    gap: 12px;
-    animation: ccjInstallFadeIn 0.4s ease forwards;
-  }
-  #ccj-install-inline.visible {
-    display: flex !important;
-  }
-  @keyframes ccjInstallFadeIn {
-    from { opacity: 0; transform: translateY(-6px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  #ccj-install-inline .ccj-il-icon {
-    width: 44px; height: 44px; flex-shrink: 0;
-    border-radius: 12px; overflow: hidden;
-    box-shadow: 0 2px 8px rgba(244,63,110,0.18);
-  }
-  #ccj-install-inline .ccj-il-icon img {
-    width: 100%; height: 100%; object-fit: cover; display: block;
-  }
-  #ccj-install-inline .ccj-il-body {
-    flex: 1; min-width: 0;
-  }
-  #ccj-install-inline .ccj-il-title {
-    font-size: 14px; font-weight: 800; color: #be185d;
-    margin: 0 0 2px; line-height: 1.2;
-  }
-  #ccj-install-inline .ccj-il-sub {
-    font-size: 11.5px; color: #9ca3af; font-weight: 500;
-    margin: 0; line-height: 1.4;
-  }
-  #ccj-install-inline .ccj-il-sub strong {
-    color: #f43f6e;
-  }
-  #ccj-install-inline button.ccj-il-btn {
-    background: linear-gradient(135deg, #f43f6e, #fb7185);
-    color: #fff; border: none; border-radius: 20px;
-    padding: 9px 18px; font-size: 13px; font-weight: 800;
-    cursor: pointer; touch-action: manipulation;
-    box-shadow: 0 2px 10px rgba(244,63,110,0.3);
-    white-space: nowrap; flex-shrink: 0;
-    font-family: inherit;
-  }
-  #ccj-install-inline button.ccj-il-close {
-    background: #f3f4f6; border: none; color: #9ca3af;
-    width: 22px; height: 22px; border-radius: 50%;
-    font-size: 12px; font-weight: 700; cursor: pointer;
-    touch-action: manipulation; padding: 0; line-height: 1;
-    flex-shrink: 0; align-self: flex-start;
-    display: flex; align-items: center; justify-content: center;
-  }
-</style>
+  <!-- ── iOS "Add to Home Screen" Install Prompt ──────────────────────── -->
+  <style>
+    /* ── Install Chip (compact reminder) ── */
+    @keyframes slideUpInstall {
+      from { transform: translateY(110%); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    @keyframes installPulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(244,63,110,0.35); }
+      50%      { box-shadow: 0 0 0 8px rgba(244,63,110,0); }
+    }
 
-<script>
-(function () {
-  var DISMISS_KEY = 'ccj_inline_install_dismissed';
+    /* ── Install chip — centered white card with timer bar ── */
+    #ccj-install-chip {
+      display: none;
+      position: fixed;
+      bottom: max(80px, calc(env(safe-area-inset-bottom) + 80px));
+      left: 0; right: 0;
+      margin-left: auto; margin-right: auto;
+      z-index: 99000;
+      background: #ffffff;
+      border: 1.5px solid #fce7f3;
+      border-radius: 20px;
+      padding: 16px 18px 0 18px;
+      box-shadow: 0 8px 32px rgba(244,63,110,0.18), 0 2px 8px rgba(0,0,0,0.07);
+      font-family: system-ui, -apple-system, sans-serif;
+      flex-direction: column;
+      width: min(340px, calc(100vw - 48px));
+      max-width: calc(100vw - 48px);
+      overflow: hidden;
+      /* No animation here — it's on .visible so it always replays */
+    }
+    #ccj-install-chip.visible {
+      display: flex !important;
+      animation: slideUpInstall 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    }
 
-  // ── Browser / platform detection ──────────────────────────────────
-  var ua = navigator.userAgent;
-  var isIOS          = /iP(hone|od|ad)/i.test(ua) && !window.MSStream;
-  var isAndroid      = /android/i.test(ua);
-  // iOS Safari (no CriOS / FxiOS / OPiOS / EdgiOS)
-  var isIOSSafari    = isIOS && /Safari/i.test(ua) && !/CriOS|FxiOS|OPiOS|EdgiOS/i.test(ua);
-  // iOS Chrome
-  var isIOSChrome    = isIOS && /CriOS/i.test(ua);
-  // iOS Firefox
-  var isIOSFirefox   = isIOS && /FxiOS/i.test(ua);
-  // iOS other browser (Opera, Edge, etc.)
-  var isIOSOther     = isIOS && !isIOSSafari && !isIOSChrome && !isIOSFirefox;
-  // Desktop Safari
-  var isSafariMac    = !isIOS && /^((?!chrome|android|crios).)*safari/i.test(ua);
-  // Samsung Internet (supports beforeinstallprompt)
-  var isSamsung      = /SamsungBrowser/i.test(ua);
-  // Firefox on Android (supports beforeinstallprompt in newer versions)
-  var isFirefoxAndroid = isAndroid && /Firefox/i.test(ua);
-  // Desktop Chrome (Chromium, supports beforeinstallprompt; exclude Edge/Opera/Samsung)
-  var isDesktopChrome  = !isIOS && !isAndroid && /Chrome/i.test(ua) && !/Edg\/|OPR\/|SamsungBrowser/i.test(ua);
-  // Desktop Edge Chromium (supports beforeinstallprompt)
-  var isDesktopEdge    = !isIOS && !isAndroid && /Edg\//i.test(ua);
+    /* header row */
+    #ccj-install-chip .chip-header {
+      display: flex; align-items: center; gap: 12px;
+    }
+    #ccj-install-chip .chip-icon {
+      font-size: 28px; line-height: 1; flex-shrink: 0;
+    }
+    #ccj-install-chip .chip-body {
+      flex: 1; display: flex; flex-direction: column; gap: 2px;
+    }
+    #ccj-install-chip .chip-text {
+      font-size: 15px; font-weight: 800; color: #be185d; line-height: 1.2;
+    }
+    #ccj-install-chip .chip-sub {
+      font-size: 12px; color: #9ca3af; font-weight: 500; line-height: 1.3;
+    }
+    #ccj-install-chip button.chip-close {
+      background: #f3f4f6; border: none; color: #9ca3af;
+      width: 24px; height: 24px; border-radius: 50%;
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      touch-action: manipulation; display: flex;
+      align-items: center; justify-content: center;
+      flex-shrink: 0; padding: 0; line-height: 1; align-self: flex-start;
+    }
 
-  // ── isInstalled check ─────────────────────────────────────────────
-  function isInstalled() {
-    return (
-      window.matchMedia('(display-mode: standalone)').matches ||
-      window.matchMedia('(display-mode: fullscreen)').matches ||
-      window.navigator.standalone === true
+    /* actions row */
+    #ccj-install-chip .chip-actions {
+      margin-top: 10px; display: flex; justify-content: center;
+      align-items: center; min-height: 32px;
+    }
+    #ccj-install-chip .chip-ios-hint {
+      font-size: 12.5px; color: #6b7280; font-weight: 500;
+      text-align: center; padding-bottom: 2px;
+      line-height: 1.5;
+    }
+    #ccj-install-chip .chip-ios-hint strong {
+      color: #be185d;
+    }
+    #ccj-install-chip button.chip-install-btn {
+      background: linear-gradient(135deg, #f43f6e, #fb7185);
+      color: #fff; border: none; border-radius: 20px;
+      padding: 8px 28px; font-size: 14px; font-weight: 800;
+      cursor: pointer; touch-action: manipulation;
+      box-shadow: 0 2px 8px rgba(244,63,110,0.35);
+      animation: installPulse 2.5s ease-in-out infinite;
+      letter-spacing: 0.3px; width: 100%;
+    }
+
+    /* timer bar */
+    #ccj-install-chip .chip-timer-bar {
+      height: 3px; background: #fce7f3;
+      margin: 12px -18px 0 -18px;
+      overflow: hidden;
+    }
+    #ccj-install-chip .chip-timer-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #f43f6e, #fb7185);
+      width: 100%;
+      transform-origin: left;
+    }
+    @keyframes chipTimerDrain {
+      from { transform: scaleX(1); }
+      to   { transform: scaleX(0); }
+    }
+
+    /* iOS install banner */
+    #ccj-ios-install {
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 99000;
+      padding: 20px 20px;
+      padding-bottom: max(28px, env(safe-area-inset-bottom));
+      background: linear-gradient(160deg, #fff 60%, #fdf2f8 100%);
+      border-top: 2px solid #f9a8d4;
+      box-shadow: 0 -8px 40px rgba(244,63,110,0.18);
+      border-radius: 24px 24px 0 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      animation: slideUpInstall 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    }
+    #ccj-ios-install .ccj-install-row {
+      display: flex; align-items: center; gap: 14px;
+    }
+    #ccj-ios-install .ccj-install-icon {
+      width: 56px; height: 56px; border-radius: 16px;
+      background: linear-gradient(135deg, #fce7ef, #fdf6fb);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 30px; flex-shrink: 0; line-height: 1;
+      box-shadow: 0 4px 14px rgba(244,63,110,0.2);
+      border: 1.5px solid #fecdd3;
+    }
+    #ccj-ios-install .ccj-install-text {
+      flex: 1;
+    }
+    #ccj-ios-install .ccj-install-title {
+      font-size: 15px; font-weight: 800; color: #111827; margin: 0 0 3px;
+    }
+    #ccj-ios-install .ccj-install-steps {
+      font-size: 12px; color: #6b7280; margin: 0; line-height: 1.6;
+    }
+    #ccj-ios-install .ccj-install-steps strong { color: #f43f6e; font-weight: 700; }
+    #ccj-ios-install .ccj-install-close {
+      background: #f3f4f6; border: none; font-size: 14px; color: #9ca3af;
+      cursor: pointer; padding: 0; line-height: 1; flex-shrink: 0;
+      touch-action: manipulation; width: 28px; height: 28px;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-weight: 700;
+    }
+    #ccj-ios-install .ccj-install-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: linear-gradient(90deg, #f43f6e, #fb7185);
+      color: #fff; border-radius: 20px; padding: 6px 14px;
+      font-size: 12px; font-weight: 800; margin-top: 8px;
+      box-shadow: 0 3px 10px rgba(244,63,110,0.3);
+      letter-spacing: 0.2px;
+    }
+    /* Arrow pointing down toward Safari toolbar */
+    #ccj-ios-install::after {
+      content: "";
+      position: absolute;
+      bottom: max(calc(env(safe-area-inset-bottom) + 4px), 8px);
+      left: 50%; transform: translateX(-50%);
+      width: 0; height: 0;
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      border-top: 10px solid #f9a8d4;
+    }
+
+    /* Android / Desktop install banner */
+    #ccj-android-install {
+      display: none;
+      position: fixed;
+      bottom: max(88px, calc(env(safe-area-inset-bottom) + 88px));
+      left: 16px; right: 16px;
+      z-index: 99000;
+      background: linear-gradient(160deg, #fff 60%, #fdf2f8 100%);
+      border: 2px solid #fecdd3;
+      border-radius: 22px;
+      padding: 14px 16px;
+      box-shadow: 0 8px 32px rgba(244,63,110,0.2);
+      font-family: system-ui, -apple-system, sans-serif;
+      animation: slideUpInstall 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards;
+      align-items: center; gap: 12px;
+    }
+    #ccj-android-install .ccj-install-app-icon {
+      width: 52px; height: 52px; border-radius: 14px;
+      background: linear-gradient(135deg, #fce7ef, #fdf6fb);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; flex-shrink: 0; line-height: 1;
+      box-shadow: 0 3px 10px rgba(244,63,110,0.18);
+      border: 1.5px solid #fecdd3;
+    }
+    #ccj-android-install button.ccj-install-btn {
+      background: linear-gradient(135deg, #f43f6e, #fb7185);
+      color: #fff; border: none;
+      border-radius: 22px; padding: 11px 20px;
+      font-size: 13px; font-weight: 800;
+      cursor: pointer; white-space: nowrap;
+      touch-action: manipulation; flex-shrink: 0;
+      box-shadow: 0 4px 16px rgba(244,63,110,0.35);
+      animation: installPulse 2.5s ease-in-out infinite;
+      letter-spacing: 0.2px;
+    }
+    /* Small screen tweaks for install banners (e.g. iPhone SE, Galaxy A series) */
+    @media (max-width: 380px) {
+      #ccj-ios-install {
+        padding: 16px 14px;
+        padding-bottom: max(20px, env(safe-area-inset-bottom));
+      }
+      #ccj-ios-install .ccj-install-icon { width: 46px; height: 46px; font-size: 24px; }
+      #ccj-ios-install .ccj-install-title { font-size: 13px; }
+      #ccj-ios-install .ccj-install-steps { font-size: 11px; }
+      #ccj-ios-install .ccj-install-pill { font-size: 11px; padding: 5px 11px; }
+      #ccj-android-install { left: 8px; right: 8px; padding: 12px; gap: 10px; }
+      #ccj-android-install .ccj-install-app-icon { width: 44px; height: 44px; font-size: 22px; }
+      #ccj-android-install button.ccj-install-btn { font-size: 12px; padding: 10px 14px; }
+    }
+    #ccj-android-install .ccj-install-close {
+      background: #f3f4f6; border: none; font-size: 13px; color: #9ca3af;
+      cursor: pointer; padding: 0; line-height: 1; flex-shrink: 0;
+      touch-action: manipulation; width: 26px; height: 26px;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-weight: 700;
+    }
+  </style>
+
+  <!-- Install chip — centered white card with timer bar -->
+  <div id="ccj-install-chip">
+    <div class="chip-header">
+      <span class="chip-icon">🍪</span>
+      <div class="chip-body">
+        <span class="chip-text" id="ccj-chip-label">Add to Home Screen</span>
+        <span class="chip-sub" id="ccj-chip-sub">Your sweetest spot is one tap away ✨</span>
+      </div>
+      <button class="chip-close" id="ccj-chip-close" aria-label="Dismiss">✕</button>
+    </div>
+    <div class="chip-actions">
+      <span class="chip-ios-hint" id="ccj-chip-hint" style="display:none">Tap Share&nbsp;▶ then "Add to Home Screen"</span>
+      <button class="chip-install-btn" id="ccj-chip-install-btn" style="display:none">Install</button>
+    </div>
+    <div class="chip-timer-bar"><div class="chip-timer-fill" id="ccj-chip-timer-fill"></div></div>
+  </div>
+
+  <!-- iOS install banner markup — pretty redesign -->
+  <div id="ccj-ios-install">
+    <div class="ccj-install-row">
+      <div class="ccj-install-icon">🍪</div>
+      <div class="ccj-install-text">
+        <p class="ccj-install-title">Add Cookie Care to your Home Screen 🌸</p>
+        <p class="ccj-install-steps">
+          Tap <strong>Share ⎋</strong> in Safari's toolbar, then<br>
+          tap <strong>Add to Home Screen ＋</strong>
+        </p>
+        <span class="ccj-install-pill">✨ Free forever · Works offline</span>
+      </div>
+      <button class="ccj-install-close" id="ccj-ios-close" aria-label="Dismiss">✕</button>
+    </div>
+  </div>
+
+  <!-- Android / Desktop install banner — pretty redesign -->
+  <div id="ccj-android-install" style="display:none">
+    <div class="ccj-install-app-icon">🍪</div>
+    <div style="flex:1;min-width:0">
+      <p style="margin:0 0 2px;font-size:14px;font-weight:800;color:#111827">Cookie-Care-Joy</p>
+      <p style="margin:0 0 1px;font-size:11px;color:#6b7280">Add to home screen · Free forever</p>
+      <p style="margin:0;font-size:11px;color:#f43f6e;font-weight:600">✨ Works offline · Instant access</p>
+    </div>
+    <button class="ccj-install-btn" id="ccj-android-btn">🍪 Install</button>
+    <button class="ccj-install-close" id="ccj-android-close">✕</button>
+  </div>
+
+  <script>
+    // ── Median.co (GoNative) detection ──────────────────────────────────────
+    // Median injects "median" or "gonative" into the user agent string
+    // and exposes a window.median bridge object when running as a native app.
+    var IS_MEDIAN = (
+      /median|gonative/i.test(navigator.userAgent) ||
+      typeof window.median !== "undefined" ||
+      typeof window.gonative !== "undefined"
     );
-  }
 
-  if (localStorage.getItem(DISMISS_KEY) || isInstalled()) return;
+    // ── Median JS Bridge init ────────────────────────────────────────────────
+    // Removed: Median integration code — app now runs standalone
+    if (false) { // Disabled
+      // Was: if (IS_MEDIAN) {
+      // Median bridge code removed
 
-  // ── Build the card ────────────────────────────────────────────────
-  function buildCard(hasPrompt) {
-    var card = document.createElement('div');
-    card.id = 'ccj-install-inline';
-
-    var icon = document.createElement('div');
-    icon.className = 'ccj-il-icon';
-    var iconImg = document.createElement('img');
-    iconImg.src = '/icon-192.png';
-    iconImg.alt = 'Cookie Care Joy';
-    iconImg.onerror = function() {
-      icon.textContent = '🍪';
-      icon.style.fontSize = '36px';
-      icon.style.borderRadius = '0';
-      icon.style.boxShadow = 'none';
-      icon.style.overflow = 'visible';
-    };
-    icon.appendChild(iconImg);
-
-    var body = document.createElement('div');
-    body.className = 'ccj-il-body';
-
-    var title = document.createElement('p');
-    title.className = 'ccj-il-title';
-
-    var sub = document.createElement('p');
-    sub.className = 'ccj-il-sub';
-
-    var btn = document.createElement('button');
-    btn.className = 'ccj-il-btn';
-
-    var closeBtn = document.createElement('button');
-    closeBtn.className = 'ccj-il-close';
-    closeBtn.setAttribute('aria-label', 'Dismiss');
-    closeBtn.textContent = '✕';
-
-    if (hasPrompt) {
-      // ── Android Chrome / Samsung / Firefox Android / Edge Android ──
-      // Native install prompt available — show a real Install button
-      title.textContent = 'Install Cookie Care 🍪';
-      sub.textContent = 'Add to your home screen for instant access ✨';
-      btn.textContent = '🍪 Install';
-      btn.onclick = async function () {
-        var p = window._deferredInstallPrompt;
-        if (!p) {
-          // Prompt expired — fall back to manual instructions
-          sub.innerHTML = 'Tap the browser menu → <strong>Add to Home Screen</strong>';
-          btn.style.display = 'none';
-          return;
-        }
-        try {
-          p.prompt();
-          var result = await p.userChoice;
-          window._deferredInstallPrompt = null;
-          if (result && result.outcome === 'accepted') {
-            card.classList.remove('visible');
-            localStorage.setItem(DISMISS_KEY, '1');
-          }
-          // If dismissed, leave card open so user can try again or close it
-        } catch (e) {
-          // prompt() threw — gracefully fall back to manual hint
-          btn.style.display = 'none';
-          sub.innerHTML = 'Tap the browser menu → <strong>Add to Home Screen</strong>';
-        }
-      };
-      body.appendChild(title);
-      body.appendChild(sub);
-      card.appendChild(icon);
-      card.appendChild(body);
-      card.appendChild(btn);
-
-    } else if (isIOSSafari) {
-      // ── iOS Safari — Share sheet instructions ──────────────────────
-      title.textContent = 'Add to Home Screen 📲';
-      sub.innerHTML = 'Tap the <strong>Share ⬆</strong> button, then tap <strong>Add to Home Screen</strong>';
-      body.appendChild(title);
-      body.appendChild(sub);
-      card.appendChild(icon);
-      card.appendChild(body);
-
-    } else if (isIOSChrome) {
-      // ── iOS Chrome — uses its own share sheet ──────────────────────
-      title.textContent = 'Add to Home Screen 📲';
-      sub.innerHTML = 'Tap <strong>⋯</strong> (top right) → <strong>Add to Home Screen</strong>';
-      body.appendChild(title);
-      body.appendChild(sub);
-      card.appendChild(icon);
-      card.appendChild(body);
-
-    } else if (isIOSFirefox) {
-      // ── iOS Firefox ────────────────────────────────────────────────
-      title.textContent = 'Add to Home Screen 📲';
-      sub.innerHTML = 'Tap <strong>⋯</strong> (bottom right) → <strong>Add to Home Screen</strong>';
-      body.appendChild(title);
-      body.appendChild(sub);
-      card.appendChild(icon);
-      card.appendChild(body);
-
-    } else if (isIOSOther || isIOS) {
-      // ── Any other iOS browser ──────────────────────────────────────
-      title.textContent = 'Add to Home Screen 📲';
-      sub.innerHTML = 'Open in <strong>Safari</strong>, then tap Share ⬆ → <strong>Add to Home Screen</strong>';
-      body.appendChild(title);
-      body.appendChild(sub);
-      card.appendChild(icon);
-      card.appendChild(body);
-
-    } else if (isSafariMac) {
-      // ── macOS Safari ───────────────────────────────────────────────
-      title.textContent = 'Add Cookie Care to Dock';
-      sub.innerHTML = 'Safari menu → File → <strong>Add to Dock…</strong>';
-      body.appendChild(title);
-      body.appendChild(sub);
-      card.appendChild(icon);
-      card.appendChild(body);
-
-    } else if (isSamsung) {
-      // ── Samsung Internet (beforeinstallprompt may not have fired yet)
-      title.textContent = 'Add to Home Screen 📲';
-      sub.innerHTML = 'Tap the menu <strong>☰</strong> → <strong>Add page to</strong> → <strong>Home screen</strong>';
-      body.appendChild(title);
-      body.appendChild(sub);
-      card.appendChild(icon);
-      card.appendChild(body);
-
-    } else if (isFirefoxAndroid) {
-      // ── Firefox on Android ─────────────────────────────────────────
-      title.textContent = 'Add to Home Screen 📲';
-      sub.innerHTML = 'Tap the menu <strong>⋮</strong> → <strong>Install</strong> or <strong>Add to Home Screen</strong>';
-      body.appendChild(title);
-      body.appendChild(sub);
-      card.appendChild(icon);
-      card.appendChild(body);
-
-    } else if (isDesktopChrome || isDesktopEdge) {
-      // ── Desktop Chrome / Edge — beforeinstallprompt not yet fired ──
-      // Prompt will upgrade this card automatically once captured.
-      title.textContent = 'Install Cookie Care 🍪';
-      sub.innerHTML = 'Click <strong>⊕</strong> in the address bar or open the browser menu → <strong>Install App</strong>';
-      body.appendChild(title);
-      body.appendChild(sub);
-      card.appendChild(icon);
-      card.appendChild(body);
+      // Suppress install banners — not needed inside native app
+      var iosBanner = document.getElementById("ccj-ios-install");
+      var androidBanner = document.getElementById("ccj-android-install");
+      if (iosBanner) iosBanner.style.display = "none";
+      if (androidBanner) androidBanner.style.display = "none";
 
     } else {
-      // ── Generic fallback (Opera, Brave, other Android browsers) ────
-      title.textContent = 'Add to Home Screen 📲';
-      sub.innerHTML = 'Open the browser menu → <strong>Install App</strong>';
-      body.appendChild(title);
-      body.appendChild(sub);
-      card.appendChild(icon);
-      card.appendChild(body);
-    }
+      // ── Browser install banners (non-Median only) ──────────────────────────
+      // IMPORTANT: always capture beforeinstallprompt regardless of dismiss state
+      // so the chip install button always works even if user previously dismissed a banner.
+      (function () {
+        const ua = navigator.userAgent;
+        const isIOS_early = /iP(hone|od|ad)/.test(ua) && !window.MSStream;
+        if (!isIOS_early) {
+          window.addEventListener("beforeinstallprompt", function (e) {
+            e.preventDefault();
+            window._deferredInstallPrompt = e;
+          });
+        }
+      })();
 
-    closeBtn.onclick = function () {
-      card.classList.remove('visible');
-      localStorage.setItem(DISMISS_KEY, '1');
-    };
-    card.appendChild(closeBtn);
-    return card;
-  }
+      (function () {
+        const DISMISS_KEY = "ccj_install_dismissed";
+        if (localStorage.getItem(DISMISS_KEY)) return;
 
-  // ── Inject card into .page-content ────────────────────────────────
-  function tryInject(attempts) {
-    if (isInstalled() || localStorage.getItem(DISMISS_KEY)) return;
-    var content = document.querySelector('.page-content');
-    if (!content) {
-      if (attempts < 50) setTimeout(function () { tryInject(attempts + 1); }, 200);
-      return;
-    }
-    if (document.getElementById('ccj-install-inline')) return;
+        const isStandalone =
+          window.navigator.standalone === true ||
+          window.matchMedia("(display-mode: standalone)").matches ||
+          window.matchMedia("(display-mode: fullscreen)").matches;
+        if (isStandalone) return;
 
-    var hasPrompt = !!window._deferredInstallPrompt;
-    var card = buildCard(hasPrompt);
-    content.insertBefore(card, content.firstChild);
-    setTimeout(function () { card.classList.add('visible'); }, 30);
+        const ua = navigator.userAgent;
+        const isIOS = /iP(hone|od|ad)/.test(ua) && !window.MSStream;
+        const isIOSSafari = isIOS && /Safari/.test(ua) && !/CriOS|FxiOS|OPiOS|mercury/.test(ua);
 
-    // Android Chrome: beforeinstallprompt sometimes fires a few seconds after load.
-    // If we showed a manual-hint card, keep watching and upgrade to Install button.
-    if (!hasPrompt && (isAndroid || isDesktopChrome || isDesktopEdge)) {
-      var upgradeTimer = setInterval(function () {
-        if (window._deferredInstallPrompt) {
-          clearInterval(upgradeTimer);
-          var existing = document.getElementById('ccj-install-inline');
-          if (existing) {
-            existing.remove();
-            injected = false;
-            tryInject(0);
+        function dismiss() {
+          localStorage.setItem(DISMISS_KEY, "1");
+        }
+
+        if (isIOSSafari) {
+          // iOS: chip handles auto-show — no separate banner auto-show needed
+        } else if (!isIOS) {
+          // Android / Desktop Chrome — capture prompt for chip install button only
+          var deferredPrompt = null;
+          window.addEventListener("beforeinstallprompt", function (e) {
+            e.preventDefault();
+            deferredPrompt = e;
+            window._deferredInstallPrompt = e; // used by install chip
+            // Do NOT auto-show ccj-android-install — chip handles all install UI
+          });
+          var installBtn = document.getElementById("ccj-android-btn");
+          if (installBtn) {
+            installBtn.addEventListener("click", function () {
+              if (!deferredPrompt) return;
+              deferredPrompt.prompt();
+              deferredPrompt.userChoice.then(function () {
+                deferredPrompt = null;
+                var el = document.getElementById("ccj-android-install");
+                if (el) el.style.display = "none";
+                dismiss();
+              });
+            });
+          }
+          var androidClose = document.getElementById("ccj-android-close");
+          if (androidClose) {
+            androidClose.addEventListener("click", function () {
+              var el = document.getElementById("ccj-android-install");
+              if (el) el.style.display = "none";
+              dismiss();
+            });
           }
         }
-      }, 500);
-      // Stop watching after 15s
-      setTimeout(function () { clearInterval(upgradeTimer); }, 15000);
+      })();
     }
-  }
-
-  var injected = false;
-  function scheduleInject() {
-    if (injected) return;
-    injected = true;
-    // Try immediately, then retry — don't wait 1200ms on Android
-    tryInject(0);
-  }
-  // Expose so the early beforeinstallprompt listener can reset it
-  window._ccjScheduleInject = function () {
-    injected = false;
-    scheduleInject();
-  };
-
-  // Fire on load
-  if (document.readyState === 'complete') {
-    scheduleInject();
-  } else {
-    window.addEventListener('load', scheduleInject);
-  }
-
-  // Re-inject when React navigates (re-renders .page-content)
-  var observer = new MutationObserver(function () {
-    if (localStorage.getItem(DISMISS_KEY) || isInstalled()) return;
-    var content = document.querySelector('.page-content');
-    if (content && !document.getElementById('ccj-install-inline')) {
-      injected = false;
-      scheduleInject();
-    }
-  });
-  observer.observe(document.getElementById('root') || document.body, {
-    childList: true, subtree: true
-  });
-})();
-</script>
-
+  </script>
 </body>
 
 </html>
-

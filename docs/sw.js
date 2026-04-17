@@ -1,3 +1,5 @@
+// OneSignal SDK is loaded by OneSignalSDKWorker.js
+
 // Cookie-Care-Joy Service Worker
 // Handles push events, SW-side scheduled notifications, app focus on click,
 // and full offline caching so the installed PWA works without internet.
@@ -11,6 +13,7 @@ const PRECACHE_URLS = [
   BASE + '/index.html',
   BASE + '/manifest.json',
   BASE + '/sw.js',
+  BASE + '/OneSignalSDKWorker.js',
   BASE + '/icon-48.png',
   BASE + '/icon-96.png',
   BASE + '/icon-144.png',
@@ -23,6 +26,7 @@ const PRECACHE_URLS = [
 const CDN_CACHE = 'ccj-cdn-v1';
 const CDN_ORIGINS = [
   'cdnjs.cloudflare.com',
+  'cdn.onesignal.com',
 ];
 
 // ── Install: pre-cache all local assets ──────────────────────────────────────
@@ -81,6 +85,11 @@ self.addEventListener('fetch', e => {
     return;
   }
 
+  // ── OneSignal API calls: network-only (don't cache) ──────────────────────
+  if (url.hostname.includes('onesignal.com') && url.pathname.startsWith('/api/')) {
+    return;
+  }
+
   // ── App navigation (HTML pages): network-first, fallback to cached index ──
   if (request.destination === 'document' || (request.headers.get('accept') || '').includes('text/html')) {
     e.respondWith(
@@ -117,7 +126,7 @@ self.addEventListener('fetch', e => {
 
 const ICON = 'https://alexandradigital.github.io/Cookie-Care-Joy/icon-192.png';
 
-// ── Web Push (server-sent) ───────────────────────────────────────────────────
+// ── Web Push (server-sent, e.g. OneSignal / Firebase) ────────────────────────
 self.addEventListener('push', e => {
   let data = { title: 'Cookie-Care-Joy 🍪', body: 'Time to take care of yourself ✨' };
   if (e.data) {
