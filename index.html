@@ -3620,12 +3620,24 @@ function parseVoice(transcript, defaultDate) {
     alertTime = formatDisplayTime(h, parseInt(m, 10));
     remaining = remaining.replace(tm[0], ' ');
   }
-  // folder: "in health folder"
-  const folderRx = /\bin\s+([\w]+(?:\s[\w]+)?)\s+folder\b|\bfolder\s+([\w]+)\b/i;
+  // folder: "in health folder" OR "folder morning" OR common folder names at start
+  // Try explicit "folder" keywords first
+  const folderRx = /\bin\s+([\w]+(?:\s[\w]+)?)\s+folder\b|\bfolder\s+([\w]+)(?:\s+\w+)?\b/i;
   const fm = remaining.match(folderRx);
   if (fm) {
     folder = (fm[1] || fm[2]).trim();
     remaining = remaining.replace(fm[0], ' ');
+  } else {
+    // Try to detect common folder names at the beginning
+    const commonFolders = ['morning', 'evening', 'night', 'afternoon', 'work', 'health', 'fitness', 'study', 'sleep', 'meal', 'meditation', 'exercise', 'reading', 'water', 'self care', 'selfcare'];
+    for (let cf of commonFolders) {
+      const cfRx = new RegExp('^\\s*' + cf + '\\s+', 'i');
+      if (cfRx.test(remaining)) {
+        folder = cf.charAt(0).toUpperCase() + cf.slice(1);
+        remaining = remaining.replace(cfRx, ' ');
+        break;
+      }
+    }
   }
   // date
   if (/\btomorrow\b/i.test(remaining)) {
@@ -4820,20 +4832,35 @@ function SelfCarePage(_ref13) {
   const [scListening, setScListening] = useState(false);
   const scRecogRef = React.useRef(null);
   const scHeardRef = React.useRef("");
+  const scParsedRef = React.useRef({});
   const today = new Date().toISOString().split("T")[0];
   const scTasks = tasks.filter(t => t.type === "Self Care" && t.date === today);
-  const addTask = text => {
-    setTasks(prev => [...prev, {
+  const addTask = (text, folder = "", alertTime = "") => {
+    const newTask = {
       id: Date.now(),
       text,
-      folder: "",
-      alertTime: "",
+      folder,
+      alertTime,
       type: "Self Care",
       date: today,
       done: false
-    }]);
+    };
+    setTasks(prev => [...prev, newTask]);
     setShowPicker(false);
     setCustomText("");
+    // Set up notification if alertTime is provided
+    if (alertTime && alertTime !== "NOW") {
+      const m = alertTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+      if (m) {
+        let h = parseInt(m[1], 10);
+        const min = parseInt(m[2], 10);
+        if (m[3].toUpperCase() === "PM" && h !== 12) h += 12;
+        if (m[3].toUpperCase() === "AM" && h === 12) h = 0;
+        const alarmMs = new Date(today + "T" + String(h).padStart(2,"0") + ":" + String(min).padStart(2,"0") + ":00").getTime();
+        const delayMs = alarmMs - 2 * 60 * 1000 - Date.now();
+        if (delayMs > 0) localNotify("Cookie-Care-Joy 🍪", "⏰ In 2 minutes: " + (text || "Self-Care Task"), delayMs);
+      }
+    }
   };
   function startScVoice() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -4867,6 +4894,8 @@ function SelfCarePage(_ref13) {
       if (raw) {
         const parsed = parseVoice(raw, today);
         setCustomText(parsed.text || raw);
+        // Store parsed folder and alertTime for use when adding task
+        scParsedRef.current = parsed;
       }
     };
     r.onerror = () => setScListening(false);
@@ -4961,7 +4990,7 @@ function SelfCarePage(_ref13) {
       boxSizing: "border-box",
       transition: "border-color 0.2s"
     },
-    onKeyDown: e => e.key === "Enter" && customText.trim() && addTask(customText.trim())
+    onKeyDown: e => e.key === "Enter" && customText.trim() && addTask(customText.trim(), scParsedRef.current.folder || "", scParsedRef.current.alertTime || "")
   }), /*#__PURE__*/React.createElement("button", {
     onClick: startScVoice,
     title: scListening ? "Stop" : "Speak activity",
@@ -4986,7 +5015,7 @@ function SelfCarePage(_ref13) {
       fontSize: 16
     }
   }, scListening ? "🔴" : "🎤"))), /*#__PURE__*/React.createElement("button", {
-    onClick: () => customText.trim() && addTask(customText.trim()),
+    onClick: () => customText.trim() && addTask(customText.trim(), scParsedRef.current.folder || "", scParsedRef.current.alertTime || ""),
     style: {
       background: ROSE,
       border: "none",
@@ -5010,7 +5039,7 @@ function SelfCarePage(_ref13) {
     }
   }, t.sc_ideas.map(idea => /*#__PURE__*/React.createElement("button", {
     key: idea,
-    onClick: () => addTask(idea),
+    onClick: () => addTask(idea, scParsedRef.current.folder || "", scParsedRef.current.alertTime || ""),
     style: {
       background: ROSE_LIGHT,
       border: `1.5px solid #fecdd3`,
@@ -5202,7 +5231,7 @@ function SelfCarePage(_ref13) {
     }
   }, t.sc_ideas.map(idea => /*#__PURE__*/React.createElement("button", {
     key: idea,
-    onClick: () => addTask(idea),
+    onClick: () => addTask(idea, scParsedRef.current.folder || "", scParsedRef.current.alertTime || ""),
     style: {
       background: ROSE_LIGHT,
       border: `1px solid #fecdd3`,
