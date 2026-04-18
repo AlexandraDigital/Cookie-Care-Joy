@@ -3603,64 +3603,133 @@ function AlarmModal(_ref0) {
 // ── Add Task Form ─────────────────────────────────────────────────
 function parseVoice(transcript, defaultDate) {
   let remaining = transcript;
-  let folder = '',
-    alertTime = '',
-    date = defaultDate,
-    type = 'To-Do';
-  // time: "at 3pm", "at 3:30pm", "at 15:00"
+  let folder = '', alertTime = '', date = defaultDate, type = 'To-Do';
+  
+  // TIME: "at 3pm", "at 3:30pm", "at 15:00"
   const timeRx = /\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i;
   const tm = remaining.match(timeRx);
   if (tm) {
-    let h = parseInt(tm[1]),
-      m = tm[2] || '00';
+    let h = parseInt(tm[1]), m = tm[2] || '00';
     const p = (tm[3] || '').toLowerCase();
     if (p === 'pm' && h < 12) h += 12;
     if (p === 'am' && h === 12) h = 0;
-    if (!p && h >= 1 && h <= 6) h += 12; // assume PM for ambiguous 1–6
+    if (!p && h >= 1 && h <= 6) h += 12;
     alertTime = formatDisplayTime(h, parseInt(m, 10));
     remaining = remaining.replace(tm[0], ' ');
   }
-  // folder: "in health folder"
+  
+  // FOLDER: "in health folder"
   const folderRx = /\bin\s+([\w]+(?:\s[\w]+)?)\s+folder\b|\bfolder\s+([\w]+)\b/i;
   const fm = remaining.match(folderRx);
   if (fm) {
     folder = (fm[1] || fm[2]).trim();
     remaining = remaining.replace(fm[0], ' ');
   }
-  // date
-  if (/\btomorrow\b/i.test(remaining)) {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    date = d.toISOString().split('T')[0];
-    remaining = remaining.replace(/\btomorrow\b/i, ' ');
-  }
-  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  for (let i = 0; i < dayNames.length; i++) {
-    if (new RegExp('\\b' + dayNames[i] + '\\b', 'i').test(remaining)) {
-      const now = new Date();
-      let diff = i - now.getDay();
-      if (diff <= 0) diff += 7;
-      const d = new Date();
-      d.setDate(now.getDate() + diff);
-      date = d.toISOString().split('T')[0];
-      remaining = remaining.replace(new RegExp('\\b' + dayNames[i] + '\\b', 'i'), ' ');
-      break;
-    }
-  }
-  remaining = remaining.replace(/\btoday\b/i, ' ');
+  
+  // TYPE: "self care" or "selfcare"
   if (/\bself.?care\b/i.test(remaining)) {
     type = 'Self Care';
     remaining = remaining.replace(/\bself.?care\b/i, ' ');
   }
-  remaining = remaining.replace(/\bremind me to\b/gi, '').replace(/\badd\s+a?\s*/gi, '').replace(/\s+/g, ' ').trim().replace(/^to\s+/i, '').trim();
-  return {
-    text: remaining || transcript.trim(),
-    folder,
-    alertTime,
-    type,
-    date
-  };
+  
+  // DATE: today, tomorrow, next week, day names, specific dates
+  if (/\btoday\b/i.test(remaining)) {
+    date = new Date().toISOString().split('T')[0];
+    remaining = remaining.replace(/\btoday\b/i, ' ');
+  } else if (/\btomorrow\b/i.test(remaining)) {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    date = d.toISOString().split('T')[0];
+    remaining = remaining.replace(/\btomorrow\b/i, ' ');
+  } else if (/\bnext\s+week\b/i.test(remaining)) {
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    date = d.toISOString().split('T')[0];
+    remaining = remaining.replace(/\bnext\s+week\b/i, ' ');
+  } else {
+    // Check for day names: Monday, Tuesday, etc.
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    for (let i = 0; i < dayNames.length; i++) {
+      if (new RegExp('\\b' + dayNames[i] + '\\b', 'i').test(remaining)) {
+        const now = new Date();
+        let diff = i - now.getDay();
+        if (diff < 0) diff += 7;
+        if (diff === 0) diff = 7; // Say "Monday" → next Monday
+        const d = new Date();
+        d.setDate(now.getDate() + diff);
+        date = d.toISOString().split('T')[0];
+        remaining = remaining.replace(new RegExp('\\b' + dayNames[i] + '\\b', 'i'), ' ');
+        break;
+      }
+    }
+  }
+  
+  // Clean up transcript
+  remaining = remaining
+    .replace(/\bremind me to\b/gi, '')
+    .replace(/\badd\s+a?\s*/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^to\s+/i, '')
+    .trim();
+  
+  return { text: remaining || transcript.trim(), folder, alertTime, type, date };
 }
+
+function parseVoiceDateOnly(transcript) {
+  let date = null;
+  if (/\btoday\b/i.test(transcript)) {
+    date = new Date().toISOString().split('T')[0];
+  } else if (/\btomorrow\b/i.test(transcript)) {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    date = d.toISOString().split('T')[0];
+  } else if (/\bnext\s+week\b/i.test(transcript)) {
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    date = d.toISOString().split('T')[0];
+  } else {
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    for (let i = 0; i < dayNames.length; i++) {
+      if (new RegExp('\\b' + dayNames[i] + '\\b', 'i').test(transcript)) {
+        const now = new Date();
+        let diff = i - now.getDay();
+        if (diff < 0) diff += 7;
+        if (diff === 0) diff = 7;
+        const d = new Date();
+        d.setDate(now.getDate() + diff);
+        date = d.toISOString().split('T')[0];
+        break;
+      }
+    }
+  }
+  return date;
+}
+
+function parseVoiceTimeOnly(transcript) {
+  const timeRx = /(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i;
+  const tm = transcript.match(timeRx);
+  if (!tm) return '';
+  let h = parseInt(tm[1]), m = tm[2] || '00';
+  const p = (tm[3] || '').toLowerCase();
+  if (p === 'pm' && h < 12) h += 12;
+  if (p === 'am' && h === 12) h = 0;
+  if (!p && h >= 1 && h <= 6) h += 12;
+  return formatDisplayTime(h, parseInt(m, 10));
+}
+
+function parseVoiceFolderOnly(transcript) {
+  const folderRx = /\bin\s+([\w]+(?:\s[\w]+)?)\s+folder\b|\bfolder\s+([\w]+)\b/i;
+  const fm = transcript.match(folderRx);
+  return fm ? (fm[1] || fm[2]).trim() : '';
+}
+
+function parseVoiceTypeOnly(transcript) {
+  if (/\bself.?care\b/i.test(transcript)) return 'Self Care';
+  if (/\bto.?do\b/i.test(transcript)) return 'To-Do';
+  return '';
+}
+
 function AddTaskForm(_ref1) {
   let {
     onAdd,
@@ -3789,6 +3858,156 @@ function AddTaskForm(_ref1) {
     style: {
       width: "100%",
       border: `2px solid ${listening ? "#ff6eb4" : ROSE}`,
+function AddTaskForm(_ref1) {
+  let {
+    onAdd,
+    onCancel,
+    defaultDate,
+    onSelfCare
+  } = _ref1;
+  const t = React.useContext(LangContext);
+  const [form, setForm] = useState({
+    text: "",
+    folder: "",
+    alertTime: "",
+    type: "To-Do",
+    date: defaultDate || new Date().toISOString().split("T")[0]
+  });
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [listeningField, setListeningField] = useState(null);
+  const recogRef = React.useRef(null);
+  const heardRef = React.useRef("");
+  
+  function startVoiceField(field) {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      alert("Voice input isn't supported. Try Chrome or Safari.");
+      return;
+    }
+    if (listeningField === field) {
+      recogRef.current && recogRef.current.stop();
+      return;
+    }
+    const r = new SR();
+    recogRef.current = r;
+    r.lang = "en-US";
+    r.interimResults = true;
+    r.continuous = false;
+    setListening(true);
+    setListeningField(field);
+    let finalTranscript = "";
+    r.onresult = e => {
+      let interim = "";
+      finalTranscript = "";
+      for (let i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) finalTranscript += e.results[i][0].transcript;
+        else interim += e.results[i][0].transcript;
+      }
+      heardRef.current = (finalTranscript || interim).trim();
+      if (field === 'text') {
+        setForm(f => ({ ...f, text: finalTranscript || interim }));
+      }
+    };
+    r.onend = () => {
+      setListening(false);
+      setListeningField(null);
+      const raw = (finalTranscript || heardRef.current || "").trim();
+      if (!raw) return;
+      
+      if (field === 'text') {
+        const parsed = parseVoice(raw, form.date);
+        setForm(f => ({
+          ...f,
+          text: parsed.text || raw,
+          folder: parsed.folder || f.folder,
+          alertTime: parsed.alertTime || f.alertTime,
+          type: parsed.type || f.type,
+          date: parsed.date || f.date
+        }));
+        if (parsed.alertTime) setTimeout(() => setShowTimePicker(true), 350);
+      } else if (field === 'folder') {
+        const folder = parseVoiceFolderOnly(raw);
+        if (folder) setForm(f => ({ ...f, folder }));
+      } else if (field === 'time') {
+        const time = parseVoiceTimeOnly(raw);
+        if (time) setForm(f => ({ ...f, alertTime: time }));
+      } else if (field === 'date') {
+        const date = parseVoiceDateOnly(raw);
+        if (date) setForm(f => ({ ...f, date }));
+      } else if (field === 'type') {
+        const type = parseVoiceTypeOnly(raw);
+        if (type) setForm(f => ({ ...f, type }));
+      }
+    };
+    r.onerror = () => {
+      setListening(false);
+      setListeningField(null);
+    };
+    r.start();
+  }
+  
+  function startVoice() {
+    startVoiceField('text');
+  }
+  
+  const dateLabel = new Date(form.date + "T12:00:00").toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric"
+  });
+  return /*#__PURE__*/React.createElement(React.Fragment, null, showTimePicker && /*#__PURE__*/React.createElement(TimePickerWheel, {
+    value: form.alertTime,
+    onChange: t => setForm(f => ({
+      ...f,
+      alertTime: t
+    })),
+    onClose: () => setShowTimePicker(false)
+  }), showDatePicker && /*#__PURE__*/React.createElement(DatePickerPopup, {
+    value: form.date,
+    onChange: d => setForm(f => ({
+      ...f,
+      date: d
+    })),
+    onClose: () => setShowDatePicker(false)
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: WHITE,
+      borderRadius: 20,
+      padding: "24px",
+      boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
+      marginBottom: 20,
+      border: `2px solid ${ROSE}`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: 4,
+      borderRadius: 999,
+      background: `linear-gradient(90deg,${ROSE},${GOLD})`,
+      marginBottom: 20
+    }
+  }), /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: "0 0 10px",
+      fontWeight: 700,
+      color: ROSE,
+      fontSize: 15
+    }
+  }, t.whats_on_mind), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    value: form.text,
+    onChange: e => setForm(f => ({
+      ...f,
+      text: e.target.value
+    })),
+    placeholder: t.task_placeholder,
+    style: {
+      width: "100%",
+      border: `2px solid ${listeningField === 'text' ? "#ff6eb4" : ROSE}`,
       borderRadius: 10,
       padding: "14px 16px",
       fontSize: 15,
@@ -3801,10 +4020,10 @@ function AddTaskForm(_ref1) {
     }
   }), /*#__PURE__*/React.createElement("button", {
     onClick: startVoice,
-    title: listening ? "Stop listening" : "Speak your task",
+    title: listeningField === 'text' ? "Stop listening" : "Speak your task",
     style: {
       width: "100%",
-      background: listening ? "#ff6eb4" : ROSE,
+      background: listeningField === 'text' ? "#ff6eb4" : ROSE,
       border: "none",
       borderRadius: 12,
       minHeight: 48,
@@ -3815,8 +4034,8 @@ function AddTaskForm(_ref1) {
       gap: 10,
       cursor: "pointer",
       transition: "background 0.2s",
-      boxShadow: listening ? "0 0 0 3px rgba(255,110,180,0.22)" : "0 8px 18px rgba(244,63,110,0.18)",
-      animation: listening ? "micPulse 1s infinite" : "none",
+      boxShadow: listeningField === 'text' ? "0 0 0 3px rgba(255,110,180,0.22)" : "0 8px 18px rgba(244,63,110,0.18)",
+      animation: listeningField === 'text' ? "micPulse 1s infinite" : "none",
       color: WHITE,
       fontFamily: "inherit",
       fontSize: 13,
@@ -3829,12 +4048,18 @@ function AddTaskForm(_ref1) {
       fontSize: 18,
       flexShrink: 0
     }
-  }, listening ? "🔴" : "🎤"), /*#__PURE__*/React.createElement("span", null, listening ? "Listening..." : "Say the task, time, date, or folder — e.g. 'Take meds tomorrow at 8am'"))), /*#__PURE__*/React.createElement("div", {
+  }, listeningField === 'text' ? "🔴" : "🎤"), /*#__PURE__*/React.createElement("span", null, listeningField === 'text' ? "Listening..." : "Say task, time, date, or folder"))), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 12,
       marginBottom: 14,
-      flexWrap: "wrap"
+      flexWrap: "wrap",
+      alignItems: "flex-end"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 2,
+      minWidth: 140
     }
   }, /*#__PURE__*/React.createElement("input", {
     value: form.folder,
@@ -3844,16 +4069,33 @@ function AddTaskForm(_ref1) {
     })),
     placeholder: t.folder_placeholder,
     style: {
-      flex: 2,
-      minWidth: 140,
-      border: "2px solid #e5e7eb",
+      width: "100%",
+      border: `2px solid ${listeningField === 'folder' ? "#ff6eb4" : "#e5e7eb"}`,
       borderRadius: 10,
       padding: "12px 14px",
       fontSize: 14,
       outline: "none",
-      fontFamily: "inherit"
+      fontFamily: "inherit",
+      boxSizing: "border-box"
     }
-  }), /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: () => startVoiceField('folder'),
+    title: listeningField === 'folder' ? "Stop" : "Voice folder",
+    style: {
+      width: "100%",
+      background: listeningField === 'folder' ? "#ff6eb4" : "#f0f0f0",
+      border: `2px solid ${listeningField === 'folder' ? "#ff6eb4" : "#e5e7eb"}`,
+      borderRadius: 8,
+      padding: "8px",
+      marginTop: 4,
+      fontSize: 12,
+      cursor: "pointer",
+      color: listeningField === 'folder' ? WHITE : GRAY,
+      fontWeight: 600,
+      transition: "all 0.2s",
+      animation: listeningField === 'folder' ? "micPulse 1s infinite" : "none"
+    }
+  }, listeningField === 'folder' ? "🔴 Listening..." : "🎤 Folder")), /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1,
       minWidth: 110
@@ -3868,21 +4110,27 @@ function AddTaskForm(_ref1) {
       textTransform: "uppercase"
     }
   }, t.alert_time), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setShowTimePicker(true),
+    onClick: () => startVoiceField('time'),
     style: {
       width: "100%",
-      border: "2px solid #e5e7eb",
+      border: `2px solid ${listeningField === 'time' ? "#ff6eb4" : "#e5e7eb"}`,
       borderRadius: 10,
       padding: "10px 12px",
       fontSize: 14,
       fontFamily: "inherit",
-      background: form.alertTime ? ROSE_LIGHT : WHITE,
-      color: form.alertTime ? ROSE : GRAY,
+      background: listeningField === 'time' ? "#ff6eb4" : form.alertTime ? ROSE_LIGHT : WHITE,
+      color: listeningField === 'time' ? WHITE : form.alertTime ? ROSE : GRAY,
       cursor: "pointer",
-      textAlign: "left",
-      fontWeight: form.alertTime ? 600 : 400
+      textAlign: "center",
+      fontWeight: form.alertTime ? 600 : 400,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      transition: "all 0.2s",
+      animation: listeningField === 'time' ? "micPulse 1s infinite" : "none"
     }
-  }, form.alertTime || t.set_time))), /*#__PURE__*/React.createElement("div", {
+  }, listeningField === 'time' ? "🎤" : "🎤", listeningField === 'time' ? "Listening..." : form.alertTime || t.set_time))), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       alignItems: "center",
@@ -3899,22 +4147,24 @@ function AddTaskForm(_ref1) {
       if (t === "Self Care" && onSelfCare) onSelfCare();
     }
   }), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setShowDatePicker(true),
+    onClick: () => startVoiceField('date'),
     style: {
       display: "flex",
       alignItems: "center",
       gap: 8,
-      border: `2px solid ${form.date ? ROSE : "#e5e7eb"}`,
+      border: `2px solid ${listeningField === 'date' ? "#ff6eb4" : form.date ? ROSE : "#e5e7eb"}`,
       borderRadius: 10,
       padding: "10px 14px",
-      background: form.date ? ROSE_LIGHT : WHITE,
+      background: listeningField === 'date' ? "#ff6eb4" : form.date ? ROSE_LIGHT : WHITE,
       cursor: "pointer",
       fontFamily: "inherit",
       fontSize: 14,
-      color: form.date ? ROSE : GRAY,
-      fontWeight: 600
+      color: listeningField === 'date' ? WHITE : form.date ? ROSE : GRAY,
+      fontWeight: form.date ? 600 : 400,
+      transition: "all 0.2s",
+      animation: listeningField === 'date' ? "micPulse 1s infinite" : "none"
     }
-  }, /*#__PURE__*/React.createElement("span", null, "\uD83D\uDCC5"), /*#__PURE__*/React.createElement("span", null, dateLabel)), /*#__PURE__*/React.createElement("div", {
+  }, listeningField === 'date' ? "🎤" : "📅", /*#__PURE__*/React.createElement("span", null, listeningField === 'date' ? "Listening..." : dateLabel)), /*#__PURE__*/React.createElement("div", {
     style: {
       marginLeft: "auto",
       display: "flex",
@@ -3946,135 +4196,6 @@ function AddTaskForm(_ref1) {
     }
   }, t.add_task_btn)))));
 }
-
-// ── TODAY PAGE ────────────────────────────────────────────────────
-function TodayPage(_ref10) {
-  let {
-    tasks,
-    setTasks,
-    cookies,
-    setCookies,
-    setPage,
-    purchased,
-    selectedSound
-  } = _ref10;
-  const [isFiring, setIsFiring] = useState(false);
-  const t = React.useContext(LangContext);
-  const [showForm, setShowForm] = useState(false);
-  const [showPanda, setShowPanda] = useState(false);
-  const today = new Date();
-  const todayStr = today.toISOString().split("T")[0];
-  const todayTasks = tasks.filter(t => t.date === todayStr);
-  const addTask = form => {
-    const newId = Date.now();
-    const newTask = {
-      id: newId,
-      ...form,
-      done: false
-    };
-    setTasks(prev => [...prev, newTask]);
-    setShowForm(false);
-    if (newTask.alertTime && newTask.alertTime !== "NOW") {
-      const dateStr = newTask.date || new Date().toISOString().split("T")[0];
-      const m = newTask.alertTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-      if (m) {
-        let h = parseInt(m[1], 10);
-        const min = parseInt(m[2], 10);
-        if (m[3].toUpperCase() === "PM" && h !== 12) h += 12;
-        if (m[3].toUpperCase() === "AM" && h === 12) h = 0;
-        const alarmMs = new Date(dateStr + "T" + String(h).padStart(2,"0") + ":" + String(min).padStart(2,"0") + ":00").getTime();
-        const delayMs = alarmMs - 2 * 60 * 1000 - Date.now();
-        if (delayMs > 0) localNotify("Cookie-Care-Joy 🍪", "⏰ In 2 minutes: " + (newTask.text || "Task"), delayMs);
-      }
-    }
-  };
-  const toggleTask = id => {
-    const t = tasks.find(t => t.id === id);
-    if (t && !t.done) setCookies(1);else if (t && t.done) setCookies(-1);
-    setTasks(prev => prev.map(t => t.id === id ? {
-      ...t,
-      done: !t.done
-    } : t));
-  };
-  const removeTask = id => {
-    setTasks(prev => prev.filter(t => t.id !== id));
-  };
-  const editTask = (id, changes) => {
-    setTasks(prev => prev.map(t => t.id === id ? {
-      ...t,
-      ...changes
-    } : t));
-    const existing = tasks.find(t => t.id === id);
-    const updated = existing ? { ...existing, ...changes } : null;
-    if (updated && updated.alertTime && updated.alertTime !== "NOW") {
-      const dateStr = updated.date || new Date().toISOString().split("T")[0];
-      const m = updated.alertTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-      if (m) {
-        let h = parseInt(m[1], 10);
-        const min = parseInt(m[2], 10);
-        if (m[3].toUpperCase() === "PM" && h !== 12) h += 12;
-        if (m[3].toUpperCase() === "AM" && h === 12) h = 0;
-        const alarmMs = new Date(dateStr + "T" + String(h).padStart(2,"0") + ":" + String(min).padStart(2,"0") + ":00").getTime();
-        const delayMs = alarmMs - 2 * 60 * 1000 - Date.now();
-        if (delayMs > 0) localNotify("Cookie-Care-Joy 🍪", "⏰ In 2 minutes: " + (updated.text || "Task"), delayMs);
-      }
-    }
-  };
-  return /*#__PURE__*/React.createElement("div", {
-    className: "page-content",
-    style: {
-      padding: "32px 28px",
-      maxWidth: 1100,
-      margin: "0 auto"
-    }
-  }, showPanda && /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: "fixed",
-      inset: 0,
-      background: "rgba(0,0,0,0.3)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      zIndex: 999
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: WHITE,
-      borderRadius: 24,
-      padding: "36px 32px",
-      maxWidth: 400,
-      width: "90%",
-      textAlign: "center",
-      boxShadow: "0 20px 60px rgba(0,0,0,0.2)"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 64,
-      marginBottom: 12
-    }
-  }, "\uD83D\uDC3C"), /*#__PURE__*/React.createElement("h3", {
-    style: {
-      margin: "0 0 12px",
-      color: ROSE,
-      fontSize: 20,
-      fontWeight: 800
-    }
-  }, t.panda_name), /*#__PURE__*/React.createElement("p", {
-    style: {
-      color: DARK,
-      fontSize: 15,
-      lineHeight: 1.6,
-      margin: "0 0 24px"
-    }
-  }, t.panda_msg), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 12,
-      justifyContent: "center"
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: () => setShowPanda(false),
-    style: {
       padding: "12px 24px",
       borderRadius: 12,
       border: "2px solid #e5e7eb",
