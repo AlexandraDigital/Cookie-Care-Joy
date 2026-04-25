@@ -6858,30 +6858,19 @@ function App() {
   const VAPID_PUBLIC_KEY = "BAS4G2cNqgLqZQl896xIGmCHdwsWqVmteQ8zUrf8zU5x_3mVg7SE6IfjzBZI4WPWeivdXsHrV6njLcqceAoyZSA";
   const CCJ_BASE_URL = "https://cookie-care-joy.pages.dev";
 
-  // Subscribe this device to Web Push and register with backend
+  // Use Service Worker + local queue for notifications (no backend)
   async function registerWebPush() {
     try {
-      if (!("serviceWorker" in navigator) || !("PushManager" in window)) return null;
-      const reg = await navigator.serviceWorker.ready;
-      // Check if already subscribed
-      let sub = await reg.pushManager.getSubscription();
-      if (!sub) {
-        sub = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-        });
+      if (!("serviceWorker" in navigator)) {
+        dbg("Service Worker not supported");
+        return null;
       }
-      // Send subscription to backend
-      await fetch(CCJ_BASE_URL + "/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(sub.toJSON()),
-      });
-      localStorage.setItem("ccj_push_endpoint", sub.endpoint);
-      dbg("Web Push registered: " + sub.endpoint.slice(-20));
-      return sub;
+      const reg = await navigator.serviceWorker.ready;
+      dbg("Service Worker ready - Local notifications enabled");
+      localStorage.setItem("ccj_notif_mode", "local-sw");
+      return { mode: "local-sw" };
     } catch (e) {
-      dbg("registerWebPush error: " + e.message);
+      dbg("SW setup: " + e.message);
       return null;
     }
   }
@@ -7375,20 +7364,10 @@ function App() {
     try { localStorage.setItem(_sweetSchedKey, JSON.stringify(schedule)); } catch {}
     localStorage.setItem(_schedKey, now.toString());
 
-    // ── Path A: Server-side Web Push (works when app is closed) ──────────────
-    const endpoint = localStorage.getItem("ccj_push_endpoint");
-    if (endpoint) {
-      try {
-        const resp = await fetch(CCJ_BASE_URL + "/schedule", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ endpoint, messages: schedule }),
-        });
-        const data = await resp.json();
-        dbg("scheduleReminders: server scheduled " + (data.scheduled || 0) + " msgs");
-      } catch (e) {
-        dbg("scheduleReminders: server error: " + e.message + " — using SW fallback only");
-      }
+    // ── Path A: Server-side Web Push (DISABLED - using local SW only) ──
+    // Backend not implemented - skipped
+    if (false) {
+      dbg("scheduleReminders: server disabled");
     } else {
       dbg("scheduleReminders: no endpoint yet — SW fallback only");
     }
