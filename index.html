@@ -3660,9 +3660,26 @@ function parseVoice(transcript, defaultDate) {
     }
   }
   remaining = remaining.replace(/\btoday\b/i, ' ');
-  if (/\bself.?care\b/i.test(remaining)) {
-    type = 'Self Care';
-    remaining = remaining.replace(/\bself.?care\b/i, ' ');
+  
+  // Enhanced form type detection - recognize both self-care AND self-love + wellness keywords
+  const selfCareKeywords = [
+    'self-care', 'selfcare', 'self care',
+    'self-love', 'selflove', 'self love',  // NEW: Now catches self-love variants!
+    'meditation', 'yoga', 'stretching', 'stretch',
+    'journaling', 'journal', 'breathing', 'breathe',
+    'mindfulness', 'mindful', 'wellness', 'well-being',
+    'pamper', 'massage', 'spa',
+    'relax', 'relaxation', 'rest', 'nap'
+  ];
+  
+  // Check if ANY self-care keyword appears in the voice input
+  for (let keyword of selfCareKeywords) {
+    const regex = new RegExp('\\b' + keyword + '\\b', 'i');
+    if (regex.test(remaining)) {
+      type = 'Self Care';
+      remaining = remaining.replace(regex, ' ');
+      break;
+    }
   }
   remaining = remaining.replace(/\bremind me to\b/gi, '').replace(/\badd\s+a?\s*/gi, '').replace(/\s+/g, ' ').trim().replace(/^to\s+/i, '').trim();
   return {
