@@ -3707,7 +3707,7 @@ function AddTaskForm(_ref1) {
     recogRef.current = r;
     r.lang = "en-US";
     r.interimResults = true;
-    r.continuous = false;
+    r.continuous = true;  // Allow listening through natural pauses
     setListening(true);
     let finalTranscript = "";
     r.onresult = e => {
@@ -3737,6 +3737,7 @@ function AddTaskForm(_ref1) {
           type: parsed.type || f.type,
           date: parsed.date || f.date
         }));
+      }, 800);  // End setTimeout for speech completion
         if (parsed.alertTime) {
           setTimeout(() => setShowTimePicker(true), 350);
         }
@@ -4876,7 +4877,7 @@ function SelfCarePage(_ref13) {
     scRecogRef.current = r;
     r.lang = "en-US";
     r.interimResults = true;
-    r.continuous = false;
+    r.continuous = true;  // Allow listening through natural pauses
     setScListening(true);
     let finalT = "";
     r.onresult = e => {
