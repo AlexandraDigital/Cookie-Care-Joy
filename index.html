@@ -6793,7 +6793,7 @@ function App() {
       // Only show banner if not already registered
       const alreadyRegistered = localStorage.getItem('ccj_notif_registered') === '1';
       const inAppOnly = localStorage.getItem("ccj_inapp_notif") === "true";
-      if (!alreadyRegistered && !inAppOnly) setShowBanner(true);
+      if (!alreadyRegistered && !inAppOnly) setShowBanner(false);
       if (inAppOnly) scheduleReminders(); // re-populate in-app schedule on each page load
 
       // No auto-dismiss — banner stays until user taps Enable or X
@@ -7755,7 +7755,7 @@ function App() {
   }), (() => {
     // ONE banner at a time — priority order
     if (!splashGone) return null;
-    if (showBanner) return /*#__PURE__*/React.createElement("div", {
+    if (false) return /*#__PURE__*/React.createElement("div", {
       style: {
         position: "fixed",
         top: 0,
@@ -8045,6 +8045,5 @@ if ("serviceWorker" in navigator) {
 }
 </script>
 
-  <script src="cookie-care-joy-messages.js"></script>
 </body>
 
