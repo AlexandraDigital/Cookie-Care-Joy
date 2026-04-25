@@ -3745,19 +3745,20 @@ function AddTaskForm(_ref1) {
       // On finish, parse full transcript into ALL fields at once
       const raw = (finalTranscript || heardRef.current || "").trim();
       if (raw) {
-        const parsed = parseVoice(raw, form.date);
-        setForm(f => ({
-          ...f,
-          text: parsed.text || raw,
-          folder: parsed.folder || f.folder,
-          alertTime: parsed.alertTime || f.alertTime,
-          type: parsed.type || f.type,
-          date: parsed.date || f.date
-        }));
-      }, 800);  // End setTimeout for speech completion
-        if (parsed.alertTime) {
-          setTimeout(() => setShowTimePicker(true), 350);
-        }
+        setTimeout(() => {
+          const parsed = parseVoice(raw, form.date);
+          setForm(f => ({
+            ...f,
+            text: parsed.text || raw,
+            folder: parsed.folder || f.folder,
+            alertTime: parsed.alertTime || f.alertTime,
+            type: parsed.type || f.type,
+            date: parsed.date || f.date
+          }));
+          if (parsed.alertTime) {
+            setTimeout(() => setShowTimePicker(true), 350);
+          }
+        }, 800);  // Wait 800ms after speech ends to ensure completion
       }
     };
     r.onerror = () => setListening(false);
